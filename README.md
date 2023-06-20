@@ -15,6 +15,12 @@ The Fuel Solidity smart contract architecture.
 
 ### Building
 
+Make sure submodules are up to date:
+
+```sh
+git submodule update --init --recursive
+```
+
 Build and run tests:
 
 ```sh
