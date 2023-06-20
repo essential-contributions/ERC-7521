@@ -1,4 +1,5 @@
 {
+  "git.detectSubmodules": false,
   "solidity.packageDefaultDependenciesContractsDirectory": "src",
   "solidity.packageDefaultDependenciesDirectory": "lib"
 }
