@@ -11,7 +11,7 @@ env:
 
 jobs:
   trunk:
-    name: Trunk project 
+    name: Trunk project
     runs-on: ubuntu-latest
     permissions:
       contents: read
