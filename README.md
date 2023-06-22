@@ -3,7 +3,7 @@
 <!-- Disable markdownlint for long lines. -->
 <!-- markdownlint-disable-file MD013 -->
 
-The Fuel Solidity smart contract architecture.
+The Essential Solidity smart contract architecture.
 
 ## Build From Source
 
