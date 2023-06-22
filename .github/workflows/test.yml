@@ -11,7 +11,7 @@ env:
 
 jobs:
   trunk:
-    name: Trunk
+    name: Trunk project 
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -20,7 +20,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Trunk Check
+      - name: Run Trunk check
         uses: trunk-io/trunk-action@v1
         id: trunk-check
 
