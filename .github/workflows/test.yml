@@ -55,3 +55,14 @@ jobs:
         run: |
           forge test -vvv
         id: test
+
+      - name: Run Forge coverage
+        run: |
+          forge coverage --report lcov
+        id: coverage
+
+      - name: Enforce minimum coverage
+        uses: VeryGoodOpenSource/very_good_coverage@v2
+        with:
+          path: 'lcov.info'
+          min_coverage: 90
