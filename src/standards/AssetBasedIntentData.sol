@@ -45,9 +45,17 @@ library AssetBasedIntentDataLib {
         bytes32 assetConstraint = AssetCurveLib.hash(data.assetConstraint);
 
         return abi.encode(
-            standard, sender, nonce, verificationGasLimit, 
-            timestamp, callGasLimit1, callGasLimit2,
-            callData1, callData2, assetRelease, assetConstraint
+            standard,
+            sender,
+            nonce,
+            verificationGasLimit,
+            timestamp,
+            callGasLimit1,
+            callGasLimit2,
+            callData1,
+            callData2,
+            assetRelease,
+            assetConstraint
         );
     }
 
@@ -61,5 +69,4 @@ library AssetBasedIntentDataLib {
     }
 
     //TODO: function to check is intent asset based
-
 }

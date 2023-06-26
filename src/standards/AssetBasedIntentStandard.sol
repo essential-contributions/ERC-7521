@@ -9,9 +9,7 @@ import {Exec} from "../utils/Exec.sol";
 import {AssetBasedIntentData, AssetBasedIntentDataLib} from "./AssetBasedIntentData.sol";
 import {AssetCurve, AssetCurveLib} from "./AssetCurve.sol";
 
-
 contract AssetBasedIntentStandard is IIntentStandard {
-
     uint256 private constant REVERT_REASON_MAX_LEN = 2048;
 
     function executeCallData1(UserIntent calldata userInt) external {
@@ -25,7 +23,6 @@ contract AssetBasedIntentStandard is IIntentStandard {
         }
 
         //TODO: release tokens
-
     }
 
     function executeCallData2(UserIntent calldata userInt) external {
@@ -38,9 +35,7 @@ contract AssetBasedIntentStandard is IIntentStandard {
     }
 
     function verifyEndState(UserIntent calldata userInt) external {
-
         //TODO: implement end state check
-
     }
 
     function hash(UserIntent calldata userInt) external pure returns (bytes32) {

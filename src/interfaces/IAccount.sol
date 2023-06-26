@@ -4,7 +4,6 @@ pragma solidity ^0.8.13;
 import "./UserIntent.sol";
 
 interface IAccount {
-
     /**
      * Validate user's intent (typically a signature and nonce)
      * the entryPoint will continue to execute an intent solution only if this validation call returns successfully.
@@ -24,5 +23,7 @@ interface IAccount {
      *      If an account doesn't use time-range, it is enough to return SIG_VALIDATION_FAILED value (1) for signature failure.
      *      Note that the validation code cannot use block.timestamp (or block.number) directly.
      */
-    function validateUserInt(UserIntent calldata userInt, bytes32 userIntHash) external returns (uint256 validationData);
+    function validateUserInt(UserIntent calldata userInt, bytes32 userIntHash)
+        external
+        returns (uint256 validationData);
 }

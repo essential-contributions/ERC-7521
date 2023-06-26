@@ -32,5 +32,4 @@ library AssetCurveLib {
     }
 
     //TODO: function to check is intent asset based
-
 }

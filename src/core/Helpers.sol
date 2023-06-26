@@ -19,7 +19,7 @@ struct ValidationData {
 
 //extract sigFailed, validAfter, validUntil.
 // also convert zero validUntil to type(uint48).max
-function _parseValidationData(uint validationData) pure returns (ValidationData memory data) {
+function _parseValidationData(uint256 validationData) pure returns (ValidationData memory data) {
     bool sigFailed = uint8(validationData) == 1;
     uint48 validUntil = uint48(validationData >> 160);
     if (validUntil == 0) {
@@ -49,7 +49,10 @@ function _packValidationData(bool sigFailed, uint48 validUntil, uint48 validAfte
 }
 
 // intersect two validation data ranges.
-function _intersectTimeRange(ValidationData memory vd1, ValidationData memory vd2) pure returns (ValidationData memory) {
+function _intersectTimeRange(ValidationData memory vd1, ValidationData memory vd2)
+    pure
+    returns (ValidationData memory)
+{
     bool sigFailed = vd1.sigFailed || vd2.sigFailed;
     uint48 validAfter1 = vd1.validAfter;
     uint48 validUntil1 = vd1.validUntil;
@@ -73,4 +76,3 @@ function calldataKeccak(bytes calldata data) pure returns (bytes32 ret) {
         ret := keccak256(mem, len)
     }
 }
-
