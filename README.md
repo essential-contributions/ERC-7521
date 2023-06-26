@@ -9,9 +9,10 @@ The Essential Solidity smart contract architecture.
 
 ### Dependencies
 
-| dep     | version                                                  |
-| ------- | -------------------------------------------------------- |
+| dep     | version                                                           |
+| ------- | ----------------------------------------------------------------- |
 | Foundry | [latest](https://book.getfoundry.sh/getting-started/installation) |
+| Trunk   | [latest](https://docs.trunk.io/docs/install)                      |
 
 ### Building
 
