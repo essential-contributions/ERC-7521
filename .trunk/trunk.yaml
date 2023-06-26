@@ -1,0 +1,32 @@
+version: 0.1
+cli:
+  version: 1.11.1
+plugins:
+  sources:
+    - id: trunk
+      ref: v0.0.19
+      uri: https://github.com/trunk-io/plugins
+lint:
+  enabled:
+    - checkov@2.3.300
+    - trivy@0.42.1
+    - trufflehog@3.40.0
+    - actionlint@1.6.25
+    - git-diff-check
+    - gitleaks@8.17.0
+    - markdownlint@0.35.0
+    - prettier@2.8.8
+    - taplo@0.7.0
+    - yamllint@1.32.0
+runtimes:
+  enabled:
+    - go@1.19.5
+    - node@18.12.1
+    - python@3.10.8
+actions:
+  disabled:
+    - trunk-announce
+    - trunk-check-pre-push
+    - trunk-fmt-pre-commit
+  enabled:
+    - trunk-upgrade-available
