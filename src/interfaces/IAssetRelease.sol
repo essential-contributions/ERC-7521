@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-enum AssetType { 
+enum AssetType {
     ETH,
     ERC20,
     ERC721,
@@ -11,7 +11,6 @@ enum AssetType {
 }
 
 interface IAssetRelease {
-
     /**
      * Release the given token(s) (both fungible and non-fungible)
      *

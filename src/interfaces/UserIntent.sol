@@ -23,12 +23,12 @@ struct UserIntent {
  * Utility functions helpful when working with UserIntent structs.
  */
 library UserIntentLib {
-
     function getStandard(UserIntent calldata userInt) public pure returns (bytes32) {
         bytes32 data;
         //read intent standard from userInt, which is first userInt member (saves 800 gas...)
-        assembly {data := calldataload(userInt)}
+        assembly {
+            data := calldataload(userInt)
+        }
         return bytes32(data);
     }
 }
-

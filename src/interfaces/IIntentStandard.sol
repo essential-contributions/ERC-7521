@@ -4,7 +4,6 @@ pragma solidity ^0.8.13;
 import {UserIntent} from "./UserIntent.sol";
 
 interface IIntentStandard {
-
     /**
      * Validate intent structure (typically just formatting)
      * the entryPoint will continue to execute an intent solution only if this validation call returns successfully.
@@ -25,6 +24,6 @@ interface IIntentStandard {
     function executeSecondPass(UserIntent calldata userInt, uint256 timestamp) external;
 
     function verifyEndState(UserIntent calldata userInt, uint256 timestamp, bytes memory context) external;
-    
+
     function hash(UserIntent calldata userInt) external pure returns (bytes32);
 }

@@ -45,9 +45,17 @@ library AssetBasedIntentDataLib {
         bytes32 assetConstraint = _hashCurves(data.assetConstraints);
 
         return abi.encode(
-            standard, sender, nonce, verificationGasLimit, 
-            timestamp, callGasLimit1, callGasLimit2,
-            callData1, callData2, assetRelease, assetConstraint
+            standard,
+            sender,
+            nonce,
+            verificationGasLimit,
+            timestamp,
+            callGasLimit1,
+            callGasLimit2,
+            callData1,
+            callData2,
+            assetRelease,
+            assetConstraint
         );
     }
 

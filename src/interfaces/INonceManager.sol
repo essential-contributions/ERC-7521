@@ -2,7 +2,6 @@
 pragma solidity ^0.8.13;
 
 interface INonceManager {
-
     /**
      * Return the next nonce for this sender.
      * Within a given key, the nonce values are sequenced (starting with zero, and incremented by one on each userInt)

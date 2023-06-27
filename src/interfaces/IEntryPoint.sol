@@ -10,15 +10,17 @@ import {IIntentStandard} from "./IIntentStandard.sol";
 import {UserIntent} from "./UserIntent.sol";
 
 interface IEntryPoint is INonceManager {
-
-    /***
+    /**
+     *
      * An event emitted after each successful intent solution
      * @param userIntHash - unique identifier for the intent (hash its entire content, except signature).
      * @param sender - the account that generates this intent.
      * @param submitter - the account that submitted the solution for the intent.
      * @param nonce - the nonce value from the intent.
      */
-    event UserIntentEvent(bytes32 indexed userIntHash, address indexed sender, address indexed submitter, uint256 nonce);
+    event UserIntentEvent(
+        bytes32 indexed userIntHash, address indexed sender, address indexed submitter, uint256 nonce
+    );
 
     /**
      * An event emitted if the UserIntent "callData" reverted with non-zero length
@@ -27,7 +29,9 @@ interface IEntryPoint is INonceManager {
      * @param nonce the nonce used in the intent.
      * @param revertReason - the return bytes from the (reverted) call to "callData".
      */
-    event UserIntentRevertReason(bytes32 indexed userIntHash, address indexed sender, uint256 nonce, bytes revertReason);
+    event UserIntentRevertReason(
+        bytes32 indexed userIntHash, address indexed sender, uint256 nonce, bytes revertReason
+    );
 
     /**
      * An event emitted if the UserIntent "callData" reverted with non-zero length
@@ -75,6 +79,7 @@ interface IEntryPoint is INonceManager {
         SolutionStep[] steps1;
         SolutionStep[] steps2;
     }
+
     struct SolutionStep {
         address target;
         uint256 value;
@@ -97,11 +102,16 @@ interface IEntryPoint is INonceManager {
      * with trace enabled to track the emitted events.
      * @param solution the UserIntent solution to simulate
      * @param timestamp the timestamp at which to evaluate the intents
-     * @param target if nonzero, a target address to call after user intent simulation. If called, 
+     * @param target if nonzero, a target address to call after user intent simulation. If called,
      *        the targetSuccess and targetResult are set to the return from that call.
      * @param targetCallData callData to pass to target address
      */
-    function simulateHandleInt(IntentSolution calldata solution, uint256 timestamp, address target, bytes calldata targetCallData) external;
+    function simulateHandleInt(
+        IntentSolution calldata solution,
+        uint256 timestamp,
+        address target,
+        bytes calldata targetCallData
+    ) external;
 
     /**
      * Simulate a call to account.validateUserInt.
@@ -127,4 +137,3 @@ interface IEntryPoint is INonceManager {
      */
     function getIntentStandardContract(bytes32 standardId) external view returns (IIntentStandard);
 }
-

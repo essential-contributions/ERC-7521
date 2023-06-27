@@ -22,12 +22,14 @@ struct AssetCurve {
     EvaluationType evaluationType;
     uint256[] params;
 }
+
 enum CurveType {
     CONSTANT,
     LINEAR,
     EXPONENTIAL,
     COUNT
 }
+
 enum EvaluationType {
     ABSOLUTE,
     RELATIVE,
@@ -38,51 +40,44 @@ enum EvaluationType {
  * Utility functions helpful when working with AssetCurve structs.
  */
 library AssetCurveLib {
-
     function validate(AssetCurve memory curve) public pure {
         require(curve.curveType < CurveType.COUNT, "invalid curve type");
         require(curve.assetType < AssetType.COUNT, "invalid curve asset type");
         require(curve.evaluationType < EvaluationType.COUNT, "invalid curve eval type");
 
-        if(curve.curveType == CurveType.CONSTANT) {
+        if (curve.curveType == CurveType.CONSTANT) {
             require(curve.params.length == 1, "invalid curve params");
-
-        } else if(curve.curveType == CurveType.CONSTANT) {
+        } else if (curve.curveType == CurveType.CONSTANT) {
             require(curve.params.length == 3, "invalid curve params");
-
-        } else if(curve.curveType == CurveType.EXPONENTIAL) {
+        } else if (curve.curveType == CurveType.EXPONENTIAL) {
             require(curve.params.length == 5, "invalid curve params");
-
         } else {
             revert("uknown curve type");
         }
     }
 
     function evaluate(AssetCurve memory curve, uint256 x) public pure returns (uint256 val) {
-        if(curve.curveType == CurveType.CONSTANT) {
+        if (curve.curveType == CurveType.CONSTANT) {
             //val = c
             val = curve.params[0];
-
-        } else if(curve.curveType == CurveType.CONSTANT) {
+        } else if (curve.curveType == CurveType.CONSTANT) {
             uint256 a = curve.params[0];
             uint256 b = curve.params[1];
             uint256 max = curve.params[2];
-            if(x > max) x = max;
+            if (x > max) x = max;
 
             //val = ax+b
             val = (a * x) + b;
-
-        } else if(curve.curveType == CurveType.EXPONENTIAL) {
+        } else if (curve.curveType == CurveType.EXPONENTIAL) {
             uint256 a = curve.params[0];
             uint256 b = curve.params[1];
             uint256 e = curve.params[2];
             uint256 f = curve.params[3];
             uint256 max = curve.params[4];
-            if(x > max) x = max;
+            if (x > max) x = max;
 
             //val = a(x+j)^i+b
             val = ((a * (x + f)) ^ e) + b;
-
         } else {
             val = 0;
         }
@@ -99,5 +94,4 @@ library AssetCurveLib {
     function _pack(AssetCurve memory curve) private pure returns (bytes memory ret) {
         return abi.encodePacked(curve.assetId, curve.assetType, curve.curveType, curve.evaluationType, curve.params);
     }
-
 }

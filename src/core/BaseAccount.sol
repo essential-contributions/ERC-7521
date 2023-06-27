@@ -39,7 +39,11 @@ abstract contract BaseAccount is IAccount, IAssetRelease {
      * subclass doesn't need to override this method. Instead, it should override the specific internal validation methods.
      */
     function validateUserInt(UserIntent calldata userInt, bytes32 userIntHash)
-    external override virtual returns (uint256 validationData) {
+        external
+        virtual
+        override
+        returns (uint256 validationData)
+    {
         _requireFromEntryPoint();
         validationData = _validateSignature(userInt, userIntHash);
         _validateNonce(userInt.nonce);
@@ -48,33 +52,33 @@ abstract contract BaseAccount is IAccount, IAssetRelease {
     /**
      * Releases a user's asset(s) to the entryPoint contract.
      */
-    function releaseAsset(AssetType assetType, address assetContract, uint256 assetId, uint256 amount) external override virtual {
+    // solhint-disable-next-line no-unused-vars
+    function releaseAsset(AssetType assetType, address assetContract, uint256 assetId, uint256 amount)
+        external
+        virtual
+        override
+    {
         _requireFromEntryPoint();
 
         // transfer tokens
-        if(assetType == AssetType.ETH) {
+        if (assetType == AssetType.ETH) {
             payable(address(entryPoint())).transfer(amount);
-
-        } else if(assetType == AssetType.ERC20) {
+        } else if (assetType == AssetType.ERC20) {
             IERC20 erc20 = IERC20(assetContract);
             erc20.transferFrom(address(this), address(entryPoint()), amount);
-
-        } else if(assetType == AssetType.ERC721) {
+        } else if (assetType == AssetType.ERC721) {
             //TODO
-
-        } else if(assetType == AssetType.ERC777) {
+        } else if (assetType == AssetType.ERC777) {
             //TODO
-
-        } else if(assetType == AssetType.ERC1155) {
+        } else if (assetType == AssetType.ERC1155) {
             //TODO
-
         }
     }
 
     /**
      * ensure the intent comes from the known entrypoint.
      */
-    function _requireFromEntryPoint() internal virtual view {
+    function _requireFromEntryPoint() internal view virtual {
         require(msg.sender == address(entryPoint()), "account: not from EntryPoint");
     }
 
@@ -90,7 +94,9 @@ abstract contract BaseAccount is IAccount, IAssetRelease {
      *      Note that the validation code cannot use block.timestamp (or block.number) directly.
      */
     function _validateSignature(UserIntent calldata userInt, bytes32 userIntHash)
-    internal virtual returns (uint256 validationData);
+        internal
+        virtual
+        returns (uint256 validationData);
 
     /**
      * Validate the nonce of the UserIntent.
@@ -108,6 +114,5 @@ abstract contract BaseAccount is IAccount, IAssetRelease {
      *
      * solhint-disable-next-line no-empty-blocks
      */
-    function _validateNonce(uint256 nonce) internal view virtual {
-    }
+    function _validateNonce(uint256 nonce) internal view virtual {}
 }

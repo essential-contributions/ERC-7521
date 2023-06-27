@@ -36,12 +36,12 @@ contract AssetBasedIntentStandard is IIntentStandard {
         AssetBasedIntentData memory data = AssetBasedIntentDataLib.parse(userInt);
 
         //validate constraint curves
-        for(uint256 i=0; i<data.assetConstraints.length; i++) {
+        for (uint256 i = 0; i < data.assetConstraints.length; i++) {
             data.assetConstraints[i].validate();
         }
 
         //validate release curves
-        for(uint256 i=0; i<data.assetReleases.length; i++) {
+        for (uint256 i = 0; i < data.assetReleases.length; i++) {
             data.assetReleases[i].validate();
         }
 
@@ -57,8 +57,8 @@ contract AssetBasedIntentStandard is IIntentStandard {
         //record starting balances
         uint256 constraintLen = data.assetConstraints.length;
         uint256[] memory startingBalances = new uint256[](constraintLen);
-        for(uint256 i=0; i<constraintLen; i++) {
-            if(data.assetConstraints[i].evaluationType == EvaluationType.RELATIVE) {
+        for (uint256 i = 0; i < constraintLen; i++) {
+            if (data.assetConstraints[i].evaluationType == EvaluationType.RELATIVE) {
                 startingBalances[i] = data.assetConstraints[i].balanceOf(userInt.sender);
             }
         }
@@ -70,12 +70,12 @@ contract AssetBasedIntentStandard is IIntentStandard {
 
         //release tokens
         uint256 evaluateAt = timestamp - data.timestamp;
-        for(uint256 i=0; i<data.assetReleases.length; i++) {
+        for (uint256 i = 0; i < data.assetReleases.length; i++) {
             uint256 releaseAmount = data.assetReleases[i].evaluate(evaluateAt);
             IAssetRelease(userInt.sender).releaseAsset(
-                data.assetReleases[i].assetType, 
-                data.assetReleases[i].assetContract, 
-                data.assetReleases[i].assetId, 
+                data.assetReleases[i].assetType,
+                data.assetReleases[i].assetContract,
+                data.assetReleases[i].assetId,
                 releaseAmount
             );
         }
@@ -84,6 +84,7 @@ contract AssetBasedIntentStandard is IIntentStandard {
         return abi.encode(startingBalances);
     }
 
+    // solhint-disable-next-line no-unused-vars
     function executeSecondPass(UserIntent calldata userInt, uint256 timestamp) external {
         AssetBasedIntentData memory data = AssetBasedIntentDataLib.parse(userInt);
 
@@ -99,20 +100,24 @@ contract AssetBasedIntentStandard is IIntentStandard {
 
         //check end balances
         uint256 evaluateAt = timestamp - data.timestamp;
-        for(uint256 i=0; i<data.assetConstraints.length; i++) {
+        for (uint256 i = 0; i < data.assetConstraints.length; i++) {
             uint256 requiredBalance = data.assetConstraints[i].evaluate(evaluateAt);
-            if(data.assetConstraints[i].evaluationType == EvaluationType.RELATIVE) {
+            if (data.assetConstraints[i].evaluationType == EvaluationType.RELATIVE) {
                 requiredBalance += startingBalances[i];
             }
 
             uint256 currentBalance = data.assetConstraints[i].balanceOf(userInt.sender);
             require(
-                currentBalance >= requiredBalance, 
-                string.concat("insufficient balance (required: ", Strings.toString(requiredBalance), 
-                ", current: ", Strings.toString(currentBalance), ")")
+                currentBalance >= requiredBalance,
+                string.concat(
+                    "insufficient balance (required: ",
+                    Strings.toString(requiredBalance),
+                    ", current: ",
+                    Strings.toString(currentBalance),
+                    ")"
+                )
             );
         }
-
     }
 
     function hash(UserIntent calldata userInt) external pure returns (bytes32) {
