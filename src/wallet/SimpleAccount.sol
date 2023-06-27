@@ -8,7 +8,6 @@ pragma solidity ^0.8.13;
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 import "../core/BaseAccount.sol";
-import "../interfaces/IAssetRelease.sol";
 import "./TokenCallbackHandler.sol";
 
 /**
@@ -17,7 +16,7 @@ import "./TokenCallbackHandler.sol";
  *  has execute, eth handling methods
  *  has a single signer that can send requests through the entryPoint.
  */
-contract SimpleAccount is BaseAccount, TokenCallbackHandler, IAssetRelease {
+contract SimpleAccount is BaseAccount, TokenCallbackHandler {
     using ECDSA for bytes32;
 
     address public owner;
@@ -104,7 +103,7 @@ contract SimpleAccount is BaseAccount, TokenCallbackHandler, IAssetRelease {
     {
         bytes32 hash = userIntHash.toEthSignedMessageHash();
         if (owner != hash.recover(userInt.signature)) {
-            return SIG_VALIDATION_FAILED;
+            return 1;
         }
         return 0;
     }

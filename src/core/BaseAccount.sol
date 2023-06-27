@@ -52,26 +52,25 @@ abstract contract BaseAccount is IAccount, IAssetRelease {
     /**
      * Releases a user's asset(s) to the entryPoint contract.
      */
-    function releaseAsset(AssetType assetType, address assetContract, uint256 assetId, uint256 amount) external override virtual {
+    function releaseAsset(AssetType assetType, address assetContract, uint256 assetId, uint256 amount)
+        external
+        virtual
+        override
+    {
         _requireFromEntryPoint();
 
         // transfer tokens
-        if(assetType == AssetType.ETH) {
+        if (assetType == AssetType.ETH) {
             payable(address(entryPoint())).transfer(amount);
-
-        } else if(assetType == AssetType.ERC20) {
+        } else if (assetType == AssetType.ERC20) {
             IERC20 erc20 = IERC20(assetContract);
             erc20.transferFrom(address(this), address(entryPoint()), amount);
-
-        } else if(assetType == AssetType.ERC721) {
+        } else if (assetType == AssetType.ERC721) {
             //TODO
-
-        } else if(assetType == AssetType.ERC777) {
+        } else if (assetType == AssetType.ERC777) {
             //TODO
-
-        } else if(assetType == AssetType.ERC1155) {
+        } else if (assetType == AssetType.ERC1155) {
             //TODO
-
         }
     }
 

@@ -5,9 +5,9 @@ pragma solidity ^0.8.13;
 
 /**
  * Utility functions helpful when making different kinds of contract calls in Solidity.
- * note: this library has been modified from it's original version so that "getReturnData" 
+ * note: this library has been modified from it's original version so that "getReturnData"
  * doesn't take in a max length and instead there is a new function called "getReturnDataSize"
- * to allow for manually overflow checking and custom error throwing by the application 
+ * to allow for manually overflow checking and custom error throwing by the application
  * using this library.
  */
 library Exec {
