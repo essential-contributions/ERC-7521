@@ -8,7 +8,6 @@ pragma solidity ^0.8.13;
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 import "../core/BaseAccount.sol";
-import "./TokenCallbackHandler.sol";
 
 /**
  * minimal account.
@@ -16,17 +15,12 @@ import "./TokenCallbackHandler.sol";
  *  has execute, eth handling methods
  *  has a single signer that can send requests through the entryPoint.
  */
-contract SimpleAccount is BaseAccount, TokenCallbackHandler {
+contract SimpleAccount is BaseAccount {
     using ECDSA for bytes32;
 
     address public owner;
 
     IEntryPoint private immutable _entryPoint;
-
-    // TODO: here temporarily
-    bytes4 private constant ERC20_TRANSFER = bytes4(keccak256(bytes("transfer(address,uint256)")));
-    bytes4 private constant ERC721_SAFE_TRANSFER_FROM =
-        bytes4(keccak256(bytes("safeTransferFrom(address,address,uint256)")));
 
     event SimpleAccountInitialized(IEntryPoint indexed entryPoint, address indexed owner);
 
@@ -68,24 +62,6 @@ contract SimpleAccount is BaseAccount, TokenCallbackHandler {
         require(dest.length == func.length, "wrong array lengths");
         for (uint256 i = 0; i < dest.length; i++) {
             _call(dest[i], 0, func[i]);
-        }
-    }
-
-    function releaseAsset(uint256 assetType, uint256 assetId, uint256 amount) external {
-        _requireFromEntryPointOrOwner();
-        address payable receiver = payable(msg.sender);
-
-        address token = address(uint160(uint256(assetId)));
-
-        // TODO: map assetTypes to actual types
-        if (assetType == 0) {
-            _call(receiver, amount, "");
-        } else if (assetType == 1) {
-            _call(token, 0, abi.encodeWithSelector(ERC20_TRANSFER, receiver, amount));
-        } else if (assetType == 2) {
-            _call(token, 0, abi.encodeWithSelector(ERC721_SAFE_TRANSFER_FROM, owner, receiver, amount));
-        } else {
-            revert("Unsupported asset type");
         }
     }
 

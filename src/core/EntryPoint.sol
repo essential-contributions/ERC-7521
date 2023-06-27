@@ -6,6 +6,7 @@ pragma solidity ^0.8.13;
 /* solhint-disable private-vars-leading-underscore */
 
 import {NonceManager} from "./NonceManager.sol";
+import {TokenCallbackHandler} from "./TokenCallbackHandler.sol";
 import {IAccount} from "../interfaces/IAccount.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
@@ -14,7 +15,7 @@ import {Exec} from "../utils/Exec.sol";
 import {ValidationData, _parseValidationData, _intersectTimeRange} from "./Helpers.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
+contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, TokenCallbackHandler {
     using UserIntentLib for UserIntent;
 
     uint256 private constant REVERT_REASON_MAX_LEN = 2048;

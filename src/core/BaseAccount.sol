@@ -5,6 +5,7 @@ pragma solidity ^0.8.13;
 /* solhint-disable no-empty-blocks */
 /* solhint-disable private-vars-leading-underscore */
 
+import {TokenCallbackHandler} from "./TokenCallbackHandler.sol";
 import {IAccount} from "../interfaces/IAccount.sol";
 import {IAssetRelease, AssetType} from "../interfaces/IAssetRelease.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
@@ -16,7 +17,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * this contract provides the basic logic for implementing the IAccount interface  - validateUserInt
  * specific account implementation should inherit it and provide the account-specific logic
  */
-abstract contract BaseAccount is IAccount, IAssetRelease {
+abstract contract BaseAccount is IAccount, IAssetRelease, TokenCallbackHandler {
     using UserIntentLib for UserIntent;
 
     /**
