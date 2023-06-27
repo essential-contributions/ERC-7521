@@ -6,20 +6,18 @@ pragma solidity ^0.8.13;
 /* solhint-disable private-vars-leading-underscore */
 
 import {IAccount} from "../interfaces/IAccount.sol";
+import {IAssetRelease, AssetType} from "../interfaces/IAssetRelease.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * Basic account implementation.
  * this contract provides the basic logic for implementing the IAccount interface  - validateUserInt
  * specific account implementation should inherit it and provide the account-specific logic
  */
-abstract contract BaseAccount is IAccount {
+abstract contract BaseAccount is IAccount, IAssetRelease {
     using UserIntentLib for UserIntent;
-
-    //return value in case of signature failure, with no time-range.
-    // equivalent to _packValidationData(true,0,0);
-    uint256 internal constant SIG_VALIDATION_FAILED = 1;
 
     /**
      * Return the account nonce.
@@ -52,6 +50,32 @@ abstract contract BaseAccount is IAccount {
     }
 
     /**
+     * Releases a user's asset(s) to the entryPoint contract.
+     */
+    function releaseAsset(AssetType assetType, address assetContract, uint256 assetId, uint256 amount) external override virtual {
+        _requireFromEntryPoint();
+
+        // transfer tokens
+        if(assetType == AssetType.ETH) {
+            payable(address(entryPoint())).transfer(amount);
+
+        } else if(assetType == AssetType.ERC20) {
+            IERC20 erc20 = IERC20(assetContract);
+            erc20.transferFrom(address(this), address(entryPoint()), amount);
+
+        } else if(assetType == AssetType.ERC721) {
+            //TODO
+
+        } else if(assetType == AssetType.ERC777) {
+            //TODO
+
+        } else if(assetType == AssetType.ERC1155) {
+            //TODO
+
+        }
+    }
+
+    /**
      * ensure the intent comes from the known entrypoint.
      */
     function _requireFromEntryPoint() internal view virtual {
@@ -64,10 +88,9 @@ abstract contract BaseAccount is IAccount {
      * @param userIntHash convenient field: the hash of the intent, to check the signature against
      *          (also hashes the entrypoint and chain id)
      * @return validationData signature and time-range of this intent
-     *      <20-byte> sigAuthorizer - 0 for valid signature, 1 to mark signature failure
+     *      <20-byte> sigFailed - 0 for valid signature, 1 to mark signature failure
      *      <6-byte> validUntil - last timestamp this intent is valid. 0 for "indefinite"
      *      <6-byte> validAfter - first timestamp this intent is valid
-     *      If the account doesn't use time-range, it is enough to return SIG_VALIDATION_FAILED value (1) for signature failure.
      *      Note that the validation code cannot use block.timestamp (or block.number) directly.
      */
     function _validateSignature(UserIntent calldata userInt, bytes32 userIntHash)
