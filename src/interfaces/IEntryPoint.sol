@@ -96,11 +96,12 @@ interface IEntryPoint is INonceManager {
      * Note that in order to collect the the success/failure of the target call, it must be executed
      * with trace enabled to track the emitted events.
      * @param solution the UserIntent solution to simulate
+     * @param timestamp the timestamp at which to evaluate the intents
      * @param target if nonzero, a target address to call after user intent simulation. If called, 
      *        the targetSuccess and targetResult are set to the return from that call.
      * @param targetCallData callData to pass to target address
      */
-    function simulateHandleInt(IntentSolution calldata solution, address target, bytes calldata targetCallData) external;
+    function simulateHandleInt(IntentSolution calldata solution, uint256 timestamp, address target, bytes calldata targetCallData) external;
 
     /**
      * Simulate a call to account.validateUserInt.

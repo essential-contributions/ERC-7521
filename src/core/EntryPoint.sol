@@ -19,6 +19,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     using UserIntentLib for UserIntent;
 
     uint256 private constant REVERT_REASON_MAX_LEN = 2048;
+    uint256 private constant CONTEXT_DATA_MAX_LEN = 2048;
 
     //keeps track of registered intent standards
     mapping(bytes32 => IIntentStandard) private _registeredStandards;
@@ -28,9 +29,11 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      * @param solIndex index into the solution array
      * @param solution the user intent solution to execute
      * @param intInfo the intent info filled by validateUserIntent
+     * @param timestamp the time at which to evaluate the intents
      */
-    function _executeSolution(uint256 solIndex, IntentSolution calldata solution, UserIntInfo[] memory intInfo) private {
+    function _executeSolution(uint256 solIndex, IntentSolution calldata solution, UserIntInfo[] memory intInfo, uint256 timestamp) private {
         uint256 intslen = solution.userInts.length;
+        bytes[] memory contextData = new bytes[](intslen);
 
         //TODO: is this gas check necessary? (copied from 4337)
         /*
@@ -45,11 +48,16 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
                 IIntentStandard standard = _registeredStandards[solution.userInts[i].getStandard()];
                 bool success = Exec.delegateCall(
                     address(standard), 
-                    abi.encodeWithSelector(IIntentStandard.executeCallData1.selector, solution.userInts[i]), 
+                    abi.encodeWithSelector(IIntentStandard.executeFirstPass.selector, solution.userInts[i], timestamp), 
                     gasleft()
                 );
-                if (!success) {
-                    bytes memory result = Exec.getReturnData(REVERT_REASON_MAX_LEN);
+                if (success) {
+                    if (Exec.getReturnDataSize() > CONTEXT_DATA_MAX_LEN) {
+                        revert FailedInt(solIndex, i, "AA95 context too large"); //TODO: double check error code format
+                    }
+                    contextData[i] = Exec.getReturnData();
+                } else {
+                    bytes memory result = Exec.getReturnDataMax(REVERT_REASON_MAX_LEN);
                     if (result.length > 0) {
                         emit UserIntentRevertReason(intInfo[i].userIntHash, intInfo[i].sender, intInfo[i].nonce, result);
                         revert FailedInt(solIndex, i, "AA95 callData1 revert"); //TODO: double check error code format
@@ -64,7 +72,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
                     SolutionStep calldata step = solution.steps1[i];
                     bool success = Exec.call(step.target, step.value, step.callData, gasleft());
                     if (!success) {
-                        bytes memory result = Exec.getReturnData(REVERT_REASON_MAX_LEN);
+                        bytes memory result = Exec.getReturnDataMax(REVERT_REASON_MAX_LEN);
                         if (result.length > 0) {
                             emit SolutionRevertReason(i, step.target, result);
                             revert FailedInt(solIndex, 0, "AA95 solution steps1 revert"); //TODO: double check error code format
@@ -78,11 +86,11 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
                 IIntentStandard standard = _registeredStandards[solution.userInts[i].getStandard()];
                 bool success = Exec.delegateCall(
                     address(standard), 
-                    abi.encodeWithSelector(IIntentStandard.executeCallData2.selector, solution.userInts[i]), 
+                    abi.encodeWithSelector(IIntentStandard.executeSecondPass.selector, solution.userInts[i], timestamp), 
                     gasleft()
                 );
                 if (!success) {
-                    bytes memory result = Exec.getReturnData(REVERT_REASON_MAX_LEN);
+                    bytes memory result = Exec.getReturnDataMax(REVERT_REASON_MAX_LEN);
                     if (result.length > 0) {
                         emit UserIntentRevertReason(intInfo[i].userIntHash, intInfo[i].sender, intInfo[i].nonce, result);
                         revert FailedInt(solIndex, i, "AA95 callData2 revert"); //TODO: double check error code format
@@ -97,7 +105,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
                     SolutionStep calldata step = solution.steps2[i];
                     bool success = Exec.call(step.target, step.value, step.callData, gasleft());
                     if (!success) {
-                        bytes memory result = Exec.getReturnData(REVERT_REASON_MAX_LEN);
+                        bytes memory result = Exec.getReturnDataMax(REVERT_REASON_MAX_LEN);
                         if (result.length > 0) {
                             emit SolutionRevertReason(i, step.target, result);
                             revert FailedInt(solIndex, 0, "AA95 solution steps2 revert"); //TODO: double check error code format
@@ -111,11 +119,11 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
                 IIntentStandard standard = _registeredStandards[solution.userInts[i].getStandard()];
                 bool success = Exec.delegateCall(
                     address(standard), 
-                    abi.encodeWithSelector(IIntentStandard.verifyEndState.selector, solution.userInts[i]), 
+                    abi.encodeWithSelector(IIntentStandard.verifyEndState.selector, solution.userInts[i], timestamp, contextData[i]), 
                     gasleft()
                 );
                 if (!success) {
-                    bytes memory result = Exec.getReturnData(REVERT_REASON_MAX_LEN);
+                    bytes memory result = Exec.getReturnDataMax(REVERT_REASON_MAX_LEN);
                     if (result.length > 0) {
                         emit UserIntentRevertReason(intInfo[i].userIntHash, intInfo[i].sender, intInfo[i].nonce, result);
                         revert FailedInt(solIndex, i, "AA95 end state verify revert"); //TODO: double check error code format
@@ -154,8 +162,10 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
 
             emit BeforeExecution();
 
+            // solhint-disable-next-line not-rely-on-time
+            uint256 timestamp = block.timestamp;
             for (uint256 i = 0; i < solsLen; i++) {
-                _executeSolution(i, solutions[i], intInfo[i]);
+                _executeSolution(i, solutions[i], intInfo[i], timestamp);
             }
 
         } //unchecked
@@ -170,11 +180,12 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      * Note that in order to collect the the success/failure of the target call, it must be executed
      * with trace enabled to track the emitted events.
      * @param solution the UserIntent solution to simulate
+     * @param timestamp the timestamp at which to evaluate the intents
      * @param target if nonzero, a target address to call after user intent simulation. If called, 
      *        the targetSuccess and targetResult are set to the return from that call.
      * @param targetCallData callData to pass to target address
      */
-    function simulateHandleInt(IntentSolution calldata solution, address target, bytes calldata targetCallData) external override {
+    function simulateHandleInt(IntentSolution calldata solution, uint256 timestamp, address target, bytes calldata targetCallData) external override {
         uint256 intsLen = solution.userInts.length;
         UserIntInfo[] memory intInfo = new UserIntInfo[](intsLen);
         if(intsLen == 0) {
@@ -195,7 +206,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         }
 
         numberMarker();
-        _executeSolution(0, solution, intInfo);
+        _executeSolution(0, solution, intInfo, timestamp);
         numberMarker();
 
         bool targetSuccess;
@@ -308,6 +319,15 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             revert FailedInt(solIndex, intIndex, "AA95 unknown intent standard"); //TODO: double check error code format
         }
 
+        // validate the intent itself
+        try standard.validateUserInt(userInt) returns (uint256 _validationData) {
+            validationData = _validationData;
+        } catch Error(string memory revertReason) {
+            revert FailedInt(solIndex, intIndex, string.concat("AA23 reverted: ", revertReason)); //TODO: double check error code format
+        } catch {
+            revert FailedInt(solIndex, intIndex, "AA23 reverted (or OOG)"); //TODO: double check error code format
+        }
+
         // copy info about the intent to memory for easy reference later
         intInfo.standard = userInt.getStandard();
         intInfo.sender = userInt.sender;
@@ -318,7 +338,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         // validate intent with account
         try IAccount(intInfo.sender).validateUserInt{gas: intInfo.verificationGasLimit}(userInt, intInfo.userIntHash)
         returns (uint256 _validationData) {
-            validationData = _validationData;
+            validationData = _intersectTimeRange(validationData, _validationData);
         } catch Error(string memory revertReason) {
             revert FailedInt(solIndex, intIndex, string.concat("AA23 reverted: ", revertReason));
         } catch {

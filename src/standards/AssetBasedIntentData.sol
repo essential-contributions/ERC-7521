@@ -20,8 +20,8 @@ struct AssetBasedIntentData {
     uint256 callGasLimit2;
     bytes callData1;
     bytes callData2;
-    AssetCurve[] assetRelease;
-    AssetCurve[] assetConstraint;
+    AssetCurve[] assetReleases;
+    AssetCurve[] assetConstraints;
 }
 
 /**
@@ -41,8 +41,8 @@ library AssetBasedIntentDataLib {
         uint256 callGasLimit2 = data.callGasLimit2;
         bytes32 callData1 = keccak256(data.callData1);
         bytes32 callData2 = keccak256(data.callData2);
-        bytes32 assetRelease = AssetCurveLib.hash(data.assetRelease);
-        bytes32 assetConstraint = AssetCurveLib.hash(data.assetConstraint);
+        bytes32 assetRelease = _hashCurves(data.assetReleases);
+        bytes32 assetConstraint = _hashCurves(data.assetConstraints);
 
         return abi.encode(
             standard, sender, nonce, verificationGasLimit, 
@@ -60,6 +60,8 @@ library AssetBasedIntentDataLib {
         return data;
     }
 
-    //TODO: function to check is intent asset based
-
+    function _hashCurves(AssetCurve[] memory curves) private pure returns (bytes32) {
+        bytes32[] memory hashes = new bytes32[](curves.length);
+        return keccak256(abi.encodePacked(hashes));
+    }
 }
