@@ -4,6 +4,9 @@ pragma solidity ^0.8.13;
 import {AssetCurve, AssetType, AssetCurveLib} from "./AssetCurve.sol";
 import {AssetType} from "../interfaces/IAssetRelease.sol";
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
+import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
+import {IERC777} from "openzeppelin/token/ERC777/IERC777.sol";
+import {IERC1155} from "openzeppelin/token/ERC1155/IERC1155.sol";
 
 /**
  * Utility functions helpful when working with AssetCurve structs and asset interactions.
@@ -17,11 +20,16 @@ library AssetWrapper {
         } else if (curve.assetType == AssetType.ERC20) {
             return IERC20(curve.assetContract).balanceOf(owner);
         } else if (curve.assetType == AssetType.ERC721) {
-            //TODO
+            return IERC721(curve.assetContract).balanceOf(owner);
+        } else if (curve.assetType == AssetType.ERC721_ID) {
+            if (owner == IERC721(curve.assetContract).ownerOf(curve.assetId)) {
+                return 1;
+            }
+            return 0;
         } else if (curve.assetType == AssetType.ERC777) {
-            //TODO
+            return IERC777(curve.assetContract).balanceOf(owner);
         } else if (curve.assetType == AssetType.ERC1155) {
-            //TODO
+            return IERC1155(curve.assetContract).balanceOf(owner, curve.assetId);
         }
         return 0;
     }
