@@ -384,4 +384,9 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             mstore(0, number())
         }
     }
+
+    /**
+     * Default receive function.
+     */
+    receive() external payable {}
 }
