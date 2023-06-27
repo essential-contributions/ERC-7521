@@ -1,12 +1,30 @@
 name: test
 
-on: workflow_dispatch
+on:
+  push:
+    branches: [master]
+  pull_request: null
+  workflow_dispatch: null
 
 env:
   FOUNDRY_PROFILE: ci
 
 jobs:
-  check:
+  trunk:
+    name: Trunk project
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Run Trunk check
+        uses: trunk-io/trunk-action@v1
+        id: trunk-check
+
+  foundry:
     strategy:
       fail-fast: true
 
@@ -22,6 +40,11 @@ jobs:
         with:
           version: nightly
 
+      - name: Run Forge format check
+        run: |
+          forge fmt --check
+        id: forge-check
+
       - name: Run Forge build
         run: |
           forge --version
@@ -32,3 +55,14 @@ jobs:
         run: |
           forge test -vvv
         id: test
+
+      - name: Run Forge coverage
+        run: |
+          forge coverage --report lcov
+        id: coverage
+
+      - name: Enforce minimum coverage
+        uses: VeryGoodOpenSource/very_good_coverage@v2
+        with:
+          path: lcov.info
+          min_coverage: 0
