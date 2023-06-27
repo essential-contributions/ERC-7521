@@ -10,6 +10,7 @@ import {Exec} from "../utils/Exec.sol";
 import {AssetBasedIntentData, AssetBasedIntentDataLib} from "./AssetBasedIntentData.sol";
 import {AssetCurve, EvaluationType, AssetCurveLib} from "./AssetCurve.sol";
 import {AssetWrapper} from "./AssetWrapper.sol";
+import {Strings} from "openzeppelin/utils/Strings.sol";
 
 contract AssetBasedIntentStandard is IIntentStandard {
     using AssetBasedIntentDataLib for AssetBasedIntentData;
@@ -92,11 +93,26 @@ contract AssetBasedIntentStandard is IIntentStandard {
         }
     }
 
-    function verifyEndState(UserIntent calldata userInt, uint256 timestamp, bytes memory context) external {
+    function verifyEndState(UserIntent calldata userInt, uint256 timestamp, bytes memory context) external view {
         AssetBasedIntentData memory data = AssetBasedIntentDataLib.parse(userInt);
         uint256[] memory startingBalances = abi.decode(context, (uint256[]));
 
-        //TODO: implement end state check
+        //check end balances
+        uint256 evaluateAt = timestamp - data.timestamp;
+        for(uint256 i=0; i<data.assetConstraints.length; i++) {
+            uint256 requiredBalance = data.assetConstraints[i].evaluate(evaluateAt);
+            if(data.assetConstraints[i].evaluationType == EvaluationType.RELATIVE) {
+                requiredBalance += startingBalances[i];
+            }
+
+            uint256 currentBalance = data.assetConstraints[i].balanceOf(userInt.sender);
+            require(
+                currentBalance >= requiredBalance, 
+                string.concat("insufficient balance (required: ", Strings.toString(requiredBalance), 
+                ", current: ", Strings.toString(currentBalance), ")")
+            );
+        }
+
     }
 
     function hash(UserIntent calldata userInt) external pure returns (bytes32) {

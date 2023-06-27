@@ -10,7 +10,7 @@ import {IAccount} from "../interfaces/IAccount.sol";
 import {IAssetRelease, AssetType} from "../interfaces/IAssetRelease.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
 /**
  * Basic account implementation.

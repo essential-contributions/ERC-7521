@@ -13,7 +13,7 @@ import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
 import {Exec} from "../utils/Exec.sol";
 import {ValidationData, _parseValidationData, _intersectTimeRange} from "./Helpers.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {ReentrancyGuard} from "openzeppelin/security/ReentrancyGuard.sol";
 
 contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, TokenCallbackHandler {
     using UserIntentLib for UserIntent;
