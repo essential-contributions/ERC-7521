@@ -17,7 +17,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * this contract provides the basic logic for implementing the IAccount interface  - validateUserInt
  * specific account implementation should inherit it and provide the account-specific logic
  */
-abstract contract BaseAccount is IAccount, IAssetRelease, TokenCallbackHandler {
+abstract contract BaseAccount is IAccount, IAssetRelease {
     using UserIntentLib for UserIntent;
 
     /**
@@ -53,25 +53,26 @@ abstract contract BaseAccount is IAccount, IAssetRelease, TokenCallbackHandler {
     /**
      * Releases a user's asset(s) to the entryPoint contract.
      */
-    function releaseAsset(AssetType assetType, address assetContract, uint256 assetId, uint256 amount)
-        external
-        virtual
-        override
-    {
+    function releaseAsset(AssetType assetType, address assetContract, uint256 assetId, uint256 amount) external override virtual {
         _requireFromEntryPoint();
 
         // transfer tokens
-        if (assetType == AssetType.ETH) {
+        if(assetType == AssetType.ETH) {
             payable(address(entryPoint())).transfer(amount);
-        } else if (assetType == AssetType.ERC20) {
+
+        } else if(assetType == AssetType.ERC20) {
             IERC20 erc20 = IERC20(assetContract);
             erc20.transferFrom(address(this), address(entryPoint()), amount);
-        } else if (assetType == AssetType.ERC721) {
+
+        } else if(assetType == AssetType.ERC721) {
             //TODO
-        } else if (assetType == AssetType.ERC777) {
+
+        } else if(assetType == AssetType.ERC777) {
             //TODO
-        } else if (assetType == AssetType.ERC1155) {
+
+        } else if(assetType == AssetType.ERC1155) {
             //TODO
+
         }
     }
 

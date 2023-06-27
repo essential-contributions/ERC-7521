@@ -31,12 +31,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, TokenCallback
      * @param intInfo the intent info filled by validateUserIntent
      * @param timestamp the time at which to evaluate the intents
      */
-    function _executeSolution(
-        uint256 solIndex,
-        IntentSolution calldata solution,
-        UserIntInfo[] memory intInfo,
-        uint256 timestamp
-    ) private {
+    function _executeSolution(uint256 solIndex, IntentSolution calldata solution, UserIntInfo[] memory intInfo, uint256 timestamp) private {
         uint256 intslen = solution.userInts.length;
         bytes[] memory contextData = new bytes[](intslen);
 
@@ -52,8 +47,8 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, TokenCallback
             for (uint256 i = 0; i < intslen; i++) {
                 IIntentStandard standard = _registeredStandards[solution.userInts[i].getStandard()];
                 bool success = Exec.delegateCall(
-                    address(standard),
-                    abi.encodeWithSelector(IIntentStandard.executeFirstPass.selector, solution.userInts[i], timestamp),
+                    address(standard), 
+                    abi.encodeWithSelector(IIntentStandard.executeFirstPass.selector, solution.userInts[i], timestamp), 
                     gasleft()
                 );
                 if (success) {
@@ -90,8 +85,8 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, TokenCallback
             for (uint256 i = 0; i < intslen; i++) {
                 IIntentStandard standard = _registeredStandards[solution.userInts[i].getStandard()];
                 bool success = Exec.delegateCall(
-                    address(standard),
-                    abi.encodeWithSelector(IIntentStandard.executeSecondPass.selector, solution.userInts[i], timestamp),
+                    address(standard), 
+                    abi.encodeWithSelector(IIntentStandard.executeSecondPass.selector, solution.userInts[i], timestamp), 
                     gasleft()
                 );
                 if (!success) {
@@ -123,10 +118,8 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, TokenCallback
             for (uint256 i = 0; i < intslen; i++) {
                 IIntentStandard standard = _registeredStandards[solution.userInts[i].getStandard()];
                 bool success = Exec.delegateCall(
-                    address(standard),
-                    abi.encodeWithSelector(
-                        IIntentStandard.verifyEndState.selector, solution.userInts[i], timestamp, contextData[i]
-                    ),
+                    address(standard), 
+                    abi.encodeWithSelector(IIntentStandard.verifyEndState.selector, solution.userInts[i], timestamp, contextData[i]), 
                     gasleft()
                 );
                 if (!success) {
@@ -186,16 +179,11 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, TokenCallback
      * with trace enabled to track the emitted events.
      * @param solution the UserIntent solution to simulate
      * @param timestamp the timestamp at which to evaluate the intents
-     * @param target if nonzero, a target address to call after user intent simulation. If called,
+     * @param target if nonzero, a target address to call after user intent simulation. If called, 
      *        the targetSuccess and targetResult are set to the return from that call.
      * @param targetCallData callData to pass to target address
      */
-    function simulateHandleInt(
-        IntentSolution calldata solution,
-        uint256 timestamp,
-        address target,
-        bytes calldata targetCallData
-    ) external override {
+    function simulateHandleInt(IntentSolution calldata solution, uint256 timestamp, address target, bytes calldata targetCallData) external override {
         uint256 intsLen = solution.userInts.length;
         UserIntInfo[] memory intInfo = new UserIntInfo[](intsLen);
         if (intsLen == 0) {

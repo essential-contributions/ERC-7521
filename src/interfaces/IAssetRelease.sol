@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-enum AssetType {
+enum AssetType { 
     ETH,
     ERC20,
     ERC721,

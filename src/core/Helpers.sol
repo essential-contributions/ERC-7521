@@ -49,10 +49,7 @@ function _packValidationData(bool sigFailed, uint48 validUntil, uint48 validAfte
 }
 
 // intersect two validation data ranges.
-function _intersectTimeRange(ValidationData memory vd1, ValidationData memory vd2)
-    pure
-    returns (ValidationData memory)
-{
+function _intersectTimeRange(ValidationData memory vd1, ValidationData memory vd2) pure returns (ValidationData memory) {
     uint48 validAfter1 = vd1.validAfter;
     uint48 validUntil1 = vd1.validUntil;
     uint48 validAfter2 = vd2.validAfter;
