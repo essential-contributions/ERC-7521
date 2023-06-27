@@ -22,12 +22,14 @@ struct AssetCurve {
     EvaluationType evaluationType;
     uint256[] params;
 }
+
 enum CurveType {
     CONSTANT,
     LINEAR,
     EXPONENTIAL,
     COUNT
 }
+
 enum EvaluationType {
     ABSOLUTE,
     RELATIVE,

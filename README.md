@@ -29,6 +29,16 @@ forge build
 forge test
 ```
 
+## Contributing
+
+Code must pass tests and coverage requirements as well as follow formatting requirements.
+
+```sh
+forge test
+forge coverage
+forge fmt
+```
+
 ## License
 
 The primary license for this repo is `Apache-2.0`, see [`LICENSE`](./LICENSE).

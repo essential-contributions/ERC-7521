@@ -69,8 +69,8 @@ contract AssetBasedIntentStandard is IIntentStandard {
         }
 
         //release tokens
+        uint256 evaluateAt = timestamp - data.timestamp;
         for (uint256 i = 0; i < data.assetReleases.length; i++) {
-            uint256 evaluateAt = timestamp - data.timestamp;
             uint256 releaseAmount = data.assetReleases[i].evaluate(evaluateAt);
             IAssetRelease(userInt.sender).releaseAsset(
                 data.assetReleases[i].assetType,
@@ -84,6 +84,7 @@ contract AssetBasedIntentStandard is IIntentStandard {
         return abi.encode(startingBalances);
     }
 
+    // solhint-disable-next-line no-unused-vars
     function executeSecondPass(UserIntent calldata userInt, uint256 timestamp) external {
         AssetBasedIntentData memory data = AssetBasedIntentDataLib.parse(userInt);
 
@@ -99,20 +100,24 @@ contract AssetBasedIntentStandard is IIntentStandard {
 
         //check end balances
         uint256 evaluateAt = timestamp - data.timestamp;
-        for(uint256 i=0; i<data.assetConstraints.length; i++) {
+        for (uint256 i = 0; i < data.assetConstraints.length; i++) {
             uint256 requiredBalance = data.assetConstraints[i].evaluate(evaluateAt);
-            if(data.assetConstraints[i].evaluationType == EvaluationType.RELATIVE) {
+            if (data.assetConstraints[i].evaluationType == EvaluationType.RELATIVE) {
                 requiredBalance += startingBalances[i];
             }
 
             uint256 currentBalance = data.assetConstraints[i].balanceOf(userInt.sender);
             require(
-                currentBalance >= requiredBalance, 
-                string.concat("insufficient balance (required: ", Strings.toString(requiredBalance), 
-                ", current: ", Strings.toString(currentBalance), ")")
+                currentBalance >= requiredBalance,
+                string.concat(
+                    "insufficient balance (required: ",
+                    Strings.toString(requiredBalance),
+                    ", current: ",
+                    Strings.toString(currentBalance),
+                    ")"
+                )
             );
         }
-
     }
 
     function hash(UserIntent calldata userInt) external pure returns (bytes32) {
