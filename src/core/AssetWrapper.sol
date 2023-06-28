@@ -67,7 +67,7 @@ library AssetWrapper {
         } else if (assetType == AssetType.ERC721) {
             // not supported
         } else if (assetType == AssetType.ERC721_ID) {
-            // recipient must implement IERC721Receiver-onERC721Received}
+            // recipient must implement IERC721Receiver-onERC721Received
             IERC721 erc721 = IERC721(assetContract);
             erc721.safeTransferFrom(from, to, assetId);
         } else if (assetType == AssetType.ERC777) {

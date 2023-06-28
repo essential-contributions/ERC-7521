@@ -19,7 +19,9 @@ interface IAssetRelease {
      * @param assetType the type of asset (ETH, ERC-20, ERC721, etc).
      * @param assetContract the contract that controls the asset.
      * @param assetId the identifier for a specific asset.
+     * @param to the target to release tokens to.
      * @param amount the amount to release.
      */
-    function releaseAsset(AssetType assetType, address assetContract, uint256 assetId, uint256 amount) external;
+    function releaseAsset(AssetType assetType, address assetContract, uint256 assetId, address to, uint256 amount)
+        external;
 }

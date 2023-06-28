@@ -5,11 +5,11 @@ pragma solidity ^0.8.13;
 /* solhint-disable no-empty-blocks */
 /* solhint-disable private-vars-leading-underscore */
 
+import {AssetWrapper} from "../core/AssetWrapper.sol";
 import {IAccount} from "../interfaces/IAccount.sol";
 import {IAssetRelease, AssetType} from "../interfaces/IAssetRelease.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
-import {AssetWrapper} from "../standards/AssetWrapper.sol";
 
 /**
  * Basic account implementation.
@@ -52,10 +52,9 @@ abstract contract BaseAccount is IAccount, IAssetRelease {
     }
 
     /**
-     * Releases a user's asset(s) to the entryPoint contract.
+     * Releases a user's asset(s) to the target recipient.
      */
-    // solhint-disable-next-line no-unused-vars
-    function releaseAsset(AssetType assetType, address assetContract, uint256 assetId, uint256 amount)
+    function releaseAsset(AssetType assetType, address assetContract, uint256 assetId, address to, uint256 amount)
         external
         virtual
         override
@@ -64,7 +63,7 @@ abstract contract BaseAccount is IAccount, IAssetRelease {
         _requireIntentExecuting();
 
         // transfer tokens
-        AssetWrapper.transferFrom(assetType, assetContract, assetId, address(this), address(entryPoint()), amount);
+        AssetWrapper.transferFrom(assetType, assetContract, assetId, address(this), to, amount);
     }
 
     /**
