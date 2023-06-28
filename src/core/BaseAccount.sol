@@ -48,6 +48,8 @@ abstract contract BaseAccount is IAccount, IAssetRelease {
         returns (uint256 validationData)
     {
         _requireFromEntryPoint();
+        _requireValidationExecuting();
+
         validationData = _validateSignature(userInt, userIntHash);
         _validateNonce(userInt.nonce);
     }
@@ -62,6 +64,7 @@ abstract contract BaseAccount is IAccount, IAssetRelease {
         override
     {
         _requireFromEntryPoint();
+        _requireIntentExecuting();
 
         // transfer tokens
         // note: ERC721 with no assetId not supported
@@ -89,6 +92,20 @@ abstract contract BaseAccount is IAccount, IAssetRelease {
      */
     function _requireFromEntryPoint() internal view virtual {
         require(msg.sender == address(entryPoint()), "account: not from EntryPoint");
+    }
+
+    /**
+     * ensure the entrypoint is currently in the validation stage.
+     */
+    function _requireValidationExecuting() internal view virtual {
+        require(entryPoint().validationExecuting(), "account: EntryPoint not validating");
+    }
+
+    /**
+     * ensure the entrypoint is currently in the validation stage.
+     */
+    function _requireIntentExecuting() internal view virtual {
+        require(entryPoint().intentExecuting(), "account: EntryPoint not executing intents");
     }
 
     /**

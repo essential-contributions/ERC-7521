@@ -136,4 +136,19 @@ interface IEntryPoint is INonceManager {
      * gets the intent contract for the given standard (address(0) if unknown).
      */
     function getIntentStandardContract(bytes32 standardId) external view returns (IIntentStandard);
+
+    /**
+     * returns if intent validation actions are currently being executed.
+     */
+    function validationExecuting() external view returns (bool);
+
+    /**
+     * returns if intent specific actions are currently being executed.
+     */
+    function intentExecuting() external view returns (bool);
+
+    /**
+     * returns if intent solution specific actions are currently being executed.
+     */
+    function solutionExecuting() external view returns (bool);
 }
