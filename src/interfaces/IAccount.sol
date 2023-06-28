@@ -10,7 +10,7 @@ interface IAccount {
      * This allows making a "simulation call" without a valid signature
      * Other failures (e.g. nonce mismatch, or invalid signature format) should still revert to signal failure.
      *
-     * @dev Must validate caller is the entryPoint.
+     * @dev Must validate caller is the entryPoint and that it is currently in the validation state.
      *      Must validate the signature, nonce, etc.
      * @param userInt the intent that is about to be solved.
      * @param userIntHash hash of the user's intent data. can be used as the basis for signature.

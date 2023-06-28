@@ -15,7 +15,7 @@ interface IAssetRelease {
     /**
      * Release the given token(s) (both fungible and non-fungible)
      *
-     * @dev Must validate caller is the entryPoint.
+     * @dev Must validate caller is the entryPoint and that it is currently processing intents.
      * @param assetType the type of asset (ETH, ERC-20, ERC721, etc).
      * @param assetContract the contract that controls the asset.
      * @param assetId the identifier for a specific asset.
