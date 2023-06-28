@@ -15,7 +15,6 @@ import {Strings} from "openzeppelin/utils/Strings.sol";
 contract AssetBasedIntentStandard is IIntentStandard {
     using AssetBasedIntentDataLib for AssetBasedIntentData;
     using AssetCurveLib for AssetCurve;
-    using AssetWrapper for AssetCurve;
 
     uint256 private constant REVERT_REASON_MAX_LEN = 2048;
 
@@ -59,7 +58,12 @@ contract AssetBasedIntentStandard is IIntentStandard {
         uint256[] memory startingBalances = new uint256[](constraintLen);
         for (uint256 i = 0; i < constraintLen; i++) {
             if (data.assetConstraints[i].evaluationType == EvaluationType.RELATIVE) {
-                startingBalances[i] = data.assetConstraints[i].balanceOf(userInt.sender);
+                startingBalances[i] = AssetWrapper.balanceOf(
+                    data.assetConstraints[i].assetType,
+                    data.assetConstraints[i].assetContract,
+                    data.assetConstraints[i].assetId,
+                    userInt.sender
+                );
             }
         }
 
@@ -106,7 +110,12 @@ contract AssetBasedIntentStandard is IIntentStandard {
                 requiredBalance += startingBalances[i];
             }
 
-            uint256 currentBalance = data.assetConstraints[i].balanceOf(userInt.sender);
+            uint256 currentBalance = AssetWrapper.balanceOf(
+                data.assetConstraints[i].assetType,
+                data.assetConstraints[i].assetContract,
+                data.assetConstraints[i].assetId,
+                userInt.sender
+            );
             require(
                 currentBalance >= requiredBalance,
                 string.concat(
