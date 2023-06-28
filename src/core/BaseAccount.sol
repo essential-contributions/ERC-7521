@@ -9,10 +9,7 @@ import {IAccount} from "../interfaces/IAccount.sol";
 import {IAssetRelease, AssetType} from "../interfaces/IAssetRelease.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
-import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
-import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
-import {IERC777} from "openzeppelin/token/ERC777/IERC777.sol";
-import {IERC1155} from "openzeppelin/token/ERC1155/IERC1155.sol";
+import {AssetWrapper} from "../standards/AssetWrapper.sol";
 
 /**
  * Basic account implementation.
@@ -67,24 +64,7 @@ abstract contract BaseAccount is IAccount, IAssetRelease {
         _requireIntentExecuting();
 
         // transfer tokens
-        // note: ERC721 with no assetId not supported
-        if (assetType == AssetType.ETH) {
-            payable(address(entryPoint())).transfer(amount);
-        } else if (assetType == AssetType.ERC20) {
-            IERC20 erc20 = IERC20(assetContract);
-            erc20.transferFrom(address(this), address(entryPoint()), amount);
-        } else if (assetType == AssetType.ERC721_ID) {
-            IERC721 erc721 = IERC721(assetContract);
-            erc721.transferFrom(address(this), address(entryPoint()), assetId);
-        } else if (assetType == AssetType.ERC777) {
-            IERC777 erc777 = IERC777(assetContract);
-            //TODO: recipient must implement ERC777TokensRecipient interface via ERC-1820
-            erc777.send(address(entryPoint()), amount, "");
-        } else if (assetType == AssetType.ERC1155) {
-            IERC1155 erc1155 = IERC1155(assetContract);
-            //TODO: recipient must implement IERC1155Receiver-onERC1155Received
-            erc1155.safeTransferFrom(address(this), address(entryPoint()), assetId, amount, "");
-        }
+        AssetWrapper.transferFrom(assetType, assetContract, assetId, address(this), address(entryPoint()), amount);
     }
 
     /**
