@@ -8,7 +8,8 @@ pragma solidity ^0.8.13;
  * note: this library has been modified from it's original version so that "getReturnData"
  * doesn't take in a max length and instead there is a new function called "getReturnDataSize"
  * to allow for manually overflow checking and custom error throwing by the application
- * using this library.
+ * using this library. The function "callAndRevert" was also modified with an added "txGas"
+ * parameter.
  */
 library Exec {
     function call(address to, uint256 value, bytes memory data, uint256 txGas) internal returns (bool success) {
@@ -68,8 +69,8 @@ library Exec {
         }
     }
 
-    function callAndRevert(address to, bytes memory data, uint256 maxLen) internal {
-        bool success = call(to, 0, data, gasleft());
+    function callAndRevert(address to, bytes memory data, uint256 txGas, uint256 maxLen) internal {
+        bool success = call(to, 0, data, txGas);
         if (!success) {
             revertWithData(getReturnDataMax(maxLen));
         }

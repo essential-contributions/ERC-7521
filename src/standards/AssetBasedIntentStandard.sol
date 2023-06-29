@@ -153,7 +153,7 @@ contract AssetBasedIntentStandard is
 
         //execute
         if (data.callData1.length > 0) {
-            Exec.callAndRevert(userInt.sender, data.callData1, REVERT_REASON_MAX_LEN);
+            Exec.callAndRevert(userInt.sender, data.callData1, data.callGasLimit1, REVERT_REASON_MAX_LEN);
         }
 
         //release tokens
@@ -180,7 +180,7 @@ contract AssetBasedIntentStandard is
 
         //execute
         if (data.callData2.length > 0) {
-            Exec.callAndRevert(userInt.sender, data.callData2, REVERT_REASON_MAX_LEN);
+            Exec.callAndRevert(userInt.sender, data.callData2, data.callGasLimit2, REVERT_REASON_MAX_LEN);
         }
     }
 
