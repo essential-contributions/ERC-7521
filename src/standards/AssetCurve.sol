@@ -78,7 +78,7 @@ library AssetCurveLib {
             if (x > max) x = max;
 
             //val = a(x+j)^i+b
-            val = ((a * (x + f)) ^ e) + b;
+            val = ((a * (x + f)) ** e) + b;
         } else {
             val = 0;
         }
