@@ -24,6 +24,4 @@ interface IIntentStandard {
     function executeSecondPass(UserIntent calldata userInt, uint256 timestamp) external;
 
     function verifyEndState(UserIntent calldata userInt, uint256 timestamp, bytes memory context) external;
-
-    function hash(UserIntent calldata userInt) external pure returns (bytes32);
 }

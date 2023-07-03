@@ -15,7 +15,7 @@ import {AssetType} from "../interfaces/IAssetRelease.sol";
  * @param evaluationType the evaluation type (relative, absolute).
  * @param params the parameters for the curve.
  */
-struct AssetCurve {
+struct AssetBasedIntentCurve {
     address assetContract;
     uint256 assetId;
     AssetType assetType;
@@ -38,10 +38,10 @@ enum EvaluationType {
 }
 
 /**
- * Utility functions helpful when working with AssetCurve structs.
+ * Utility functions helpful when working with AssetBasedIntentCurve structs.
  */
-library AssetCurveLib {
-    function validate(AssetCurve memory curve) public pure {
+library AssetBasedIntentCurveLib {
+    function validate(AssetBasedIntentCurve calldata curve) public pure {
         require(curve.curveType < CurveType.COUNT, "invalid curve type");
         require(curve.assetType < AssetType.COUNT, "invalid curve asset type");
         require(curve.evaluationType < EvaluationType.COUNT, "invalid curve eval type");
@@ -57,7 +57,7 @@ library AssetCurveLib {
         }
     }
 
-    function evaluate(AssetCurve memory curve, uint256 x) public pure returns (uint256 val) {
+    function evaluate(AssetBasedIntentCurve calldata curve, uint256 x) public pure returns (uint256 val) {
         if (curve.curveType == CurveType.CONSTANT) {
             //val = c
             val = curve.params[0];
@@ -84,15 +84,7 @@ library AssetCurveLib {
         }
     }
 
-    function isRelativeEvaluation(AssetCurve memory curve) public pure returns (bool) {
+    function isRelativeEvaluation(AssetBasedIntentCurve calldata curve) public pure returns (bool) {
         return curve.evaluationType == EvaluationType.RELATIVE;
-    }
-
-    function hash(AssetCurve memory curve) public pure returns (bytes32) {
-        return keccak256(_pack(curve));
-    }
-
-    function _pack(AssetCurve memory curve) private pure returns (bytes memory ret) {
-        return abi.encodePacked(curve.assetId, curve.assetType, curve.curveType, curve.evaluationType, curve.params);
     }
 }

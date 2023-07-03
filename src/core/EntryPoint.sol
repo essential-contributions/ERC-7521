@@ -269,11 +269,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      * the intent ID is a hash over the content of the userInt (except the signature), the entrypoint and the chainid.
      */
     function getUserIntHash(UserIntent calldata userInt) public view returns (bytes32) {
-        IIntentStandard standard = _registeredStandards[userInt.getStandard()];
-        if (address(standard) == address(0)) {
-            revert("AA95 unknown intent standard"); //TODO: double check error code format
-        }
-        return _generateUserIntHash(userInt, standard);
+        return keccak256(abi.encode(userInt.hash(), address(this), block.chainid));
     }
 
     /**
@@ -393,7 +389,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         intInfo.sender = userInt.sender;
         intInfo.nonce = userInt.nonce;
         intInfo.verificationGasLimit = userInt.verificationGasLimit;
-        intInfo.userIntHash = _generateUserIntHash(userInt, standard);
+        intInfo.userIntHash = getUserIntHash(userInt);
 
         // validate intent with account
         try IAccount(intInfo.sender).validateUserInt{gas: intInfo.verificationGasLimit}(userInt, intInfo.userIntHash)
@@ -415,19 +411,6 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
 
         // end validation state
         _executionState = EX_STATE_NOT_ACTIVE;
-    }
-
-    /**
-     * generate an intent Id - unique identifier for this intent.
-     * @param userInt the user intent to validate
-     * @param standard the user intent standard
-     */
-    function _generateUserIntHash(UserIntent calldata userInt, IIntentStandard standard)
-        internal
-        view
-        returns (bytes32)
-    {
-        return keccak256(abi.encode(standard.hash(userInt), address(this), block.chainid));
     }
 
     //place the NUMBER opcode in the code.
