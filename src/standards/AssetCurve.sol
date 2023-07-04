@@ -59,7 +59,6 @@ library AssetCurveLib {
 
     function evaluate(AssetCurve memory curve, uint256 x) public pure returns (uint256 val) {
         if (curve.curveType == CurveType.CONSTANT) {
-            //val = c
             val = curve.params[0];
         } else if (curve.curveType == CurveType.CONSTANT) {
             uint256 a = curve.params[0];
@@ -67,7 +66,6 @@ library AssetCurveLib {
             uint256 max = curve.params[2];
             if (x > max) x = max;
 
-            //val = ax+b
             val = (a * x) + b;
         } else if (curve.curveType == CurveType.EXPONENTIAL) {
             uint256 a = curve.params[0];
@@ -77,7 +75,6 @@ library AssetCurveLib {
             uint256 max = curve.params[4];
             if (x > max) x = max;
 
-            //val = a(x+j)^i+b
             val = ((a * (x + f)) ** e) + b;
         } else {
             val = 0;
