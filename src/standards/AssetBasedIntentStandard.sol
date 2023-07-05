@@ -143,7 +143,10 @@ contract AssetBasedIntentStandard is
         validationData = (uint256(validUntil) << 160) | (uint256(validAfter) << (160 + 48));
     }
 
-    function executeFirstPass(UserIntent calldata userInt, uint256 timestamp) external returns (bytes memory context) {
+    function executeFirstPass(UserIntent calldata userInt, uint256 timestamp)
+        external
+        returns (bytes memory endContext)
+    {
         IEntryPoint entryPoint = IEntryPoint(address(this));
         AssetBasedIntentData memory data = AssetBasedIntentDataLib.parse(userInt);
 
@@ -185,13 +188,19 @@ contract AssetBasedIntentStandard is
     }
 
     // solhint-disable-next-line no-unused-vars
-    function executeSecondPass(UserIntent calldata userInt, uint256 timestamp) external {
+    function executeSecondPass(UserIntent calldata userInt, uint256 timestamp, bytes memory context)
+        external
+        returns (bytes memory endContext)
+    {
         AssetBasedIntentData memory data = AssetBasedIntentDataLib.parse(userInt);
 
         //execute
         if (data.callData2.length > 0) {
             Exec.callAndRevert(userInt.sender, data.callData2, data.callGasLimit2, REVERT_REASON_MAX_LEN);
         }
+
+        //return unchanged context
+        return context;
     }
 
     function verifyEndState(UserIntent calldata userInt, uint256 timestamp, bytes memory context) external view {
