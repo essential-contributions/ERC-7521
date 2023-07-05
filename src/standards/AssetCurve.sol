@@ -48,7 +48,7 @@ library AssetCurveLib {
 
         if (curve.curveType == CurveType.CONSTANT) {
             require(curve.params.length == 1, "invalid curve params");
-        } else if (curve.curveType == CurveType.CONSTANT) {
+        } else if (curve.curveType == CurveType.LINEAR) {
             require(curve.params.length == 3, "invalid curve params");
         } else if (curve.curveType == CurveType.EXPONENTIAL) {
             require(curve.params.length == 5, "invalid curve params");
@@ -60,7 +60,7 @@ library AssetCurveLib {
     function evaluate(AssetCurve memory curve, uint256 x) public pure returns (uint256 val) {
         if (curve.curveType == CurveType.CONSTANT) {
             val = curve.params[0];
-        } else if (curve.curveType == CurveType.CONSTANT) {
+        } else if (curve.curveType == CurveType.LINEAR) {
             uint256 a = curve.params[0];
             uint256 b = curve.params[1];
             uint256 max = curve.params[2];
