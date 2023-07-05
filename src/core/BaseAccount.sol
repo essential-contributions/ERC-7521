@@ -63,6 +63,10 @@ abstract contract BaseAccount is IAccount, IAssetRelease {
         _requireIntentExecuting();
 
         // transfer tokens
+        require(
+            AssetWrapper.balanceOf(assetType, assetContract, assetId, address(this)) >= amount,
+            "account: insufficient release balance"
+        );
         AssetWrapper.transferFrom(assetType, assetContract, assetId, address(this), to, amount);
     }
 

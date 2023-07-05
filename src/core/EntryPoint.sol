@@ -20,16 +20,21 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     uint256 private constant REVERT_REASON_MAX_LEN = 2048;
     uint256 private constant CONTEXT_DATA_MAX_LEN = 2048;
 
-    uint256 private constant EX_STATE_NOT_ACTIVE = 0;
-    uint256 private constant EX_STATE_VALIDATION_EXECUTING = 1;
-    uint256 private constant EX_STATE_INTENT_EXECUTING = 2;
-    uint256 private constant EX_STATE_SOLUTION_EXECUTING = 3;
-
     //keeps track of registered intent standards
     mapping(bytes32 => IIntentStandard) private _registeredStandards;
 
     //flag for applications to check current step in execution
-    uint256 private _executionState;
+    ExState private _executionState;
+
+    /**
+     * execution state flags
+     */
+    enum ExState {
+        notActive,
+        validationExecuting,
+        intentExecuting,
+        solutionExecuting
+    }
 
     /**
      * execute a user intent solution
@@ -56,7 +61,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
 
         unchecked {
             //Execute callData1
-            _executionState = EX_STATE_INTENT_EXECUTING;
+            _executionState = ExState.intentExecuting;
             for (uint256 i = 0; i < intslen; i++) {
                 IIntentStandard standard = _registeredStandards[solution.userInts[i].getStandard()];
                 bool success = Exec.delegateCall(
@@ -66,7 +71,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
                 );
                 if (success) {
                     if (Exec.getReturnDataSize() > CONTEXT_DATA_MAX_LEN) {
-                        _executionState = EX_STATE_NOT_ACTIVE;
+                        _executionState = ExState.notActive;
                         revert FailedInt(solIndex, i, "AA95 context too large"); //TODO: double check error code format
                     }
                     contextData[i] = Exec.getReturnData();
@@ -75,7 +80,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
                     if (result.length > 0) {
                         emit UserIntentRevertReason(intInfo[i].userIntHash, intInfo[i].sender, intInfo[i].nonce, result);
                     }
-                    _executionState = EX_STATE_NOT_ACTIVE;
+                    _executionState = ExState.notActive;
                     revert FailedInt(solIndex, i, "AA95 callData1 revert"); //TODO: double check error code format
                 }
             }
@@ -83,14 +88,14 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             //Execute solution1
             uint256 solLen1 = solution.steps1.length;
             if (solLen1 > 0) {
-                _executionState = EX_STATE_SOLUTION_EXECUTING;
+                _executionState = ExState.solutionExecuting;
                 for (uint256 i = 0; i < solLen1; i++) {
                     SolutionStep calldata step = solution.steps1[i];
                     bool success = Exec.call(step.target, step.value, step.callData, gasleft());
                     if (!success) {
                         bytes memory result = Exec.getReturnDataMax(REVERT_REASON_MAX_LEN);
                         if (result.length > 0) {
-                            _executionState = EX_STATE_NOT_ACTIVE;
+                            _executionState = ExState.notActive;
                             emit SolutionRevertReason(i, step.target, result);
                             revert FailedInt(solIndex, 0, "AA95 solution steps1 revert"); //TODO: double check error code format
                         }
@@ -99,7 +104,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             }
 
             //Execute callData2
-            _executionState = EX_STATE_INTENT_EXECUTING;
+            _executionState = ExState.intentExecuting;
             for (uint256 i = 0; i < intslen; i++) {
                 IIntentStandard standard = _registeredStandards[solution.userInts[i].getStandard()];
                 bool success = Exec.delegateCall(
@@ -112,7 +117,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
                     if (result.length > 0) {
                         emit UserIntentRevertReason(intInfo[i].userIntHash, intInfo[i].sender, intInfo[i].nonce, result);
                     }
-                    _executionState = EX_STATE_NOT_ACTIVE;
+                    _executionState = ExState.notActive;
                     revert FailedInt(solIndex, i, "AA95 callData2 revert"); //TODO: double check error code format
                 }
             }
@@ -120,7 +125,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             //Execute solution2
             uint256 solLen2 = solution.steps2.length;
             if (solLen2 > 0) {
-                _executionState = EX_STATE_SOLUTION_EXECUTING;
+                _executionState = ExState.solutionExecuting;
                 for (uint256 i = 0; i < solLen2; i++) {
                     SolutionStep calldata step = solution.steps2[i];
                     bool success = Exec.call(step.target, step.value, step.callData, gasleft());
@@ -129,14 +134,14 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
                         if (result.length > 0) {
                             emit SolutionRevertReason(i, step.target, result);
                         }
-                        _executionState = EX_STATE_NOT_ACTIVE;
+                        _executionState = ExState.notActive;
                         revert FailedInt(solIndex, 0, "AA95 solution steps2 revert"); //TODO: double check error code format
                     }
                 }
             }
 
             //Verify end state
-            _executionState = EX_STATE_INTENT_EXECUTING;
+            _executionState = ExState.intentExecuting;
             for (uint256 i = 0; i < intslen; i++) {
                 IIntentStandard standard = _registeredStandards[solution.userInts[i].getStandard()];
                 bool success = Exec.delegateCall(
@@ -151,7 +156,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
                     if (result.length > 0) {
                         emit UserIntentRevertReason(intInfo[i].userIntHash, intInfo[i].sender, intInfo[i].nonce, result);
                     }
-                    _executionState = EX_STATE_NOT_ACTIVE;
+                    _executionState = ExState.notActive;
                     revert FailedInt(solIndex, i, "AA95 end state verify revert"); //TODO: double check error code format
                 }
             }
@@ -162,7 +167,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             }
 
             //Intent no longer executing
-            _executionState = EX_STATE_NOT_ACTIVE;
+            _executionState = ExState.notActive;
         } //unchecked
     }
 
@@ -299,21 +304,21 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      * returns if intent validation actions are currently being executed.
      */
     function validationExecuting() external view returns (bool) {
-        return _executionState == EX_STATE_VALIDATION_EXECUTING;
+        return _executionState == ExState.validationExecuting;
     }
 
     /**
      * returns if intent specific actions are currently being executed.
      */
     function intentExecuting() external view returns (bool) {
-        return _executionState == EX_STATE_INTENT_EXECUTING;
+        return _executionState == ExState.intentExecuting;
     }
 
     /**
      * returns if intent solution specific actions are currently being executed.
      */
     function solutionExecuting() external view returns (bool) {
-        return _executionState == EX_STATE_SOLUTION_EXECUTING;
+        return _executionState == ExState.solutionExecuting;
     }
 
     /**
@@ -362,18 +367,19 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      * @param userInt the user intent to validate
      * @param intInfo the user intent info to populate
      */
+    //TODO: does returning a parsed ValidationData save gas? (including intersecting with already parsed data)
     function _validateUserIntent(
         uint256 solIndex,
         uint256 intIndex,
         UserIntent calldata userInt,
         UserIntInfo memory intInfo
     ) private returns (uint256 validationData) {
-        _executionState = EX_STATE_VALIDATION_EXECUTING;
+        _executionState = ExState.validationExecuting;
 
         // validate intent standard is recognized
         IIntentStandard standard = _registeredStandards[userInt.getStandard()];
         if (address(standard) == address(0)) {
-            _executionState = EX_STATE_NOT_ACTIVE;
+            _executionState = ExState.notActive;
             revert FailedInt(solIndex, intIndex, "AA95 unknown intent standard"); //TODO: double check error code format
         }
 
@@ -381,10 +387,10 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         try standard.validateUserInt(userInt) returns (uint256 _validationData) {
             validationData = _validationData;
         } catch Error(string memory revertReason) {
-            _executionState = EX_STATE_NOT_ACTIVE;
+            _executionState = ExState.notActive;
             revert FailedInt(solIndex, intIndex, string.concat("AA23 reverted: ", revertReason)); //TODO: double check error code format
         } catch {
-            _executionState = EX_STATE_NOT_ACTIVE;
+            _executionState = ExState.notActive;
             revert FailedInt(solIndex, intIndex, "AA23 reverted (or OOG)"); //TODO: double check error code format
         }
 
@@ -400,21 +406,21 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         returns (uint256 _validationData) {
             validationData = _intersectTimeRange(validationData, _validationData);
         } catch Error(string memory revertReason) {
-            _executionState = EX_STATE_NOT_ACTIVE;
+            _executionState = ExState.notActive;
             revert FailedInt(solIndex, intIndex, string.concat("AA23 reverted: ", revertReason));
         } catch {
-            _executionState = EX_STATE_NOT_ACTIVE;
+            _executionState = ExState.notActive;
             revert FailedInt(solIndex, intIndex, "AA23 reverted (or OOG)");
         }
 
         // validate nonce
         if (!_validateAndUpdateNonce(intInfo.sender, intInfo.nonce)) {
-            _executionState = EX_STATE_NOT_ACTIVE;
+            _executionState = ExState.notActive;
             revert FailedInt(solIndex, intIndex, "AA25 invalid account nonce");
         }
 
         // end validation state
-        _executionState = EX_STATE_NOT_ACTIVE;
+        _executionState = ExState.notActive;
     }
 
     /**
@@ -438,9 +444,4 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             mstore(0, number())
         }
     }
-
-    /**
-     * Default receive function.
-     */
-    receive() external payable {}
 }

@@ -64,6 +64,11 @@ contract AssetBasedIntentStandard is
         override
     {
         require(msg.sender == address(_entryPoint), "standard: not from EntryPoint");
+        require(
+            AssetWrapper.balanceOf(assetType, assetContract, assetId, address(this)) >= amount,
+            "standard: insufficient release balance"
+        );
+
         AssetWrapper.transferFrom(assetType, assetContract, assetId, address(this), to, amount);
     }
 
@@ -96,6 +101,11 @@ contract AssetBasedIntentStandard is
         }
         return bytes32(0x00);
     }
+
+    /**
+     * Default receive function.
+     */
+    receive() external payable {}
 
     /////////////////////////
     // DELEGATE/PURE CALLS //
