@@ -48,7 +48,7 @@ library AssetBasedIntentCurveLib {
 
         if (curve.curveType == CurveType.CONSTANT) {
             require(curve.params.length == 1, "invalid curve params");
-        } else if (curve.curveType == CurveType.CONSTANT) {
+        } else if (curve.curveType == CurveType.LINEAR) {
             require(curve.params.length == 3, "invalid curve params");
         } else if (curve.curveType == CurveType.EXPONENTIAL) {
             require(curve.params.length == 5, "invalid curve params");
@@ -59,15 +59,13 @@ library AssetBasedIntentCurveLib {
 
     function evaluate(AssetBasedIntentCurve calldata curve, uint256 x) public pure returns (uint256 val) {
         if (curve.curveType == CurveType.CONSTANT) {
-            //val = c
             val = curve.params[0];
-        } else if (curve.curveType == CurveType.CONSTANT) {
+        } else if (curve.curveType == CurveType.LINEAR) {
             uint256 a = curve.params[0];
             uint256 b = curve.params[1];
             uint256 max = curve.params[2];
             if (x > max) x = max;
 
-            //val = ax+b
             val = (a * x) + b;
         } else if (curve.curveType == CurveType.EXPONENTIAL) {
             uint256 a = curve.params[0];
@@ -77,7 +75,6 @@ library AssetBasedIntentCurveLib {
             uint256 max = curve.params[4];
             if (x > max) x = max;
 
-            //val = a(x+j)^i+b
             val = ((a * (x + f)) ** e) + b;
         } else {
             val = 0;

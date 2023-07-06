@@ -19,9 +19,13 @@ interface IIntentStandard {
      */
     function validateUserInt(UserIntent calldata userInt) external returns (uint256 validationData);
 
-    function executeFirstPass(UserIntent calldata userInt, uint256 timestamp) external returns (bytes memory context);
+    function executeFirstPass(UserIntent calldata userInt, uint256 timestamp)
+        external
+        returns (bytes memory endContext);
 
-    function executeSecondPass(UserIntent calldata userInt, uint256 timestamp) external;
+    function executeSecondPass(UserIntent calldata userInt, uint256 timestamp, bytes memory context)
+        external
+        returns (bytes memory endContext);
 
     function verifyEndState(UserIntent calldata userInt, uint256 timestamp, bytes memory context) external;
 }

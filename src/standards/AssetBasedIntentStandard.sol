@@ -64,6 +64,11 @@ contract AssetBasedIntentStandard is
         override
     {
         require(msg.sender == address(_entryPoint), "standard: not from EntryPoint");
+        require(
+            AssetWrapper.balanceOf(assetType, assetContract, assetId, address(this)) >= amount,
+            "standard: insufficient release balance"
+        );
+
         AssetWrapper.transferFrom(assetType, assetContract, assetId, address(this), to, amount);
     }
 
@@ -97,6 +102,11 @@ contract AssetBasedIntentStandard is
         return bytes32(0x00);
     }
 
+    /**
+     * Default receive function.
+     */
+    receive() external payable {}
+
     /////////////////////////
     // DELEGATE/PURE CALLS //
     /////////////////////////
@@ -126,7 +136,10 @@ contract AssetBasedIntentStandard is
         validationData = (uint256(validUntil) << 160) | (uint256(validAfter) << (160 + 48));
     }
 
-    function executeFirstPass(UserIntent calldata userInt, uint256 timestamp) external returns (bytes memory context) {
+    function executeFirstPass(UserIntent calldata userInt, uint256 timestamp)
+        external
+        returns (bytes memory endContext)
+    {
         IEntryPoint entryPoint = IEntryPoint(address(this));
         AssetBasedIntentData calldata data = parseAssetBasedIntentData(userInt);
 
@@ -168,13 +181,19 @@ contract AssetBasedIntentStandard is
     }
 
     // solhint-disable-next-line no-unused-vars
-    function executeSecondPass(UserIntent calldata userInt, uint256 timestamp) external {
+    function executeSecondPass(UserIntent calldata userInt, uint256 timestamp, bytes memory context)
+        external
+        returns (bytes memory endContext)
+    {
         AssetBasedIntentData calldata data = parseAssetBasedIntentData(userInt);
 
         //execute
         if (data.callData2.length > 0) {
             Exec.callAndRevert(userInt.sender, data.callData2, data.callGasLimit2, REVERT_REASON_MAX_LEN);
         }
+
+        //return unchanged context
+        return context;
     }
 
     function verifyEndState(UserIntent calldata userInt, uint256 timestamp, bytes memory context) external view {
