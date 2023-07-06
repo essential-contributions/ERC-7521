@@ -37,55 +37,41 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     }
 
     /**
-     * execute a user intent solution
-     * @param solIndex index into the solution array
+     * execute a user intents solution.
      * @param solution the user intent solution to execute
-     * @param intInfo the intent info filled by validateUserIntent
      * @param timestamp the time at which to evaluate the intents
      */
-    function _executeSolution(
-        uint256 solIndex,
-        IntentSolution calldata solution,
-        UserIntInfo[] memory intInfo,
-        uint256 timestamp
-    ) private {
+    function _executeSolution(IntentSolution calldata solution, uint256 timestamp) private {
         uint256 intslen = solution.userInts.length;
         bytes[] memory contextData = new bytes[](intslen);
 
-        //TODO: is this gas check necessary? (copied from 4337)
-        /*
-        if (gasleft() < mUserOp.callGasLimit + mUserOp.verificationGasLimit + 5000) {
-            revert FailedOp(solIndex, "AA95 out of gas");
-        }
-        */
-
         unchecked {
-            //Execute callData1
+            //Execute intent first pass
             _executionState = ExState.intentExecuting;
             for (uint256 i = 0; i < intslen; i++) {
-                IIntentStandard standard = _registeredStandards[solution.userInts[i].getStandard()];
+                UserIntent calldata intent = solution.userInts[i];
+                IIntentStandard standard = _registeredStandards[intent.getStandard()];
                 bool success = Exec.delegateCall(
                     address(standard),
-                    abi.encodeWithSelector(IIntentStandard.executeFirstPass.selector, solution.userInts[i], timestamp),
+                    abi.encodeWithSelector(IIntentStandard.executeFirstPass.selector, intent, timestamp),
                     gasleft()
                 );
                 if (success) {
                     if (Exec.getReturnDataSize() > CONTEXT_DATA_MAX_LEN) {
-                        _executionState = ExState.notActive;
-                        revert FailedInt(solIndex, i, "AA95 context too large"); //TODO: double check error code format
+                        revert FailedIntent(i, "AA60 first pass invalid context");
                     }
                     contextData[i] = Exec.getReturnData();
                 } else {
-                    bytes memory result = Exec.getReturnDataMax(REVERT_REASON_MAX_LEN);
-                    if (result.length > 0) {
-                        emit UserIntentRevertReason(intInfo[i].userIntHash, intInfo[i].sender, intInfo[i].nonce, result);
+                    bytes memory reason = Exec.getReturnDataMax(REVERT_REASON_MAX_LEN);
+                    if (reason.length > 0) {
+                        revert FailedIntent(i, string.concat("AA61 first pass reverted: ", string(reason)));
+                    } else {
+                        revert FailedIntent(i, "AA61 first pass reverted (or OOG)");
                     }
-                    _executionState = ExState.notActive;
-                    revert FailedInt(solIndex, i, "AA95 callData1 revert"); //TODO: double check error code format
                 }
             }
 
-            //Execute solution1
+            //Execute solution first pass
             uint256 solLen1 = solution.steps1.length;
             if (solLen1 > 0) {
                 _executionState = ExState.solutionExecuting;
@@ -93,36 +79,44 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
                     SolutionStep calldata step = solution.steps1[i];
                     bool success = Exec.call(step.target, step.value, step.callData, gasleft());
                     if (!success) {
-                        bytes memory result = Exec.getReturnDataMax(REVERT_REASON_MAX_LEN);
-                        if (result.length > 0) {
-                            _executionState = ExState.notActive;
-                            emit SolutionRevertReason(i, step.target, result);
-                            revert FailedInt(solIndex, 0, "AA95 solution steps1 revert"); //TODO: double check error code format
+                        bytes memory reason = Exec.getReturnDataMax(REVERT_REASON_MAX_LEN);
+                        if (reason.length > 0) {
+                            revert FailedSolution(i, string.concat("AA71 first pass reverted: ", string(reason)));
+                        } else {
+                            revert FailedSolution(i, "AA71 first pass reverted (or OOG)");
                         }
                     }
                 }
             }
 
-            //Execute callData2
+            //Execute intent second pass
             _executionState = ExState.intentExecuting;
             for (uint256 i = 0; i < intslen; i++) {
-                IIntentStandard standard = _registeredStandards[solution.userInts[i].getStandard()];
+                UserIntent calldata intent = solution.userInts[i];
+                IIntentStandard standard = _registeredStandards[intent.getStandard()];
                 bool success = Exec.delegateCall(
                     address(standard),
-                    abi.encodeWithSelector(IIntentStandard.executeSecondPass.selector, solution.userInts[i], timestamp),
+                    abi.encodeWithSelector(
+                        IIntentStandard.executeSecondPass.selector, intent, timestamp, contextData[i]
+                    ),
                     gasleft()
                 );
-                if (!success) {
-                    bytes memory result = Exec.getReturnDataMax(REVERT_REASON_MAX_LEN);
-                    if (result.length > 0) {
-                        emit UserIntentRevertReason(intInfo[i].userIntHash, intInfo[i].sender, intInfo[i].nonce, result);
+                if (success) {
+                    if (Exec.getReturnDataSize() > CONTEXT_DATA_MAX_LEN) {
+                        revert FailedIntent(i, "AA62 second pass invalid context");
                     }
-                    _executionState = ExState.notActive;
-                    revert FailedInt(solIndex, i, "AA95 callData2 revert"); //TODO: double check error code format
+                    contextData[i] = Exec.getReturnData();
+                } else {
+                    bytes memory reason = Exec.getReturnDataMax(REVERT_REASON_MAX_LEN);
+                    if (reason.length > 0) {
+                        revert FailedIntent(i, string.concat("AA63 second pass reverted: ", string(reason)));
+                    } else {
+                        revert FailedIntent(i, "AA63 second pass reverted (or OOG)");
+                    }
                 }
             }
 
-            //Execute solution2
+            //Execute solution second pass
             uint256 solLen2 = solution.steps2.length;
             if (solLen2 > 0) {
                 _executionState = ExState.solutionExecuting;
@@ -130,12 +124,12 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
                     SolutionStep calldata step = solution.steps2[i];
                     bool success = Exec.call(step.target, step.value, step.callData, gasleft());
                     if (!success) {
-                        bytes memory result = Exec.getReturnDataMax(REVERT_REASON_MAX_LEN);
-                        if (result.length > 0) {
-                            emit SolutionRevertReason(i, step.target, result);
+                        bytes memory reason = Exec.getReturnDataMax(REVERT_REASON_MAX_LEN);
+                        if (reason.length > 0) {
+                            revert FailedSolution(i, string.concat("AA72 second pass reverted: ", string(reason)));
+                        } else {
+                            revert FailedSolution(i, "AA72 second pass reverted (or OOG)");
                         }
-                        _executionState = ExState.notActive;
-                        revert FailedInt(solIndex, 0, "AA95 solution steps2 revert"); //TODO: double check error code format
                     }
                 }
             }
@@ -143,27 +137,21 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             //Verify end state
             _executionState = ExState.intentExecuting;
             for (uint256 i = 0; i < intslen; i++) {
-                IIntentStandard standard = _registeredStandards[solution.userInts[i].getStandard()];
+                UserIntent calldata intent = solution.userInts[i];
+                IIntentStandard standard = _registeredStandards[intent.getStandard()];
                 bool success = Exec.delegateCall(
                     address(standard),
-                    abi.encodeWithSelector(
-                        IIntentStandard.verifyEndState.selector, solution.userInts[i], timestamp, contextData[i]
-                    ),
+                    abi.encodeWithSelector(IIntentStandard.verifyEndState.selector, intent, timestamp, contextData[i]),
                     gasleft()
                 );
                 if (!success) {
-                    bytes memory result = Exec.getReturnDataMax(REVERT_REASON_MAX_LEN);
-                    if (result.length > 0) {
-                        emit UserIntentRevertReason(intInfo[i].userIntHash, intInfo[i].sender, intInfo[i].nonce, result);
+                    bytes memory reason = Exec.getReturnDataMax(REVERT_REASON_MAX_LEN);
+                    if (reason.length > 0) {
+                        revert FailedIntent(i, string.concat("AA64 end verify reverted: ", string(reason)));
+                    } else {
+                        revert FailedIntent(i, "AA64 end verify reverted (or OOG)");
                     }
-                    _executionState = ExState.notActive;
-                    revert FailedInt(solIndex, i, "AA95 end state verify revert"); //TODO: double check error code format
                 }
-            }
-
-            //Solution was successful for all intents
-            for (uint256 i = 0; i < intslen; i++) {
-                emit UserIntentEvent(intInfo[i].userIntHash, intInfo[i].sender, msg.sender, intInfo[i].nonce);
             }
 
             //Intent no longer executing
@@ -172,34 +160,54 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     }
 
     /**
-     * Execute a batch of UserIntents with given solutions.
-     * @param solutions list of solutions to execute for intents.
+     * Execute a batch of UserIntents with given solution.
+     * @param solution the UserIntents solution.
      */
-    function handleInts(IntentSolution[] calldata solutions) public nonReentrant {
-        uint256 solsLen = solutions.length;
-        UserIntInfo[][] memory intInfo = new UserIntInfo[][](solsLen);
+    function handleInts(IntentSolution calldata solution) public nonReentrant {
+        // solhint-disable-next-line not-rely-on-time
+        uint256 timestamp = block.timestamp;
+        uint256 intsLen = solution.userInts.length;
+        require(intsLen > 0, "AA70 no intents");
 
         unchecked {
-            for (uint256 i = 0; i < solsLen; i++) {
-                uint256 intsLen = solutions[i].userInts.length;
-                if (intsLen == 0) {
-                    revert FailedInt(i, 0, "AA95 solution has no intents"); //TODO: double check error code format
-                }
-                intInfo[i] = new UserIntInfo[](intsLen);
-                for (uint256 j = 0; j < intsLen; j++) {
-                    uint256 validationData = _validateUserIntent(i, j, solutions[i].userInts[j], intInfo[i][j]);
-                    _validateAccountValidationData(i, j, validationData);
-                }
+            bytes32[] memory userIntHashes = new bytes32[](intsLen);
+
+            // validate intents
+            for (uint256 i = 0; i < intsLen; i++) {
+                bytes32 userIntHash = getUserIntHash(solution.userInts[i]);
+                uint256 validationData = _validateUserIntent(solution.userInts[i], userIntHash, i);
+                _validateAccountValidationData(validationData, i);
+
+                userIntHashes[i] = userIntHash;
             }
 
             emit BeforeExecution();
 
-            // solhint-disable-next-line not-rely-on-time
-            uint256 timestamp = block.timestamp;
-            for (uint256 i = 0; i < solsLen; i++) {
-                _executeSolution(i, solutions[i], intInfo[i], timestamp);
+            // execute solution
+            _executeSolution(solution, timestamp);
+            for (uint256 i = 0; i < intsLen; i++) {
+                emit UserIntentEvent(
+                    userIntHashes[i], solution.userInts[i].sender, msg.sender, solution.userInts[i].nonce
+                );
             }
         } //unchecked
+    }
+
+    /**
+     * Execute a batch of UserIntents using multiple solutions.
+     * @param solutions list of solutions to execute for intents.
+     */
+    function handleMultiSolInts(IntentSolution[] calldata solutions) public {
+        unchecked {
+            // loop through solutions and try to solve them individually
+            uint256 solsLen = solutions.length;
+            for (uint256 i = 0; i < solsLen; i++) {
+                try this.handleInts(solutions[i]) {}
+                catch (bytes memory reason) {
+                    _emitRevertReason(reason, i);
+                }
+            }
+        }
     }
 
     /**
@@ -210,47 +218,52 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      * (before the entire call is reverted)
      * Note that in order to collect the the success/failure of the target call, it must be executed
      * with trace enabled to track the emitted events.
-     * @param solution the UserIntent solution to simulate
-     * @param timestamp the timestamp at which to evaluate the intents
+     * @param solution the UserIntents solution to simulate.
+     * @param timestamp the timestamp at which to evaluate the intents.
      * @param target if nonzero, a target address to call after user intent simulation. If called,
      *        the targetSuccess and targetResult are set to the return from that call.
-     * @param targetCallData callData to pass to target address
+     * @param targetCallData callData to pass to target address.
      */
-    function simulateHandleInt(
+    function simulateHandleInts(
         IntentSolution calldata solution,
         uint256 timestamp,
         address target,
         bytes calldata targetCallData
-    ) external override {
+    ) external override nonReentrant {
         uint256 intsLen = solution.userInts.length;
-        UserIntInfo[] memory intInfo = new UserIntInfo[](intsLen);
-        if (intsLen == 0) {
-            revert FailedInt(0, 0, "AA95 solution has no intents"); //TODO: double check error code format
-        }
+        require(intsLen > 0, "AA70 no intents");
 
-        // run validation for first intent
-        _simulationOnlyValidations(solution.userInts[0]);
-        uint256 validationData = _validateUserIntent(0, 0, solution.userInts[0], intInfo[0]);
-        ValidationData memory combinedValData = _parseValidationData(validationData);
+        unchecked {
+            // run validation for first intent
+            bytes32 userIntHash = getUserIntHash(solution.userInts[0]);
+            uint256 validationData = _validateUserIntent(solution.userInts[0], userIntHash, 0);
+            ValidationData memory combinedValData = _parseValidationData(validationData);
 
-        // run validation for the other intents
-        for (uint256 i = 1; i < intsLen; i++) {
-            _simulationOnlyValidations(solution.userInts[i]);
-            validationData = _validateUserIntent(0, i, solution.userInts[i], intInfo[i]);
-            ValidationData memory newValData = _parseValidationData(validationData);
-            combinedValData = _intersectTimeRange(combinedValData, newValData);
-        }
+            // run validation for remaining intents
+            for (uint256 i = 0; i < intsLen; i++) {
+                userIntHash = getUserIntHash(solution.userInts[i]);
+                validationData = _validateUserIntent(solution.userInts[i], userIntHash, i);
+                ValidationData memory newValData = _parseValidationData(validationData);
+                combinedValData = _intersectTimeRange(combinedValData, newValData);
+            }
 
-        numberMarker();
-        _executeSolution(0, solution, intInfo, timestamp);
-        numberMarker();
+            emit BeforeExecution();
 
-        bool targetSuccess;
-        bytes memory targetResult;
-        if (target != address(0)) {
-            (targetSuccess, targetResult) = target.call(targetCallData);
-        }
-        revert ExecutionResult(combinedValData.validAfter, combinedValData.validUntil, targetSuccess, targetResult);
+            // execute solution
+            numberMarker();
+            _executeSolution(solution, timestamp);
+            numberMarker();
+
+            // run target call
+            bool targetSuccess;
+            bytes memory targetResult;
+            if (target != address(0)) {
+                (targetSuccess, targetResult) = target.call(targetCallData);
+            }
+
+            // return results through a custom error
+            revert ExecutionResult(combinedValData.validAfter, combinedValData.validUntil, targetSuccess, targetResult);
+        } //unchecked
     }
 
     /**
@@ -260,10 +273,9 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      * @param userInt the user intent to validate.
      */
     function simulateValidation(UserIntent calldata userInt) external {
-        UserIntInfo memory intInfo;
-
-        _simulationOnlyValidations(userInt);
-        uint256 validationData = _validateUserIntent(0, 0, userInt, intInfo);
+        _simulationOnlyValidations(userInt, 0);
+        bytes32 userIntHash = getUserIntHash(userInt);
+        uint256 validationData = _validateUserIntent(userInt, userIntHash, 0);
         ValidationData memory valData = _parseValidationData(validationData);
 
         revert ValidationResult(valData.sigFailed, valData.validAfter, valData.validUntil);
@@ -283,7 +295,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     function registerIntentStandard(IIntentStandard standardContract) external returns (bytes32) {
         //TODO: revisit how IDs are generated
         bytes32 standardId = keccak256(abi.encodePacked(standardContract, address(this)));
-        require(address(_registeredStandards[standardId]) == address(0), "AA95 already registered"); //TODO: double check error code format
+        require(address(_registeredStandards[standardId]) == address(0), "AA80 already registered");
 
         _registeredStandards[standardId] = standardContract;
         return standardId;
@@ -320,108 +332,133 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     /**
      * Called only during simulation.
      */
-    function _simulationOnlyValidations(UserIntent calldata userInt) internal view {
+    function _simulationOnlyValidations(UserIntent calldata userInt, uint256 userIntIndex) internal view {
         // make sure sender is a deployed contract
         if (userInt.sender.code.length == 0) {
-            revert FailedInt(0, 0, "AA20 account not deployed");
+            revert FailedIntent(userIntIndex, "AA20 account not deployed");
         }
     }
 
     /**
-     * revert if account validationData is expired
-     */
-    function _validateAccountValidationData(uint256 solIndex, uint256 intIndex, uint256 validationData) internal view {
-        if (validationData == 0) {
-            ValidationData memory data = _parseValidationData(validationData);
-            if (data.sigFailed) {
-                revert FailedInt(solIndex, intIndex, "AA24 signature error");
-            }
-            // solhint-disable-next-line not-rely-on-time
-            bool outOfTimeRange = block.timestamp > data.validUntil || block.timestamp < data.validAfter;
-            if (outOfTimeRange) {
-                revert FailedInt(solIndex, intIndex, "AA22 expired or not due");
-            }
-        }
-    }
-
-    // A memory copy of UserInt static fields only.
-    // Also includes the hash of the UserInt.
-    struct UserIntInfo {
-        bytes32 standard;
-        address sender;
-        uint256 nonce;
-        uint256 verificationGasLimit;
-        bytes32 userIntHash;
-    }
-
-    /**
-     * validate account and paymaster (if defined).
+     * validate user intent.
      * also make sure total validation doesn't exceed verificationGasLimit
      * this method is called off-chain (simulateValidation()) and on-chain (from handleInts)
-     * @param solIndex the index of this solution into the solution array
-     * @param intIndex the index of this intent into the solution intent array
-     * @param userInt the user intent to validate
-     * @param intInfo the user intent info to populate
+     * @param userInt the user intent to validate.
+     * @param userIntHash hash of the user's intent data.
+     * @param userIntIndex the index of this intent.
      */
     //TODO: does returning a parsed ValidationData save gas? (including intersecting with already parsed data)
-    function _validateUserIntent(
-        uint256 solIndex,
-        uint256 intIndex,
-        UserIntent calldata userInt,
-        UserIntInfo memory intInfo
-    ) private returns (uint256 validationData) {
+    function _validateUserIntent(UserIntent calldata userInt, bytes32 userIntHash, uint256 userIntIndex)
+        private
+        returns (uint256 validationData)
+    {
         _executionState = ExState.validationExecuting;
 
         // validate intent standard is recognized
         IIntentStandard standard = _registeredStandards[userInt.getStandard()];
         if (address(standard) == address(0)) {
-            _executionState = ExState.notActive;
-            revert FailedInt(solIndex, intIndex, "AA95 unknown intent standard"); //TODO: double check error code format
+            revert FailedIntent(userIntIndex, "AA81 unknown standard");
         }
 
         // validate the intent itself
         try standard.validateUserInt(userInt) returns (uint256 _validationData) {
             validationData = _validationData;
         } catch Error(string memory revertReason) {
-            _executionState = ExState.notActive;
-            revert FailedInt(solIndex, intIndex, string.concat("AA23 reverted: ", revertReason)); //TODO: double check error code format
+            revert FailedIntent(userIntIndex, string.concat("AA23 reverted: ", revertReason));
         } catch {
-            _executionState = ExState.notActive;
-            revert FailedInt(solIndex, intIndex, "AA23 reverted (or OOG)"); //TODO: double check error code format
+            revert FailedIntent(userIntIndex, "AA23 reverted (or OOG)");
         }
 
-        // copy info about the intent to memory for easy reference later
-        intInfo.standard = userInt.getStandard();
-        intInfo.sender = userInt.sender;
-        intInfo.nonce = userInt.nonce;
-        intInfo.verificationGasLimit = userInt.verificationGasLimit;
-        intInfo.userIntHash = getUserIntHash(userInt);
-
         // validate intent with account
-        try IAccount(intInfo.sender).validateUserInt{gas: intInfo.verificationGasLimit}(userInt, intInfo.userIntHash)
-        returns (uint256 _validationData) {
+        try IAccount(userInt.sender).validateUserInt{gas: userInt.verificationGasLimit}(userInt, userIntHash) returns (
+            uint256 _validationData
+        ) {
             validationData = _intersectTimeRange(validationData, _validationData);
         } catch Error(string memory revertReason) {
-            _executionState = ExState.notActive;
-            revert FailedInt(solIndex, intIndex, string.concat("AA23 reverted: ", revertReason));
+            revert FailedIntent(userIntIndex, string.concat("AA23 reverted: ", revertReason));
         } catch {
-            _executionState = ExState.notActive;
-            revert FailedInt(solIndex, intIndex, "AA23 reverted (or OOG)");
+            revert FailedIntent(userIntIndex, "AA23 reverted (or OOG)");
         }
 
         // validate nonce
-        if (!_validateAndUpdateNonce(intInfo.sender, intInfo.nonce)) {
-            _executionState = ExState.notActive;
-            revert FailedInt(solIndex, intIndex, "AA25 invalid account nonce");
+        if (!_validateAndUpdateNonce(userInt.sender, userInt.nonce)) {
+            revert FailedIntent(userIntIndex, "AA25 invalid account nonce");
         }
 
         // end validation state
         _executionState = ExState.notActive;
     }
 
+    /**
+     * revert if account validationData is expired
+     */
+    function _validateAccountValidationData(uint256 validationData, uint256 userIntIndex) internal view {
+        if (validationData == 0) {
+            ValidationData memory data = _parseValidationData(validationData);
+            if (data.sigFailed) {
+                revert FailedIntent(userIntIndex, "AA24 signature error");
+            }
+            // solhint-disable-next-line not-rely-on-time
+            bool outOfTimeRange = block.timestamp > data.validUntil || block.timestamp < data.validAfter;
+            if (outOfTimeRange) {
+                revert FailedIntent(userIntIndex, "AA22 expired or not due");
+            }
+        }
+    }
+
+    /**
+     * emits an event based on the revert reason
+     */
+    function _emitRevertReason(bytes memory reason, uint256 solIndex) private {
+        // get error selector
+        bytes4 selector = 0x00000000;
+        if (reason.length > 4) {
+            assembly {
+                selector := mload(add(0x20, reason))
+            }
+        }
+
+        // convert error to event to emit
+        if (selector == FailedIntent.selector) {
+            // revert was due to a FailedIntent error
+            uint256 intIndex;
+            assembly {
+                solIndex := mload(add(0x24, reason))
+                reason := add(reason, 0x64)
+            }
+            emit UserIntentRevertReason(solIndex, intIndex, string(reason));
+        } else if (selector == FailedSolution.selector) {
+            // revert was due to a FailedSolution error
+            uint256 stepIndex;
+            assembly {
+                stepIndex := mload(add(0x24, reason))
+                reason := add(reason, 0x64)
+            }
+            emit SolutionRevertReason(solIndex, stepIndex, string(reason));
+        } else if (_checkErrorCode(selector)) {
+            //revert was due to a certain error code
+            emit SolutionRevertReason(solIndex, 0, string(reason));
+        } else if (reason.length > 0) {
+            //revert was due to some unknown with a reason string
+            emit SolutionRevertReason(solIndex, 0, string.concat("AA73 reverted: ", string(reason)));
+        } else {
+            //revert was due to some unknown
+            emit SolutionRevertReason(solIndex, 0, "AA73 reverted (or OOG)");
+        }
+    }
+
+    /**
+     * checks if the given bytes are an error code (follows pattern AAxx where x is a digit from 0-9)
+     */
+    function _checkErrorCode(bytes4 selector) private pure returns (bool) {
+        return (selector & 0xFFFF0000) == 0x41410000 && (selector & 0x0000FF00) >= 0x00003000
+            && (selector & 0x0000FF00) <= 0x00003900 && (selector & 0x000000FF) >= 0x00000030
+            && (selector & 0x000000FF) <= 0x00000039;
+    }
+
     //place the NUMBER opcode in the code.
     // this is used as a marker during simulation, as this OP is completely banned from the simulated code of the
-    // account and paymaster.
+    // account.
     function numberMarker() internal view {
         assembly {
             mstore(0, number())
