@@ -26,6 +26,9 @@ contract Account is BaseAccount, TokenCallbackHandler, UUPSUpgradeable, Initiali
         _entryPoint = anEntryPoint;
     }
 
+    /**
+     * Execute a transaction called from entry point while the entry point is in intent executing state.
+     */
     function execute(address _target, uint256 _value, bytes calldata _data) external {
         _requireFromEntryPoint();
         _requireIntentExecuting();
@@ -47,6 +50,9 @@ contract Account is BaseAccount, TokenCallbackHandler, UUPSUpgradeable, Initiali
         return 0;
     }
 
+    /**
+     * Call and handle result.
+     */
     function _call(address target, uint256 value, bytes memory data) internal {
         (bool success, bytes memory result) = target.call{value: value}(data);
         if (!success) {
