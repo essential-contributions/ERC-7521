@@ -11,7 +11,6 @@ import {UserIntent} from "./UserIntent.sol";
 
 interface IEntryPoint is INonceManager {
     /**
-     *
      * An event emitted after each successful intent solution
      * @param userIntHash - unique identifier for the intent (hash its entire content, except signature).
      * @param sender - the account that generates this intent.
@@ -23,23 +22,20 @@ interface IEntryPoint is INonceManager {
     );
 
     /**
-     * An event emitted if the UserIntent "callData" reverted with non-zero length
-     * @param userIntHash the intent unique identifier.
-     * @param sender the sender of this intent.
-     * @param nonce the nonce used in the intent.
-     * @param revertReason - the return bytes from the (reverted) call to "callData".
+     * An event emitted if the UserIntent part of the solution reverted
+     * @param solIndex - index into the array of solutions to the failed one (in simulateValidation, this is always zero).
+     * @param intIndex - index into the array of intents to the failed one.
+     * @param revertReason - the return bytes from the (reverted) call.
      */
-    event UserIntentRevertReason(
-        bytes32 indexed userIntHash, address indexed sender, uint256 nonce, bytes revertReason
-    );
+    event UserIntentRevertReason(uint256 solIndex, uint256 intIndex, string revertReason);
 
     /**
-     * An event emitted if the UserIntent "callData" reverted with non-zero length
+     * An event emitted if the solution steps reverted
+     * @param solIndex - index into the array of solutions to the failed one (in simulateValidation, this is always zero).
      * @param stepIndex the index of the solution step.
-     * @param target the solution step target.
      * @param revertReason - the return bytes from the (reverted) call to "callData".
      */
-    event SolutionRevertReason(uint256 stepIndex, address target, bytes revertReason);
+    event SolutionRevertReason(uint256 solIndex, uint256 stepIndex, string revertReason);
 
     /**
      * an event emitted by handleInts(), before starting the execution loop.
@@ -48,17 +44,24 @@ interface IEntryPoint is INonceManager {
     event BeforeExecution();
 
     /**
-     * a custom revert error of handleInts, to identify the offending solution and intent.
-     *  NOTE: if simulateValidation passes successfully, there should be no reason for handleInts to fail on it.
-     *  @param solIndex - index into the array of solutions to the failed one (in simulateValidation, this is always zero)
+     * a custom revert error of handleInts, to identify the offending intent.
+     *  NOTE: if simulateValidation passes successfully, there should be no reason for handleInts to fail.
      *  @param intIndex - index into the array of intents to the failed one
      *  @param reason - revert reason
-     *      The string starts with a unique code "AAmn", where "m" is "1" for solution, "2" for intent issues,
-     *      so a failure can be attributed to the correct entity.
      *   Should be caught in off-chain handleInts simulation and not happen on-chain.
      *   Useful for mitigating DoS attempts against solvers or for troubleshooting of solution/intent reverts.
      */
-    error FailedInt(uint256 solIndex, uint256 intIndex, string reason);
+    error FailedIntent(uint256 intIndex, string reason);
+
+    /**
+     * a custom revert error of handleInts, to identify the offending solution.
+     *  NOTE: if simulateValidation passes successfully, there should be no reason for handleInts to fail.
+     *  @param stepIndex the index of the solution step.
+     *  @param reason - revert reason
+     *   Should be caught in off-chain handleInts simulation and not happen on-chain.
+     *   Useful for mitigating DoS attempts against solvers or for troubleshooting of solution/intent reverts.
+     */
+    error FailedSolution(uint256 stepIndex, string reason);
 
     /**
      * Successful result from simulateValidation.
@@ -87,10 +90,16 @@ interface IEntryPoint is INonceManager {
     }
 
     /**
-     * Execute a batch of UserIntents with given solutions.
-     * @param solutions the solutions to intents to execute
+     * Execute a batch of UserIntents with given solution.
+     * @param solution the UserIntents solution.
      */
-    function handleInts(IntentSolution[] calldata solutions) external;
+    function handleInts(IntentSolution calldata solution) external;
+
+    /**
+     * Execute a batch of UserIntents using multiple solutions.
+     * @param solutions list of solutions to execute for intents.
+     */
+    function handleMultiSolInts(IntentSolution[] calldata solutions) external;
 
     /**
      * simulate full execution of a UserIntent solution (including both validation and target execution)
@@ -100,13 +109,13 @@ interface IEntryPoint is INonceManager {
      * (before the entire call is reverted)
      * Note that in order to collect the the success/failure of the target call, it must be executed
      * with trace enabled to track the emitted events.
-     * @param solution the UserIntent solution to simulate
-     * @param timestamp the timestamp at which to evaluate the intents
+     * @param solution the UserIntent solution to simulate.
+     * @param timestamp the timestamp at which to evaluate the intents.
      * @param target if nonzero, a target address to call after user intent simulation. If called,
      *        the targetSuccess and targetResult are set to the return from that call.
-     * @param targetCallData callData to pass to target address
+     * @param targetCallData callData to pass to target address.
      */
-    function simulateHandleInt(
+    function simulateHandleInts(
         IntentSolution calldata solution,
         uint256 timestamp,
         address target,
