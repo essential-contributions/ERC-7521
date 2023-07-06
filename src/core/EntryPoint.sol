@@ -6,7 +6,6 @@ pragma solidity ^0.8.13;
 /* solhint-disable private-vars-leading-underscore */
 
 import {NonceManager} from "./NonceManager.sol";
-import {TokenCallbackHandler} from "./TokenCallbackHandler.sol";
 import {IAccount} from "../interfaces/IAccount.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
