@@ -11,7 +11,7 @@ import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
 import {Exec} from "../utils/Exec.sol";
-import {ValidationData, _parseValidationData, _intersectTimeRange} from "./Helpers.sol";
+import {ValidationData, _parseValidationData} from "./Helpers.sol";
 import {ReentrancyGuard} from "openzeppelin/security/ReentrancyGuard.sol";
 
 contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
@@ -234,19 +234,12 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         require(intsLen > 0, "AA70 no intents");
 
         unchecked {
-            // run validation for first intent
-            _simulationOnlyValidations(solution.userInts[0], 0);
-            bytes32 userIntHash = getUserIntHash(solution.userInts[0]);
-            uint256 validationData = _validateUserIntent(solution.userInts[0], userIntHash, 0);
-            ValidationData memory combinedValData = _parseValidationData(validationData);
-
-            // run validation for remaining intents
+            // run validation
             for (uint256 i = 0; i < intsLen; i++) {
                 _simulationOnlyValidations(solution.userInts[i], i);
-                userIntHash = getUserIntHash(solution.userInts[i]);
-                validationData = _validateUserIntent(solution.userInts[i], userIntHash, i);
-                ValidationData memory newValData = _parseValidationData(validationData);
-                combinedValData = _intersectTimeRange(combinedValData, newValData);
+                bytes32 userIntHash = getUserIntHash(solution.userInts[i]);
+                uint256 validationData = _validateUserIntent(solution.userInts[i], userIntHash, i);
+                _validateAccountValidationData(validationData, i);
             }
 
             emit BeforeExecution();
@@ -264,7 +257,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             }
 
             // return results through a custom error
-            revert ExecutionResult(combinedValData.validAfter, combinedValData.validUntil, targetSuccess, targetResult);
+            revert ExecutionResult(true, targetSuccess, targetResult);
         } //unchecked
     }
 
@@ -362,8 +355,8 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         }
 
         // validate the intent itself
-        try standard.validateUserInt(userInt) {
-        } catch Error(string memory revertReason) {
+        try standard.validateUserInt(userInt) {}
+        catch Error(string memory revertReason) {
             revert FailedIntent(userIntIndex, string.concat("AA65 reverted: ", revertReason));
         } catch {
             revert FailedIntent(userIntIndex, "AA65 reverted (or OOG)");
