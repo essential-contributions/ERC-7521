@@ -235,12 +235,14 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
 
         unchecked {
             // run validation for first intent
+            _simulationOnlyValidations(solution.userInts[0], 0);
             bytes32 userIntHash = getUserIntHash(solution.userInts[0]);
             uint256 validationData = _validateUserIntent(solution.userInts[0], userIntHash, 0);
             ValidationData memory combinedValData = _parseValidationData(validationData);
 
             // run validation for remaining intents
             for (uint256 i = 0; i < intsLen; i++) {
+                _simulationOnlyValidations(solution.userInts[i], i);
                 userIntHash = getUserIntHash(solution.userInts[i]);
                 validationData = _validateUserIntent(solution.userInts[i], userIntHash, i);
                 ValidationData memory newValData = _parseValidationData(validationData);
