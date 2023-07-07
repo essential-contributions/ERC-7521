@@ -347,7 +347,6 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      * @param userIntHash hash of the user's intent data.
      * @param userIntIndex the index of this intent.
      */
-    //TODO: does returning a parsed ValidationData save gas? (including intersecting with already parsed data)
     function _validateUserIntent(UserIntent calldata userInt, bytes32 userIntHash, uint256 userIntIndex)
         private
         returns (uint256 validationData)
@@ -361,19 +360,18 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         }
 
         // validate the intent itself
-        try standard.validateUserInt(userInt) returns (uint256 _validationData) {
-            validationData = _validationData;
+        try standard.validateUserInt(userInt) {
         } catch Error(string memory revertReason) {
-            revert FailedIntent(userIntIndex, string.concat("AA23 reverted: ", revertReason));
+            revert FailedIntent(userIntIndex, string.concat("AA65 reverted: ", revertReason));
         } catch {
-            revert FailedIntent(userIntIndex, "AA23 reverted (or OOG)");
+            revert FailedIntent(userIntIndex, "AA65 reverted (or OOG)");
         }
 
         // validate intent with account
         try IAccount(userInt.sender).validateUserInt{gas: userInt.verificationGasLimit}(userInt, userIntHash) returns (
             uint256 _validationData
         ) {
-            validationData = _intersectTimeRange(validationData, _validationData);
+            validationData = _validationData;
         } catch Error(string memory revertReason) {
             revert FailedIntent(userIntIndex, string.concat("AA23 reverted: ", revertReason));
         } catch {
