@@ -2,28 +2,28 @@
 pragma solidity ^0.8.13;
 
 import "openzeppelin/utils/cryptography/ECDSA.sol";
-import "openzeppelin/proxy/utils/Initializable.sol";
-import "openzeppelin/proxy/utils/UUPSUpgradeable.sol";
 
 import "../core/BaseAccount.sol";
 import "./TokenCallbackHandler.sol";
 
-contract Account is BaseAccount, TokenCallbackHandler, UUPSUpgradeable, Initializable {
+contract Account is BaseAccount, TokenCallbackHandler {
     using ECDSA for bytes32;
 
     address public owner;
 
     IEntryPoint private immutable _entryPoint;
 
-    event AccountInitialized(IEntryPoint indexed entryPoint, address indexed owner);
+    event AccountCreated(IEntryPoint indexed entryPoint, address indexed owner);
     event Executed(IEntryPoint indexed entryPoint, address indexed target, uint256 indexed value, bytes data);
 
     function entryPoint() public view virtual override returns (IEntryPoint) {
         return _entryPoint;
     }
 
-    constructor(IEntryPoint anEntryPoint) {
+    constructor(IEntryPoint anEntryPoint, address _owner) {
         _entryPoint = anEntryPoint;
+        owner = _owner;
+        emit AccountCreated(anEntryPoint, _owner);
     }
 
     /**
@@ -60,25 +60,6 @@ contract Account is BaseAccount, TokenCallbackHandler, UUPSUpgradeable, Initiali
                 revert(add(result, 32), mload(result))
             }
         }
-    }
-
-    // Initializable
-    function initialize(address anOwner) public initializer {
-        owner = anOwner;
-        emit AccountInitialized(_entryPoint, anOwner);
-    }
-
-    /**
-     * Ensure the function call went through Account or owner
-     */
-    function _requireFromOwner() internal view {
-        require(msg.sender == owner || msg.sender == address(this), "account: not Owner");
-    }
-
-    // UUPSUpgradeable
-    function _authorizeUpgrade(address newImplementation) internal view override {
-        _requireFromOwner();
-        (newImplementation);
     }
 
     receive() external payable {}
