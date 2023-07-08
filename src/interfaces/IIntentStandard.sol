@@ -28,6 +28,4 @@ interface IIntentStandard {
         returns (bytes memory endContext);
 
     function verifyEndState(UserIntent calldata userInt, uint256 timestamp, bytes memory context) external;
-
-    function hash(UserIntent calldata userInt) external pure returns (bytes32);
 }
