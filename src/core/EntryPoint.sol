@@ -414,7 +414,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     function _emitRevertReason(bytes memory reason, uint256 solIndex) private {
         // get error selector
         bytes4 selector = 0x00000000;
-        if (reason.length > 4) {
+        if (reason.length >= 4) {
             assembly {
                 selector := mload(add(0x20, reason))
             }
