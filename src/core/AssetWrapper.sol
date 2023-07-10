@@ -8,7 +8,7 @@ import {IERC777} from "openzeppelin/token/ERC777/IERC777.sol";
 import {IERC1155} from "openzeppelin/token/ERC1155/IERC1155.sol";
 
 /**
- * Utility functions helpful when working with AssetCurve structs and asset interactions.
+ * Utility functions helpful when working with different asset standards.
  */
 library AssetWrapper {
     /**
