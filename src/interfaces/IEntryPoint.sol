@@ -93,13 +93,13 @@ interface IEntryPoint is INonceManager {
      * Execute a batch of UserIntents with given solution.
      * @param solution the UserIntents solution.
      */
-    function handleInts(IntentSolution calldata solution) external;
+    function handleIntents(IntentSolution calldata solution) external;
 
     /**
      * Execute a batch of UserIntents using multiple solutions.
      * @param solutions list of solutions to execute for intents.
      */
-    function handleMultiSolInts(IntentSolution[] calldata solutions) external;
+    function handleMultiSolultionIntents(IntentSolution[] calldata solutions) external;
 
     /**
      * simulate full execution of a UserIntent solution (including both validation and target execution)
@@ -115,7 +115,7 @@ interface IEntryPoint is INonceManager {
      *        the targetSuccess and targetResult are set to the return from that call.
      * @param targetCallData callData to pass to target address.
      */
-    function simulateHandleInts(
+    function simulateHandleIntents(
         IntentSolution calldata solution,
         uint256 timestamp,
         address target,
