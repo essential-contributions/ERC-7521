@@ -42,14 +42,14 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      * @param timestamp the time at which to evaluate the intents
      */
     function _executeSolution(IntentSolution calldata solution, uint256 timestamp) private {
-        uint256 intslen = solution.userInts.length;
+        uint256 intslen = solution.userIntents.length;
         bytes[] memory contextData = new bytes[](intslen);
 
         unchecked {
             //Execute intent first pass
             _executionState = ExState.intentExecuting;
             for (uint256 i = 0; i < intslen; i++) {
-                UserIntent calldata intent = solution.userInts[i];
+                UserIntent calldata intent = solution.userIntents[i];
                 IIntentStandard standard = _registeredStandards[intent.getStandard()];
                 bool success = Exec.delegateCall(
                     address(standard),
@@ -92,7 +92,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             //Execute intent second pass
             _executionState = ExState.intentExecuting;
             for (uint256 i = 0; i < intslen; i++) {
-                UserIntent calldata intent = solution.userInts[i];
+                UserIntent calldata intent = solution.userIntents[i];
                 IIntentStandard standard = _registeredStandards[intent.getStandard()];
                 bool success = Exec.delegateCall(
                     address(standard),
@@ -137,7 +137,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             //Verify end state
             _executionState = ExState.intentExecuting;
             for (uint256 i = 0; i < intslen; i++) {
-                UserIntent calldata intent = solution.userInts[i];
+                UserIntent calldata intent = solution.userIntents[i];
                 IIntentStandard standard = _registeredStandards[intent.getStandard()];
                 bool success = Exec.delegateCall(
                     address(standard),
@@ -163,10 +163,10 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      * Execute a batch of UserIntents with given solution.
      * @param solution the UserIntents solution.
      */
-    function handleInts(IntentSolution calldata solution) public nonReentrant {
+    function handleIntents(IntentSolution calldata solution) public nonReentrant {
         // solhint-disable-next-line not-rely-on-time
         uint256 timestamp = block.timestamp;
-        uint256 intsLen = solution.userInts.length;
+        uint256 intsLen = solution.userIntents.length;
         require(intsLen > 0, "AA70 no intents");
 
         unchecked {
@@ -174,8 +174,8 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
 
             // validate intents
             for (uint256 i = 0; i < intsLen; i++) {
-                bytes32 userIntHash = getUserIntHash(solution.userInts[i]);
-                uint256 validationData = _validateUserIntent(solution.userInts[i], userIntHash, i);
+                bytes32 userIntHash = getUserIntHash(solution.userIntents[i]);
+                uint256 validationData = _validateUserIntent(solution.userIntents[i], userIntHash, i);
                 _validateAccountValidationData(validationData, i);
 
                 userIntHashes[i] = userIntHash;
@@ -187,7 +187,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             _executeSolution(solution, timestamp);
             for (uint256 i = 0; i < intsLen; i++) {
                 emit UserIntentEvent(
-                    userIntHashes[i], solution.userInts[i].sender, msg.sender, solution.userInts[i].nonce
+                    userIntHashes[i], solution.userIntents[i].sender, msg.sender, solution.userIntents[i].nonce
                 );
             }
         } //unchecked
@@ -197,12 +197,12 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      * Execute a batch of UserIntents using multiple solutions.
      * @param solutions list of solutions to execute for intents.
      */
-    function handleMultiSolInts(IntentSolution[] calldata solutions) public {
+    function handleMultiSolutionIntents(IntentSolution[] calldata solutions) public {
         unchecked {
             // loop through solutions and try to solve them individually
             uint256 solsLen = solutions.length;
             for (uint256 i = 0; i < solsLen; i++) {
-                try this.handleInts(solutions[i]) {}
+                try this.handleIntents(solutions[i]) {}
                 catch (bytes memory reason) {
                     _emitRevertReason(reason, i);
                 }
@@ -224,13 +224,13 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      *        the targetSuccess and targetResult are set to the return from that call.
      * @param targetCallData callData to pass to target address.
      */
-    function simulateHandleInts(
+    function simulateHandleIntents(
         IntentSolution calldata solution,
         uint256 timestamp,
         address target,
         bytes calldata targetCallData
     ) external override nonReentrant {
-        uint256 intsLen = solution.userInts.length;
+        uint256 intsLen = solution.userIntents.length;
         require(intsLen > 0, "AA70 no intents");
 
         unchecked {
@@ -337,7 +337,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     /**
      * validate user intent.
      * also make sure total validation doesn't exceed verificationGasLimit
-     * this method is called off-chain (simulateValidation()) and on-chain (from handleInts)
+     * this method is called off-chain (simulateValidation()) and on-chain (from handleIntents)
      * @param userInt the user intent to validate.
      * @param userIntHash hash of the user's intent data.
      * @param userIntIndex the index of this intent.
@@ -405,7 +405,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     function _emitRevertReason(bytes memory reason, uint256 solIndex) private {
         // get error selector
         bytes4 selector = 0x00000000;
-        if (reason.length > 4) {
+        if (reason.length >= 4) {
             assembly {
                 selector := mload(add(0x20, reason))
             }
