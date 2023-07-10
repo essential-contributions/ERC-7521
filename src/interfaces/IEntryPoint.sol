@@ -72,13 +72,13 @@ interface IEntryPoint is INonceManager {
     error ValidationResult(bool sigFailed, uint48 validAfter, uint48 validUntil);
 
     /**
-     * return value of simulateHandleInt
+     * return value of simulateHandleIntents
      */
     error ExecutionResult(uint48 validAfter, uint48 validUntil, bool targetSuccess, bytes targetResult);
 
-    //UserInts handled, per solution
+    //UserIntents handled, per solution
     struct IntentSolution {
-        UserIntent[] userInts;
+        UserIntent[] userIntents;
         SolutionStep[] steps1;
         SolutionStep[] steps2;
     }
