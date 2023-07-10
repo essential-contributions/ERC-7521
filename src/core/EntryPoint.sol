@@ -344,7 +344,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     /**
      * validate user intent.
      * also make sure total validation doesn't exceed verificationGasLimit
-     * this method is called off-chain (simulateValidation()) and on-chain (from handleInts)
+     * this method is called off-chain (simulateValidation()) and on-chain (from handleIntents)
      * @param userInt the user intent to validate.
      * @param userIntHash hash of the user's intent data.
      * @param userIntIndex the index of this intent.
