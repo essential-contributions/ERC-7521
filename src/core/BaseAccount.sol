@@ -111,7 +111,7 @@ abstract contract BaseAccount is IAccount, IAssetRelease {
      * Validate the nonce of the UserIntent.
      * This method may validate the nonce requirement of this account.
      * e.g.
-     * To limit the nonce to use sequenced UserInts only (no "out of order" UserInts):
+     * To limit the nonce to use sequenced UserIntents only (no "out of order" UserIntents):
      *      `require(nonce < type(uint64).max)`
      * For a hypothetical account that *requires* the nonce to be out-of-order:
      *      `require(nonce & type(uint64).max == 0)`
