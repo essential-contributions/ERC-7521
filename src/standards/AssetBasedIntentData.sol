@@ -43,7 +43,7 @@ library AssetBasedIntentDataLib {
 }
 
 /**
- * Helper function to extract AssetBasedIntentData from a USerIntent.
+ * Helper function to extract AssetBasedIntentData from a UserIntent.
  */
 function parseAssetBasedIntentData(UserIntent calldata userInt) pure returns (AssetBasedIntentData calldata data) {
     bytes calldata intentData = userInt.intentData;

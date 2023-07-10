@@ -38,6 +38,7 @@ abstract contract BaseAccount is IAccount, IAssetRelease {
      * Validate user's signature and nonce.
      * subclass doesn't need to override this method. Instead, it should override the specific internal validation methods.
      */
+    // TODO: rename
     function validateUserInt(UserIntent calldata userInt, bytes32 userIntHash)
         external
         virtual
