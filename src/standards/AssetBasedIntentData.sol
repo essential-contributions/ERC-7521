@@ -3,8 +3,8 @@ pragma solidity ^0.8.13;
 
 //TODO: is callGasLimit1 and callGasLimit2 necessary?
 
-import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
-import {AssetCurve, AssetCurveLib} from "./AssetCurve.sol";
+import {UserIntent} from "../interfaces/UserIntent.sol";
+import {AssetBasedIntentCurve, AssetBasedIntentCurveLib} from "./AssetBasedIntentCurve.sol";
 
 /**
  * Asset Based Intent Data struct
@@ -22,56 +22,32 @@ struct AssetBasedIntentData {
     uint256 callGasLimit2;
     bytes callData1;
     bytes callData2;
-    AssetCurve[] assetReleases;
-    AssetCurve[] assetConstraints;
+    AssetBasedIntentCurve[] assetReleases;
+    AssetBasedIntentCurve[] assetConstraints;
 }
 
 /**
  * Utility functions helpful when working with AssetBasedIntentData structs.
  */
 library AssetBasedIntentDataLib {
-    function pack(UserIntent calldata userInt) public pure returns (bytes memory ret) {
-        bytes32 standard = UserIntentLib.getStandard(userInt);
-        address sender = userInt.sender;
-        uint256 nonce = userInt.nonce;
-        uint256 verificationGasLimit = userInt.verificationGasLimit;
+    using AssetBasedIntentCurveLib for AssetBasedIntentCurve;
 
-        //TODO: try to do this packing without copying to memory (take advantgae of calldataKeccak)
-        AssetBasedIntentData memory data = parse(userInt);
-        uint256 timestamp = data.timestamp;
-        uint256 callGasLimit1 = data.callGasLimit1;
-        uint256 callGasLimit2 = data.callGasLimit2;
-        bytes32 callData1 = keccak256(data.callData1);
-        bytes32 callData2 = keccak256(data.callData2);
-        bytes32 assetRelease = _hashCurves(data.assetReleases);
-        bytes32 assetConstraint = _hashCurves(data.assetConstraints);
-
-        return abi.encode(
-            standard,
-            sender,
-            nonce,
-            verificationGasLimit,
-            timestamp,
-            callGasLimit1,
-            callGasLimit2,
-            callData1,
-            callData2,
-            assetRelease,
-            assetConstraint
-        );
+    function validate(AssetBasedIntentData calldata data) public pure {
+        for (uint256 i = 0; i < data.assetReleases.length; i++) {
+            data.assetReleases[i].validate();
+        }
+        for (uint256 i = 0; i < data.assetConstraints.length; i++) {
+            data.assetConstraints[i].validate();
+        }
     }
+}
 
-    function hash(UserIntent calldata userInt) public pure returns (bytes32) {
-        return keccak256(pack(userInt));
-    }
-
-    function parse(UserIntent calldata userInt) public pure returns (AssetBasedIntentData memory ret) {
-        (AssetBasedIntentData memory data) = abi.decode(userInt.intentData, (AssetBasedIntentData));
-        return data;
-    }
-
-    function _hashCurves(AssetCurve[] memory curves) private pure returns (bytes32) {
-        bytes32[] memory hashes = new bytes32[](curves.length);
-        return keccak256(abi.encodePacked(hashes));
+/**
+ * Helper function to extract AssetBasedIntentData from a USerIntent.
+ */
+function parseAssetBasedIntentData(UserIntent calldata userInt) pure returns (AssetBasedIntentData calldata data) {
+    bytes calldata intentData = userInt.intentData;
+    assembly {
+        data := intentData.offset
     }
 }

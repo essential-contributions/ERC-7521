@@ -9,8 +9,8 @@ import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {IAssetRelease, AssetType} from "../interfaces/IAssetRelease.sol";
 import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
 import {Exec} from "../utils/Exec.sol";
-import {AssetBasedIntentData, AssetBasedIntentDataLib} from "./AssetBasedIntentData.sol";
-import {AssetCurve, EvaluationType, AssetCurveLib} from "./AssetCurve.sol";
+import {AssetBasedIntentData, parseAssetBasedIntentData, AssetBasedIntentDataLib} from "./AssetBasedIntentData.sol";
+import {AssetBasedIntentCurve, EvaluationType, AssetBasedIntentCurveLib} from "./AssetBasedIntentCurve.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
 import {ERC721Holder} from "openzeppelin/token/ERC721/utils/ERC721Holder.sol";
 import {ERC1155Holder} from "openzeppelin/token/ERC1155/utils/ERC1155Holder.sol";
@@ -27,7 +27,7 @@ contract AssetBasedIntentStandard is
     IERC1820Implementer
 {
     using AssetBasedIntentDataLib for AssetBasedIntentData;
-    using AssetCurveLib for AssetCurve;
+    using AssetBasedIntentCurveLib for AssetBasedIntentCurve;
     using UserIntentLib for UserIntent;
 
     /**
@@ -125,17 +125,10 @@ contract AssetBasedIntentStandard is
      *      Note that the validation code cannot use block.timestamp (or block.number) directly.
      */
     function validateUserInt(UserIntent calldata userInt) external pure returns (uint256 validationData) {
-        AssetBasedIntentData memory data = AssetBasedIntentDataLib.parse(userInt);
+        AssetBasedIntentData calldata data = parseAssetBasedIntentData(userInt);
 
-        //validate constraint curves
-        for (uint256 i = 0; i < data.assetConstraints.length; i++) {
-            data.assetConstraints[i].validate();
-        }
-
-        //validate release curves
-        for (uint256 i = 0; i < data.assetReleases.length; i++) {
-            data.assetReleases[i].validate();
-        }
+        //validate curves
+        data.validate();
 
         //determine valid time window
         uint48 validUntil = 0;
@@ -148,7 +141,7 @@ contract AssetBasedIntentStandard is
         returns (bytes memory endContext)
     {
         IEntryPoint entryPoint = IEntryPoint(address(this));
-        AssetBasedIntentData memory data = AssetBasedIntentDataLib.parse(userInt);
+        AssetBasedIntentData calldata data = parseAssetBasedIntentData(userInt);
 
         //record starting balances
         uint256 constraintLen = data.assetConstraints.length;
@@ -192,7 +185,7 @@ contract AssetBasedIntentStandard is
         external
         returns (bytes memory endContext)
     {
-        AssetBasedIntentData memory data = AssetBasedIntentDataLib.parse(userInt);
+        AssetBasedIntentData calldata data = parseAssetBasedIntentData(userInt);
 
         //execute
         if (data.callData2.length > 0) {
@@ -204,7 +197,7 @@ contract AssetBasedIntentStandard is
     }
 
     function verifyEndState(UserIntent calldata userInt, uint256 timestamp, bytes memory context) external view {
-        AssetBasedIntentData memory data = AssetBasedIntentDataLib.parse(userInt);
+        AssetBasedIntentData calldata data = parseAssetBasedIntentData(userInt);
         uint256[] memory startingBalances = abi.decode(context, (uint256[]));
 
         //check end balances
@@ -232,9 +225,5 @@ contract AssetBasedIntentStandard is
                 )
             );
         }
-    }
-
-    function hash(UserIntent calldata userInt) external pure returns (bytes32) {
-        return AssetBasedIntentDataLib.hash(userInt);
     }
 }
