@@ -42,14 +42,14 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      * @param timestamp the time at which to evaluate the intents
      */
     function _executeSolution(IntentSolution calldata solution, uint256 timestamp) private {
-        uint256 intslen = solution.userInts.length;
+        uint256 intslen = solution.userIntents.length;
         bytes[] memory contextData = new bytes[](intslen);
 
         unchecked {
             //Execute intent first pass
             _executionState = ExState.intentExecuting;
             for (uint256 i = 0; i < intslen; i++) {
-                UserIntent calldata intent = solution.userInts[i];
+                UserIntent calldata intent = solution.userIntents[i];
                 IIntentStandard standard = _registeredStandards[intent.getStandard()];
                 bool success = Exec.delegateCall(
                     address(standard),
@@ -92,7 +92,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             //Execute intent second pass
             _executionState = ExState.intentExecuting;
             for (uint256 i = 0; i < intslen; i++) {
-                UserIntent calldata intent = solution.userInts[i];
+                UserIntent calldata intent = solution.userIntents[i];
                 IIntentStandard standard = _registeredStandards[intent.getStandard()];
                 bool success = Exec.delegateCall(
                     address(standard),
@@ -137,7 +137,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             //Verify end state
             _executionState = ExState.intentExecuting;
             for (uint256 i = 0; i < intslen; i++) {
-                UserIntent calldata intent = solution.userInts[i];
+                UserIntent calldata intent = solution.userIntents[i];
                 IIntentStandard standard = _registeredStandards[intent.getStandard()];
                 bool success = Exec.delegateCall(
                     address(standard),
@@ -166,7 +166,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     function handleIntents(IntentSolution calldata solution) public nonReentrant {
         // solhint-disable-next-line not-rely-on-time
         uint256 timestamp = block.timestamp;
-        uint256 intsLen = solution.userInts.length;
+        uint256 intsLen = solution.userIntents.length;
         require(intsLen > 0, "AA70 no intents");
 
         unchecked {
@@ -174,8 +174,8 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
 
             // validate intents
             for (uint256 i = 0; i < intsLen; i++) {
-                bytes32 userIntHash = getUserIntHash(solution.userInts[i]);
-                uint256 validationData = _validateUserIntent(solution.userInts[i], userIntHash, i);
+                bytes32 userIntHash = getUserIntHash(solution.userIntents[i]);
+                uint256 validationData = _validateUserIntent(solution.userIntents[i], userIntHash, i);
                 _validateAccountValidationData(validationData, i);
 
                 userIntHashes[i] = userIntHash;
@@ -187,7 +187,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             _executeSolution(solution, timestamp);
             for (uint256 i = 0; i < intsLen; i++) {
                 emit UserIntentEvent(
-                    userIntHashes[i], solution.userInts[i].sender, msg.sender, solution.userInts[i].nonce
+                    userIntHashes[i], solution.userIntents[i].sender, msg.sender, solution.userIntents[i].nonce
                 );
             }
         } //unchecked
@@ -230,21 +230,21 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         address target,
         bytes calldata targetCallData
     ) external override nonReentrant {
-        uint256 intsLen = solution.userInts.length;
+        uint256 intsLen = solution.userIntents.length;
         require(intsLen > 0, "AA70 no intents");
 
         unchecked {
             // run validation for first intent
-            _simulationOnlyValidations(solution.userInts[0], 0);
-            bytes32 userIntHash = getUserIntHash(solution.userInts[0]);
-            uint256 validationData = _validateUserIntent(solution.userInts[0], userIntHash, 0);
+            _simulationOnlyValidations(solution.userIntents[0], 0);
+            bytes32 userIntHash = getUserIntHash(solution.userIntents[0]);
+            uint256 validationData = _validateUserIntent(solution.userIntents[0], userIntHash, 0);
             ValidationData memory combinedValData = _parseValidationData(validationData);
 
             // run validation for remaining intents
             for (uint256 i = 0; i < intsLen; i++) {
-                _simulationOnlyValidations(solution.userInts[i], i);
-                userIntHash = getUserIntHash(solution.userInts[i]);
-                validationData = _validateUserIntent(solution.userInts[i], userIntHash, i);
+                _simulationOnlyValidations(solution.userIntents[i], i);
+                userIntHash = getUserIntHash(solution.userIntents[i]);
+                validationData = _validateUserIntent(solution.userIntents[i], userIntHash, i);
                 ValidationData memory newValData = _parseValidationData(validationData);
                 combinedValData = _intersectTimeRange(combinedValData, newValData);
             }
