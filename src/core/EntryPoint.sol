@@ -163,7 +163,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      * Execute a batch of UserIntents with given solution.
      * @param solution the UserIntents solution.
      */
-    function handleInts(IntentSolution calldata solution) public nonReentrant {
+    function handleIntents(IntentSolution calldata solution) public nonReentrant {
         // solhint-disable-next-line not-rely-on-time
         uint256 timestamp = block.timestamp;
         uint256 intsLen = solution.userInts.length;
@@ -197,12 +197,12 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      * Execute a batch of UserIntents using multiple solutions.
      * @param solutions list of solutions to execute for intents.
      */
-    function handleMultiSolInts(IntentSolution[] calldata solutions) public {
+    function handleMultiSolultionIntents(IntentSolution[] calldata solutions) public {
         unchecked {
             // loop through solutions and try to solve them individually
             uint256 solsLen = solutions.length;
             for (uint256 i = 0; i < solsLen; i++) {
-                try this.handleInts(solutions[i]) {}
+                try this.handleIntents(solutions[i]) {}
                 catch (bytes memory reason) {
                     _emitRevertReason(reason, i);
                 }
@@ -224,7 +224,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      *        the targetSuccess and targetResult are set to the return from that call.
      * @param targetCallData callData to pass to target address.
      */
-    function simulateHandleInts(
+    function simulateHandleIntents(
         IntentSolution calldata solution,
         uint256 timestamp,
         address target,
