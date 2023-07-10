@@ -197,7 +197,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      * Execute a batch of UserIntents using multiple solutions.
      * @param solutions list of solutions to execute for intents.
      */
-    function handleMultiSolultionIntents(IntentSolution[] calldata solutions) public {
+    function handleMultiSolutionIntents(IntentSolution[] calldata solutions) public {
         unchecked {
             // loop through solutions and try to solve them individually
             uint256 solsLen = solutions.length;
