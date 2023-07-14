@@ -94,7 +94,6 @@ abstract contract TestUtil {
         assetReleaseCurves.push(constantAbsoluteCurve);
         assetConstraintCurves.push(constantAbsoluteCurve);
 
-        assetBasedIntentDataMap[0].timestamp = block.timestamp;
         assetBasedIntentDataMap[0].callGasLimit1 = 100000;
         assetBasedIntentDataMap[0].callGasLimit2 = 100000;
         assetBasedIntentDataMap[0].callData1 = "call data 1"; // TODO: make use of common structs
@@ -108,6 +107,7 @@ abstract contract TestUtil {
             standard: STANDARD_ID,
             sender: address(this),
             nonce: 123,
+            timestamp: block.timestamp,
             verificationGasLimit: 100000,
             intentData: abi.encode(assetBasedIntentData),
             signature: "signature"

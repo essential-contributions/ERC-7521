@@ -117,10 +117,6 @@ contract AssetBasedIntentStandard is
      */
     function validateUserInt(UserIntent calldata userInt) external pure {
         AssetBasedIntentData calldata data = parseAssetBasedIntentData(userInt);
-
-        //TODO: validate that "x" is not negative
-
-        //validate curves
         data.validate();
     }
 
@@ -152,7 +148,7 @@ contract AssetBasedIntentStandard is
 
         //release tokens
         address releaseTo = address(entryPoint.getIntentStandardContract(userInt.getStandard()));
-        uint256 evaluateAt = timestamp - data.timestamp;
+        uint256 evaluateAt = timestamp - userInt.timestamp;
         for (uint256 i = 0; i < data.assetReleases.length; i++) {
             int256 releaseAmount = data.assetReleases[i].evaluate(evaluateAt);
             if (releaseAmount < 0) releaseAmount = 0;
@@ -190,7 +186,7 @@ contract AssetBasedIntentStandard is
         uint256[] memory startingBalances = abi.decode(context, (uint256[]));
 
         //check end balances
-        uint256 evaluateAt = timestamp - data.timestamp;
+        uint256 evaluateAt = timestamp - userInt.timestamp;
         for (uint256 i = 0; i < data.assetConstraints.length; i++) {
             int256 requiredBalance = data.assetConstraints[i].evaluate(evaluateAt);
             if (data.assetConstraints[i].evaluationType == EvaluationType.RELATIVE) {
