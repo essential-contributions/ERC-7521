@@ -48,35 +48,6 @@ function _packValidationData(bool sigFailed, uint48 validUntil, uint48 validAfte
     return (sigFailed ? 1 : 0) | (uint256(validUntil) << 160) | (uint256(validAfter) << (160 + 48));
 }
 
-// intersect two validation data ranges.
-function _intersectTimeRange(ValidationData memory vd1, ValidationData memory vd2)
-    pure
-    returns (ValidationData memory)
-{
-    uint48 validAfter1 = vd1.validAfter;
-    uint48 validUntil1 = vd1.validUntil;
-    uint48 validAfter2 = vd2.validAfter;
-    uint48 validUntil2 = vd2.validUntil;
-
-    if (validAfter1 < validAfter2) validAfter1 = validAfter2;
-    if (validUntil1 > validUntil2) validUntil1 = validUntil2;
-    return ValidationData(vd1.sigFailed || vd2.sigFailed, validAfter1, validUntil1);
-}
-
-// intersect two validation data ranges.
-function _intersectTimeRange(uint256 vd1, uint256 vd2) pure returns (uint256) {
-    bool sigFailed1 = uint8(vd1) == 1;
-    bool sigFailed2 = uint8(vd2) == 1;
-    uint48 validUntil1 = uint48(vd1 >> 160);
-    uint48 validUntil2 = uint48(vd2 >> 160);
-    uint48 validAfter1 = uint48(vd1 >> (48 + 160));
-    uint48 validAfter2 = uint48(vd2 >> (48 + 160));
-
-    if (validAfter1 < validAfter2) validAfter1 = validAfter2;
-    if (validUntil2 != 0 && validUntil1 > validUntil2) validUntil1 = validUntil2;
-    return ((sigFailed1 || sigFailed2) ? 1 : 0) | (uint256(validUntil1) << 160) | (uint256(validAfter1) << (160 + 48));
-}
-
 /**
  * keccak function over calldata.
  * @dev copy calldata into memory, do keccak and drop allocated memory. Strangely, this is more efficient than letting solidity do it.
