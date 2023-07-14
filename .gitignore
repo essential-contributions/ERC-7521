@@ -18,3 +18,7 @@ lcov.info
 
 # Environment config
 .vscode/
+
+# Added by cargo
+
+/target
