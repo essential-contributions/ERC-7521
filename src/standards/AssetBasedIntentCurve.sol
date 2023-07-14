@@ -53,7 +53,7 @@ library AssetBasedIntentCurveLib {
         } else if (curve.curveType == CurveType.EXPONENTIAL) {
             require(curve.params.length == 5, "invalid curve params");
         } else {
-            revert("uknown curve type");
+            revert("unknown curve type");
         }
     }
 
