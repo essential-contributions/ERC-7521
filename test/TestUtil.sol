@@ -17,9 +17,9 @@ abstract contract TestUtil {
 
     bytes32 public constant STANDARD_ID = 0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef;
 
-    uint256[] public constantParams = new uint256[](1);
-    uint256[] public linearParams = new uint256[](3);
-    uint256[] public exponentialParams = new uint256[](5);
+    int256[] public constantParams = new int256[](1);
+    int256[] public linearParams = new int256[](3);
+    int256[] public exponentialParams = new int256[](4);
 
     AssetBasedIntentCurve[] public assetReleaseCurves;
     AssetBasedIntentCurve[] public assetConstraintCurves;
@@ -38,9 +38,9 @@ abstract contract TestUtil {
     EntryPoint public entryPoint;
 
     constructor() {
-        constantParams = [10];
-        linearParams = [2, 10, 20];
-        exponentialParams = [2, 10, 2, 10, 20];
+        constantParams = [int256(10)];
+        linearParams = [int256(2), int256(10), int256(20)];
+        exponentialParams = [int256(2), int256(10), int256(2), int256(20)];
 
         constantAbsoluteCurve = AssetBasedIntentCurve({
             assetContract: address(0),

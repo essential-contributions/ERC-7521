@@ -17,7 +17,7 @@ contract AssetBasedIntentDataTest is Test, TestUtil {
 
     function test_validate_invalidAssets() public {
         AssetBasedIntentData memory assetBasedIntentData = assetBasedIntentDataMap[0];
-        assetBasedIntentData.assetReleases[0].params = new uint256[](0);
+        assetBasedIntentData.assetReleases[0].params = new int256[](0);
         vm.expectRevert("invalid curve params");
         assetBasedIntentData.validate();
     }
