@@ -14,18 +14,8 @@ import {AssetBasedIntentCurve, EvaluationType, AssetBasedIntentCurveLib} from ".
 import {Strings} from "openzeppelin/utils/Strings.sol";
 import {ERC721Holder} from "openzeppelin/token/ERC721/utils/ERC721Holder.sol";
 import {ERC1155Holder} from "openzeppelin/token/ERC1155/utils/ERC1155Holder.sol";
-import {IERC777Recipient} from "openzeppelin/token/ERC777/IERC777Recipient.sol";
-import {IERC1820Registry} from "openzeppelin/utils/introspection/IERC1820Registry.sol";
-import {IERC1820Implementer} from "openzeppelin/utils/introspection/IERC1820Implementer.sol";
 
-contract AssetBasedIntentStandard is
-    IIntentStandard,
-    IAssetRelease,
-    ERC721Holder,
-    ERC1155Holder,
-    IERC777Recipient,
-    IERC1820Implementer
-{
+contract AssetBasedIntentStandard is IIntentStandard, IAssetRelease, ERC721Holder, ERC1155Holder {
     using AssetBasedIntentDataLib for AssetBasedIntentData;
     using AssetBasedIntentCurveLib for AssetBasedIntentCurve;
     using UserIntentLib for UserIntent;
@@ -37,22 +27,12 @@ contract AssetBasedIntentStandard is
     uint256 private constant REVERT_REASON_MAX_LEN = 2048;
 
     /**
-     * Data for ERC-777 token support.
-     */
-    IERC1820Registry private _erc1820 = IERC1820Registry(0x1820a4B7618BdE71Dce8cdc73aAB6C95905faD24);
-    bytes32 private constant ERC777_RECIPIENT_INTERFACE_HASH = keccak256("ERC777TokensRecipient");
-    bytes32 private constant ERC1820_ACCEPT_MAGIC = keccak256("ERC1820_ACCEPT_MAGIC");
-
-    /**
      * Contract constructor.
      * @param entryPoint the address of the entrypoint contract
      */
     constructor(IEntryPoint entryPoint) {
         _entryPoint = entryPoint;
         entryPoint.registerIntentStandard(this);
-
-        // required for receiving ERC-777 tokens
-        _erc1820.setInterfaceImplementer(address(this), ERC777_RECIPIENT_INTERFACE_HASH, address(this));
     }
 
     /**
@@ -70,36 +50,6 @@ contract AssetBasedIntentStandard is
         );
 
         AssetWrapper.transferFrom(assetType, assetContract, assetId, address(this), to, amount);
-    }
-
-    /**
-     * Required implementation for receiving ERC-777 tokens.
-     */
-    function tokensReceived(
-        address operator,
-        address from,
-        address to,
-        uint256 amount,
-        bytes calldata userData,
-        bytes calldata operatorData
-    ) external override {
-        // accept all ERC-777 tokens
-    }
-
-    /**
-     * ERC1820 implementation required for receiving ERC-777 tokens.
-     */
-    function canImplementInterfaceForAddress(bytes32 interfaceHash, address account)
-        public
-        view
-        virtual
-        override
-        returns (bytes32)
-    {
-        if (interfaceHash == ERC777_RECIPIENT_INTERFACE_HASH && account == address(this)) {
-            return ERC1820_ACCEPT_MAGIC;
-        }
-        return bytes32(0x00);
     }
 
     /**
