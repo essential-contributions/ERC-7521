@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+/* solhint-disable func-name-mixedcase */
+/* solhint-disable private-vars-leading-underscore */
+
 import "forge-std/Test.sol";
 import "../src/core/NonceManager.sol";
 

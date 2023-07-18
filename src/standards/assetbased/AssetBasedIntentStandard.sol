@@ -3,19 +3,18 @@ pragma solidity ^0.8.13;
 
 /* solhint-disable private-vars-leading-underscore */
 
-import {AssetWrapper} from "../core/AssetWrapper.sol";
-import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
-import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
-import {IAssetRelease, AssetType} from "../interfaces/IAssetRelease.sol";
-import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
-import {Exec} from "../utils/Exec.sol";
+import {IIntentStandard} from "../../interfaces/IIntentStandard.sol";
+import {IEntryPoint} from "../../interfaces/IEntryPoint.sol";
+import {UserIntent, UserIntentLib} from "../../interfaces/UserIntent.sol";
+import {Exec} from "../../utils/Exec.sol";
+import {_balanceOf} from "./utils/AssetWrapper.sol";
+import {IAssetRelease} from "./IAssetRelease.sol";
+import {AssetHolderProxy} from "./AssetHolderProxy.sol";
 import {AssetBasedIntentData, parseAssetBasedIntentData, AssetBasedIntentDataLib} from "./AssetBasedIntentData.sol";
 import {AssetBasedIntentCurve, EvaluationType, AssetBasedIntentCurveLib} from "./AssetBasedIntentCurve.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
-import {ERC721Holder} from "openzeppelin/token/ERC721/utils/ERC721Holder.sol";
-import {ERC1155Holder} from "openzeppelin/token/ERC1155/utils/ERC1155Holder.sol";
 
-contract AssetBasedIntentStandard is IIntentStandard, IAssetRelease, ERC721Holder, ERC1155Holder {
+contract AssetBasedIntentStandard is AssetHolderProxy, IIntentStandard {
     using AssetBasedIntentDataLib for AssetBasedIntentData;
     using AssetBasedIntentCurveLib for AssetBasedIntentCurve;
     using UserIntentLib for UserIntent;
@@ -33,23 +32,6 @@ contract AssetBasedIntentStandard is IIntentStandard, IAssetRelease, ERC721Holde
     constructor(IEntryPoint entryPoint) {
         _entryPoint = entryPoint;
         entryPoint.registerIntentStandard(this);
-    }
-
-    /**
-     * Releases a user's asset(s) to the entryPoint contract.
-     */
-    function releaseAsset(AssetType assetType, address assetContract, uint256 assetId, address to, uint256 amount)
-        external
-        virtual
-        override
-    {
-        require(msg.sender == address(_entryPoint), "standard: not from EntryPoint");
-        require(
-            AssetWrapper.balanceOf(assetType, assetContract, assetId, address(this)) >= amount,
-            "standard: insufficient release balance"
-        );
-
-        AssetWrapper.transferFrom(assetType, assetContract, assetId, address(this), to, amount);
     }
 
     /**
@@ -82,7 +64,7 @@ contract AssetBasedIntentStandard is IIntentStandard, IAssetRelease, ERC721Holde
         uint256[] memory startingBalances = new uint256[](constraintLen);
         for (uint256 i = 0; i < constraintLen; i++) {
             if (data.assetConstraints[i].evaluationType == EvaluationType.RELATIVE) {
-                startingBalances[i] = AssetWrapper.balanceOf(
+                startingBalances[i] = _balanceOf(
                     data.assetConstraints[i].assetType,
                     data.assetConstraints[i].assetContract,
                     data.assetConstraints[i].assetId,
@@ -150,7 +132,7 @@ contract AssetBasedIntentStandard is IIntentStandard, IAssetRelease, ERC721Holde
                 if (requiredBalance < 0) requiredBalance = 0;
             }
 
-            uint256 currentBalance = AssetWrapper.balanceOf(
+            uint256 currentBalance = _balanceOf(
                 data.assetConstraints[i].assetType,
                 data.assetConstraints[i].assetContract,
                 data.assetConstraints[i].assetId,

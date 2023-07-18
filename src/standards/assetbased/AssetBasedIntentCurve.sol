@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import {AssetType} from "../interfaces/IAssetRelease.sol";
+import {AssetType} from "./utils/AssetWrapper.sol";
 
 //TODO: consider compressing all the flags into one uint256 for improved gas efficiency
 //TODO: we may want to support signed numbers for the parameters

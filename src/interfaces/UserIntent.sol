@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import {calldataKeccak} from "../core/Helpers.sol";
+import {_calldataKeccak} from "../utils/Helpers.sol";
 
 /**
  * User Intent struct
@@ -45,7 +45,7 @@ library UserIntentLib {
         address sender = userInt.sender;
         uint256 nonce = userInt.nonce;
         uint256 verificationGasLimit = userInt.verificationGasLimit;
-        bytes32 intentDataHash = calldataKeccak(userInt.intentData);
+        bytes32 intentDataHash = _calldataKeccak(userInt.intentData);
 
         return abi.encode(standard, sender, nonce, verificationGasLimit, intentDataHash);
     }

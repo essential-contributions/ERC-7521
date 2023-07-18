@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 //TODO: is callGasLimit1 and callGasLimit2 necessary?
 
-import {UserIntent} from "../interfaces/UserIntent.sol";
+import {UserIntent} from "../../interfaces/UserIntent.sol";
 import {AssetBasedIntentCurve, AssetBasedIntentCurveLib} from "./AssetBasedIntentCurve.sol";
 
 /**

@@ -11,7 +11,7 @@ import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
 import {Exec} from "../utils/Exec.sol";
-import {ValidationData, _parseValidationData} from "./Helpers.sol";
+import {ValidationData, _parseValidationData} from "../utils/Helpers.sol";
 import {ReentrancyGuard} from "openzeppelin/security/ReentrancyGuard.sol";
 
 contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {

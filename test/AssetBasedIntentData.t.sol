@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "forge-std/Test.sol";
+/* solhint-disable func-name-mixedcase */
 
+import "forge-std/Test.sol";
 import "../src/interfaces/UserIntent.sol";
-import "../src/standards/AssetBasedIntentData.sol";
+import "../src/standards/assetbased/AssetBasedIntentData.sol";
 import "./TestUtil.sol";
 
 contract AssetBasedIntentDataTest is Test, TestUtil {
