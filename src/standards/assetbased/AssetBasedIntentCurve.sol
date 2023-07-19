@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import {AssetType} from "../interfaces/IAssetRelease.sol";
+import {AssetType} from "./utils/AssetWrapper.sol";
 
 //TODO: consider compressing all the flags into one uint256 for improved gas efficiency
 //TODO: we may want to support signed numbers for the parameters
@@ -21,7 +21,7 @@ struct AssetBasedIntentCurve {
     AssetType assetType;
     CurveType curveType;
     EvaluationType evaluationType;
-    uint256[] params;
+    int256[] params;
 }
 
 enum CurveType {
@@ -51,31 +51,50 @@ library AssetBasedIntentCurveLib {
         } else if (curve.curveType == CurveType.LINEAR) {
             require(curve.params.length == 3, "invalid curve params");
         } else if (curve.curveType == CurveType.EXPONENTIAL) {
-            require(curve.params.length == 5, "invalid curve params");
+            require(curve.params.length == 4, "invalid curve params");
+            require(curve.params[2] >= 0, "invalid curve params"); //negative exponent
         } else {
-            revert("uknown curve type");
+            revert("unknown curve type");
         }
     }
 
-    function evaluate(AssetBasedIntentCurve calldata curve, uint256 x) public pure returns (uint256 val) {
+    function evaluate(AssetBasedIntentCurve calldata curve, uint256 x) public pure returns (int256 val) {
+        int256 sx = int256(x);
         if (curve.curveType == CurveType.CONSTANT) {
             val = curve.params[0];
         } else if (curve.curveType == CurveType.LINEAR) {
-            uint256 a = curve.params[0];
-            uint256 b = curve.params[1];
-            uint256 max = curve.params[2];
-            if (x > max) x = max;
-
-            val = (a * x) + b;
+            //m*x + b, params [m,b,max]
+            //negative "max" means to evaluate from right to left
+            int256 m = curve.params[0];
+            int256 b = curve.params[1];
+            int256 max = int256(curve.params[2]);
+            if (max < 0) {
+                //negative "max" means to flip along the y-axis
+                max = 0 - max;
+                if (sx > max) sx = max;
+                sx = max - sx;
+            }
+            if (sx > max) {
+                sx = max;
+            }
+            val = (m * sx) + b;
         } else if (curve.curveType == CurveType.EXPONENTIAL) {
-            uint256 a = curve.params[0];
-            uint256 b = curve.params[1];
-            uint256 e = curve.params[2];
-            uint256 f = curve.params[3];
-            uint256 max = curve.params[4];
-            if (x > max) x = max;
-
-            val = ((a * (x + f)) ** e) + b;
+            //m*(x**e) + b, params [m,b,e,max]
+            //negative "max" means to evaluate from right to left
+            int256 m = curve.params[0];
+            int256 b = curve.params[1];
+            uint256 e = uint256(curve.params[2]);
+            int256 max = curve.params[3];
+            if (max < 0) {
+                //negative "max" means to flip along the y-axis
+                max = 0 - max;
+                if (sx > max) sx = max;
+                sx = max - sx;
+            }
+            if (sx > max) {
+                sx = max;
+            }
+            val = (m * (sx ** e)) + b;
         } else {
             val = 0;
         }

@@ -11,7 +11,7 @@ import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
 import {Exec} from "../utils/Exec.sol";
-import {ValidationData, _parseValidationData, _intersectTimeRange} from "./Helpers.sol";
+import {ValidationData, _parseValidationData} from "../utils/Helpers.sol";
 import {ReentrancyGuard} from "openzeppelin/security/ReentrancyGuard.sol";
 
 contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
@@ -234,19 +234,12 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         require(intsLen > 0, "AA70 no intents");
 
         unchecked {
-            // run validation for first intent
-            _simulationOnlyValidations(solution.userIntents[0], 0);
-            bytes32 userIntHash = getUserIntHash(solution.userIntents[0]);
-            uint256 validationData = _validateUserIntent(solution.userIntents[0], userIntHash, 0);
-            ValidationData memory combinedValData = _parseValidationData(validationData);
-
-            // run validation for remaining intents
+            // run validation
             for (uint256 i = 0; i < intsLen; i++) {
                 _simulationOnlyValidations(solution.userIntents[i], i);
-                userIntHash = getUserIntHash(solution.userIntents[i]);
-                validationData = _validateUserIntent(solution.userIntents[i], userIntHash, i);
-                ValidationData memory newValData = _parseValidationData(validationData);
-                combinedValData = _intersectTimeRange(combinedValData, newValData);
+                bytes32 userIntHash = getUserIntHash(solution.userIntents[i]);
+                uint256 validationData = _validateUserIntent(solution.userIntents[i], userIntHash, i);
+                _validateAccountValidationData(validationData, i);
             }
 
             emit BeforeExecution();
@@ -264,7 +257,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             }
 
             // return results through a custom error
-            revert ExecutionResult(combinedValData.validAfter, combinedValData.validUntil, targetSuccess, targetResult);
+            revert ExecutionResult(true, targetSuccess, targetResult);
         } //unchecked
     }
 
@@ -349,7 +342,6 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      * @param userIntHash hash of the user's intent data.
      * @param userIntIndex the index of this intent.
      */
-    //TODO: does returning a parsed ValidationData save gas? (including intersecting with already parsed data)
     function _validateUserIntent(UserIntent calldata userInt, bytes32 userIntHash, uint256 userIntIndex)
         private
         returns (uint256 validationData)
@@ -363,19 +355,18 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         }
 
         // validate the intent itself
-        try standard.validateUserInt(userInt) returns (uint256 _validationData) {
-            validationData = _validationData;
-        } catch Error(string memory revertReason) {
-            revert FailedIntent(userIntIndex, string.concat("AA23 reverted: ", revertReason));
+        try standard.validateUserInt(userInt) {}
+        catch Error(string memory revertReason) {
+            revert FailedIntent(userIntIndex, string.concat("AA65 reverted: ", revertReason));
         } catch {
-            revert FailedIntent(userIntIndex, "AA23 reverted (or OOG)");
+            revert FailedIntent(userIntIndex, "AA65 reverted (or OOG)");
         }
 
         // validate intent with account
         try IAccount(userInt.sender).validateUserInt{gas: userInt.verificationGasLimit}(userInt, userIntHash) returns (
             uint256 _validationData
         ) {
-            validationData = _intersectTimeRange(validationData, _validationData);
+            validationData = _validationData;
         } catch Error(string memory revertReason) {
             revert FailedIntent(userIntIndex, string.concat("AA23 reverted: ", revertReason));
         } catch {

@@ -5,9 +5,8 @@ pragma solidity ^0.8.13;
 /* solhint-disable no-empty-blocks */
 /* solhint-disable private-vars-leading-underscore */
 
-import {AssetWrapper} from "../core/AssetWrapper.sol";
+import {EntryPointTruster} from "./EntryPointTruster.sol";
 import {IAccount} from "../interfaces/IAccount.sol";
-import {IAssetRelease, AssetType} from "../interfaces/IAssetRelease.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
 
@@ -16,7 +15,7 @@ import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
  * this contract provides the basic logic for implementing the IAccount interface  - validateUserInt
  * specific account implementation should inherit it and provide the account-specific logic
  */
-abstract contract BaseAccount is IAccount, IAssetRelease {
+abstract contract BaseAccount is EntryPointTruster, IAccount {
     using UserIntentLib for UserIntent;
 
     /**
@@ -29,66 +28,19 @@ abstract contract BaseAccount is IAccount, IAssetRelease {
     }
 
     /**
-     * return the entryPoint used by this account.
-     * subclass should return the current entryPoint used by this account.
-     */
-    function entryPoint() public view virtual returns (IEntryPoint);
-
-    /**
      * Validate user's signature and nonce.
      * subclass doesn't need to override this method. Instead, it should override the specific internal validation methods.
      */
+    // TODO: rename
     function validateUserInt(UserIntent calldata userInt, bytes32 userIntHash)
         external
         virtual
         override
+        onlyFromEntryPointValidationExecuting
         returns (uint256 validationData)
     {
-        _requireFromEntryPoint();
-        _requireValidationExecuting();
-
         validationData = _validateSignature(userInt, userIntHash);
         _validateNonce(userInt.nonce);
-    }
-
-    /**
-     * Releases a user's asset(s) to the target recipient.
-     */
-    function releaseAsset(AssetType assetType, address assetContract, uint256 assetId, address to, uint256 amount)
-        external
-        virtual
-        override
-    {
-        _requireFromEntryPoint();
-        _requireIntentExecuting();
-
-        // transfer tokens
-        require(
-            AssetWrapper.balanceOf(assetType, assetContract, assetId, address(this)) >= amount,
-            "account: insufficient release balance"
-        );
-        AssetWrapper.transferFrom(assetType, assetContract, assetId, address(this), to, amount);
-    }
-
-    /**
-     * ensure the intent comes from the known entrypoint.
-     */
-    function _requireFromEntryPoint() internal view virtual {
-        require(msg.sender == address(entryPoint()), "account: not from EntryPoint");
-    }
-
-    /**
-     * ensure the entrypoint is currently in the validation stage.
-     */
-    function _requireValidationExecuting() internal view virtual {
-        require(entryPoint().validationExecuting(), "account: EntryPoint not validating");
-    }
-
-    /**
-     * ensure the entrypoint is currently in the validation stage.
-     */
-    function _requireIntentExecuting() internal view virtual {
-        require(entryPoint().intentExecuting(), "account: EntryPoint not executing intents");
     }
 
     /**

@@ -74,7 +74,7 @@ interface IEntryPoint is INonceManager {
     /**
      * return value of simulateHandleIntents
      */
-    error ExecutionResult(uint48 validAfter, uint48 validUntil, bool targetSuccess, bytes targetResult);
+    error ExecutionResult(bool success, bool targetSuccess, bytes targetResult);
 
     //UserIntents handled, per solution
     struct IntentSolution {

@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "openzeppelin/utils/cryptography/ECDSA.sol";
+import {BaseAccount} from "../core/BaseAccount.sol";
+import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
+import {UserIntent} from "../interfaces/UserIntent.sol";
+import {_packValidationData} from "../utils/Helpers.sol";
+import {IAssetRelease} from "../standards/assetbased/IAssetRelease.sol";
+import {_balanceOf, _transferFrom, AssetType} from "../standards/assetbased/utils/AssetWrapper.sol";
+import {TokenCallbackHandler} from "./TokenCallbackHandler.sol";
+import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 
-import "../core/BaseAccount.sol";
-import "./TokenCallbackHandler.sol";
-
-contract Account is BaseAccount, TokenCallbackHandler {
+contract Account is BaseAccount, TokenCallbackHandler, IAssetRelease {
     using ECDSA for bytes32;
 
     address public owner;
@@ -29,11 +33,24 @@ contract Account is BaseAccount, TokenCallbackHandler {
     /**
      * Execute a transaction called from entry point while the entry point is in intent executing state.
      */
-    function execute(address _target, uint256 _value, bytes calldata _data) external {
-        _requireFromEntryPoint();
-        _requireIntentExecuting();
+    function execute(address _target, uint256 _value, bytes calldata _data)
+        external
+        onlyFromEntryPointIntentExecuting
+    {
         _call(_target, _value, _data);
         emit Executed(_entryPoint, _target, _value, _data);
+    }
+
+    /**
+     * Releases asset(s) to the target recipient.
+     */
+    function releaseAsset(AssetType assetType, address assetContract, uint256 assetId, address to, uint256 amount)
+        external
+        override
+        onlyFromEntryPointIntentExecuting
+    {
+        require(_balanceOf(assetType, assetContract, assetId, address(this)) >= amount, "insufficient release balance");
+        _transferFrom(assetType, assetContract, assetId, address(this), to, amount);
     }
 
     /// implement template method of BaseAccount
@@ -45,9 +62,9 @@ contract Account is BaseAccount, TokenCallbackHandler {
     {
         bytes32 hash = userIntHash.toEthSignedMessageHash();
         if (owner != hash.recover(userInt.signature)) {
-            return 1;
+            return _packValidationData(true, uint48(userInt.timestamp), 0);
         }
-        return 0;
+        return _packValidationData(false, uint48(userInt.timestamp), 0);
     }
 
     /**
