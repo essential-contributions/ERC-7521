@@ -17,9 +17,9 @@ abstract contract TestUtil {
 
     bytes32 public constant STANDARD_ID = 0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef;
 
-    uint256[] public constantParams = new uint256[](1);
-    uint256[] public linearParams = new uint256[](3);
-    uint256[] public exponentialParams = new uint256[](5);
+    int256[] public constantParams = new int256[](1);
+    int256[] public linearParams = new int256[](3);
+    int256[] public exponentialParams = new int256[](4);
 
     AssetBasedIntentCurve[] public assetReleaseCurves;
     AssetBasedIntentCurve[] public assetConstraintCurves;
@@ -38,9 +38,9 @@ abstract contract TestUtil {
     EntryPoint public entryPoint;
 
     constructor() {
-        constantParams = [10];
-        linearParams = [2, 10, 20];
-        exponentialParams = [2, 10, 2, 10, 20];
+        constantParams = [int256(10)];
+        linearParams = [int256(2), int256(10), int256(20)];
+        exponentialParams = [int256(2), int256(10), int256(2), int256(20)];
 
         constantAbsoluteCurve = AssetBasedIntentCurve({
             assetContract: address(0),
@@ -94,7 +94,6 @@ abstract contract TestUtil {
         assetReleaseCurves.push(constantAbsoluteCurve);
         assetConstraintCurves.push(constantAbsoluteCurve);
 
-        assetBasedIntentDataMap[0].timestamp = block.timestamp;
         assetBasedIntentDataMap[0].callGasLimit1 = 100000;
         assetBasedIntentDataMap[0].callGasLimit2 = 100000;
         assetBasedIntentDataMap[0].callData1 = "call data 1"; // TODO: make use of common structs
@@ -108,6 +107,7 @@ abstract contract TestUtil {
             standard: STANDARD_ID,
             sender: address(this),
             nonce: 123,
+            timestamp: block.timestamp,
             verificationGasLimit: 100000,
             intentData: abi.encode(assetBasedIntentData),
             signature: "signature"

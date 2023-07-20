@@ -8,7 +8,6 @@ import {AssetBasedIntentCurve, AssetBasedIntentCurveLib} from "./AssetBasedInten
 
 /**
  * Asset Based Intent Data struct
- * @param timestamp the time when the intent was created.
  * @param callGasLimit1 max gas to be spent on the first part of intent call data.
  * @param callGasLimit2 max gas to be spent on the second part of intent call data.
  * @param callData1 the first part of the intents desired call data.
@@ -17,7 +16,6 @@ import {AssetBasedIntentCurve, AssetBasedIntentCurveLib} from "./AssetBasedInten
  * @param assetConstraint list of assets that are required to be owned by the account at the end of the solution execution.
  */
 struct AssetBasedIntentData {
-    uint256 timestamp;
     uint256 callGasLimit1;
     uint256 callGasLimit2;
     bytes callData1;

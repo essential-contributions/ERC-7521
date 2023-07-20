@@ -3,10 +3,10 @@ pragma solidity ^0.8.13;
 
 /* solhint-disable no-empty-blocks */
 
-import "openzeppelin/utils/introspection/IERC165.sol";
-import "openzeppelin/token/ERC777/IERC777Recipient.sol";
-import "openzeppelin/token/ERC721/IERC721Receiver.sol";
-import "openzeppelin/token/ERC1155/IERC1155Receiver.sol";
+import {IERC165} from "openzeppelin/utils/introspection/IERC165.sol";
+import {IERC777Recipient} from "openzeppelin/token/ERC777/IERC777Recipient.sol";
+import {IERC721Receiver} from "openzeppelin/token/ERC721/IERC721Receiver.sol";
+import {IERC1155Receiver} from "openzeppelin/token/ERC1155/IERC1155Receiver.sol";
 
 /**
  * Token callback handler.

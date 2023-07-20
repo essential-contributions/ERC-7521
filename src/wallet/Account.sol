@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "openzeppelin/utils/cryptography/ECDSA.sol";
-
-import "../core/BaseAccount.sol";
-import "./TokenCallbackHandler.sol";
+import {BaseAccount} from "../core/BaseAccount.sol";
+import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
+import {UserIntent} from "../interfaces/UserIntent.sol";
+import {_packValidationData} from "../core/Helpers.sol";
+import {TokenCallbackHandler} from "./TokenCallbackHandler.sol";
+import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 
 contract Account is BaseAccount, TokenCallbackHandler {
     using ECDSA for bytes32;
@@ -45,9 +47,9 @@ contract Account is BaseAccount, TokenCallbackHandler {
     {
         bytes32 hash = userIntHash.toEthSignedMessageHash();
         if (owner != hash.recover(userInt.signature)) {
-            return 1;
+            return _packValidationData(true, uint48(userInt.timestamp), 0);
         }
-        return 0;
+        return _packValidationData(false, uint48(userInt.timestamp), 0);
     }
 
     /**

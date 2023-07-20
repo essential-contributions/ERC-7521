@@ -148,15 +148,19 @@ contract AssetBasedIntentStandard is
 
         //release tokens
         address releaseTo = address(entryPoint.getIntentStandardContract(userInt.getStandard()));
-        uint256 evaluateAt = timestamp - data.timestamp;
+        uint256 evaluateAt = 0;
+        if (timestamp > userInt.timestamp) {
+            evaluateAt = timestamp - userInt.timestamp;
+        }
         for (uint256 i = 0; i < data.assetReleases.length; i++) {
-            uint256 releaseAmount = data.assetReleases[i].evaluate(evaluateAt);
+            int256 releaseAmount = data.assetReleases[i].evaluate(evaluateAt);
+            if (releaseAmount < 0) releaseAmount = 0;
             IAssetRelease(userInt.sender).releaseAsset(
                 data.assetReleases[i].assetType,
                 data.assetReleases[i].assetContract,
                 data.assetReleases[i].assetId,
                 releaseTo,
-                releaseAmount
+                uint256(releaseAmount)
             );
         }
 
@@ -185,11 +189,15 @@ contract AssetBasedIntentStandard is
         uint256[] memory startingBalances = abi.decode(context, (uint256[]));
 
         //check end balances
-        uint256 evaluateAt = timestamp - data.timestamp;
+        uint256 evaluateAt = 0;
+        if (timestamp > userInt.timestamp) {
+            evaluateAt = timestamp - userInt.timestamp;
+        }
         for (uint256 i = 0; i < data.assetConstraints.length; i++) {
-            uint256 requiredBalance = data.assetConstraints[i].evaluate(evaluateAt);
+            int256 requiredBalance = data.assetConstraints[i].evaluate(evaluateAt);
             if (data.assetConstraints[i].evaluationType == EvaluationType.RELATIVE) {
-                requiredBalance += startingBalances[i];
+                requiredBalance = int256(startingBalances[i]) + requiredBalance;
+                if (requiredBalance < 0) requiredBalance = 0;
             }
 
             uint256 currentBalance = AssetWrapper.balanceOf(
@@ -199,7 +207,7 @@ contract AssetBasedIntentStandard is
                 userInt.sender
             );
             require(
-                currentBalance >= requiredBalance,
+                currentBalance >= uint256(requiredBalance),
                 string.concat(
                     "insufficient balance (required: ",
                     Strings.toString(requiredBalance),
