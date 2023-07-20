@@ -6,7 +6,6 @@ enum AssetType {
     ERC20,
     ERC721,
     ERC721_ID,
-    ERC777,
     ERC1155,
     COUNT
 }
