@@ -9,6 +9,7 @@ contract TestERC1155 is ERC1155 {
     uint256 private constant _NFT_COST = 1 ether;
 
     uint256 private _nftIncrimenter = 0;
+    uint256 private _lastBoughtNFT = 0;
 
     constructor()
         // solhint-disable-next-line no-empty-blocks
@@ -21,10 +22,10 @@ contract TestERC1155 is ERC1155 {
 
     function buyNFT(address to) external payable returns (uint256) {
         require(msg.value >= _NFT_COST, "Insufficient payment");
-        uint256 nftId = uint256(keccak256(abi.encode(_NFT_TOKEN_SEED, _nftIncrimenter)));
+        _lastBoughtNFT = uint256(keccak256(abi.encode(_NFT_TOKEN_SEED, _nftIncrimenter)));
         _nftIncrimenter++;
-        _mint(to, nftId, 1, "");
-        return nftId;
+        _mint(to, _lastBoughtNFT, 1, "");
+        return _lastBoughtNFT;
     }
 
     function sellNFT(address from, uint256 id) external {
@@ -34,5 +35,9 @@ contract TestERC1155 is ERC1155 {
         // solhint-disable-next-line avoid-low-level-calls
         (bool success,) = msg.sender.call{value: _NFT_COST}("");
         require(success, "Payment failed");
+    }
+
+    function lastBoughtNFT() external view returns (uint256) {
+        return _lastBoughtNFT;
     }
 }

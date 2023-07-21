@@ -44,9 +44,10 @@ library UserIntentLib {
         bytes32 standard = getStandard(userInt);
         address sender = userInt.sender;
         uint256 nonce = userInt.nonce;
+        uint256 timestamp = userInt.timestamp;
         uint256 verificationGasLimit = userInt.verificationGasLimit;
         bytes32 intentDataHash = _calldataKeccak(userInt.intentData);
 
-        return abi.encode(standard, sender, nonce, verificationGasLimit, intentDataHash);
+        return abi.encode(standard, sender, nonce, timestamp, verificationGasLimit, intentDataHash);
     }
 }

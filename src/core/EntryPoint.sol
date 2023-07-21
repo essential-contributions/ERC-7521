@@ -60,9 +60,9 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
                     if (Exec.getReturnDataSize() > CONTEXT_DATA_MAX_LEN) {
                         revert FailedIntent(i, "AA60 first pass invalid context");
                     }
-                    contextData[i] = Exec.getReturnData();
+                    contextData[i] = Exec.getReturnDataMax(0x40, CONTEXT_DATA_MAX_LEN);
                 } else {
-                    bytes memory reason = Exec.getReturnDataMax(REVERT_REASON_MAX_LEN);
+                    bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
                     if (reason.length > 0) {
                         revert FailedIntent(i, string.concat("AA61 first pass reverted: ", string(reason)));
                     } else {
@@ -79,7 +79,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
                     SolutionStep calldata step = solution.steps1[i];
                     bool success = Exec.call(step.target, step.value, step.callData, gasleft());
                     if (!success) {
-                        bytes memory reason = Exec.getReturnDataMax(REVERT_REASON_MAX_LEN);
+                        bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
                         if (reason.length > 0) {
                             revert FailedSolution(i, string.concat("AA71 first pass reverted: ", string(reason)));
                         } else {
@@ -105,9 +105,9 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
                     if (Exec.getReturnDataSize() > CONTEXT_DATA_MAX_LEN) {
                         revert FailedIntent(i, "AA62 second pass invalid context");
                     }
-                    contextData[i] = Exec.getReturnData();
+                    contextData[i] = Exec.getReturnDataMax(0x40, CONTEXT_DATA_MAX_LEN);
                 } else {
-                    bytes memory reason = Exec.getReturnDataMax(REVERT_REASON_MAX_LEN);
+                    bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
                     if (reason.length > 0) {
                         revert FailedIntent(i, string.concat("AA63 second pass reverted: ", string(reason)));
                     } else {
@@ -124,7 +124,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
                     SolutionStep calldata step = solution.steps2[i];
                     bool success = Exec.call(step.target, step.value, step.callData, gasleft());
                     if (!success) {
-                        bytes memory reason = Exec.getReturnDataMax(REVERT_REASON_MAX_LEN);
+                        bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
                         if (reason.length > 0) {
                             revert FailedSolution(i, string.concat("AA72 second pass reverted: ", string(reason)));
                         } else {
@@ -145,7 +145,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
                     gasleft()
                 );
                 if (!success) {
-                    bytes memory reason = Exec.getReturnDataMax(REVERT_REASON_MAX_LEN);
+                    bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
                     if (reason.length > 0) {
                         revert FailedIntent(i, string.concat("AA64 end verify reverted: ", string(reason)));
                     } else {

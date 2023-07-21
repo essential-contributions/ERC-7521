@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import {_balanceOf, _transferFrom, _setApprovalForAll, AssetType} from "./utils/AssetWrapper.sol";
+import {_balanceOf, _transfer, _transferFrom, _setApprovalForAll, AssetType} from "./utils/AssetWrapper.sol";
+import {EntryPointTruster} from "../../core/EntryPointTruster.sol";
 import {IERC165} from "openzeppelin/utils/introspection/IERC165.sol";
 import {IERC721Receiver} from "openzeppelin/token/ERC721/IERC721Receiver.sol";
 import {IERC1155Receiver} from "openzeppelin/token/ERC1155/IERC1155Receiver.sol";
@@ -9,7 +10,7 @@ import {IERC1155Receiver} from "openzeppelin/token/ERC1155/IERC1155Receiver.sol"
 /**
  * Contract that holds assets and allows a trusted EntryPoint to perform certain actions.
  */
-abstract contract AssetHolderProxy is IERC721Receiver, IERC1155Receiver {
+abstract contract AssetHolderProxy is EntryPointTruster, IERC721Receiver, IERC1155Receiver {
     /**
      * Gets the balance of a given asset.
      * @param assetType the type of asset (ETH, ERC-20, ERC721, etc).
@@ -28,9 +29,12 @@ abstract contract AssetHolderProxy is IERC721Receiver, IERC1155Receiver {
      * @param to the address to send the assets to.
      * @param amount the amount to release.
      */
-    function transfer(AssetType assetType, address assetContract, uint256 assetId, address to, uint256 amount) public {
+    function transfer(AssetType assetType, address assetContract, uint256 assetId, address to, uint256 amount)
+        external
+        onlyFromEntryPointSolutionExecuting
+    {
         require(_balanceOf(assetType, assetContract, assetId, address(this)) >= amount, "insufficient transfer balance");
-        _transferFrom(assetType, assetContract, assetId, address(this), to, amount);
+        _transfer(assetType, assetContract, assetId, address(this), to, amount);
     }
 
     /**
@@ -40,9 +44,12 @@ abstract contract AssetHolderProxy is IERC721Receiver, IERC1155Receiver {
      * @param assetId the identifier for a specific asset.
      * @param to the address to send the assets to.
      */
-    function transferAll(AssetType assetType, address assetContract, uint256 assetId, address to) public {
+    function transferAll(AssetType assetType, address assetContract, uint256 assetId, address to)
+        external
+        onlyFromEntryPointSolutionExecuting
+    {
         uint256 amount = _balanceOf(assetType, assetContract, assetId, address(this));
-        _transferFrom(assetType, assetContract, assetId, address(this), to, amount);
+        _transfer(assetType, assetContract, assetId, address(this), to, amount);
     }
 
     /**
@@ -59,8 +66,23 @@ abstract contract AssetHolderProxy is IERC721Receiver, IERC1155Receiver {
         uint256 assetId,
         address operator,
         bool approved
-    ) public {
+    ) external onlyFromEntryPointSolutionExecuting {
         _setApprovalForAll(assetType, assetContract, assetId, operator, approved);
+    }
+
+    /**
+     * Execute a transaction called from the entry point while the entry point is in the intent executing state.
+     * @param target The address of the contract to execute the transaction on.
+     * @param value The amount of ether (in wei) to attach to the transaction.
+     * @param data The data containing the function selector and parameters to be executed on the target contract.
+     */
+    function execute(address target, uint256 value, bytes calldata data) external onlyFromEntryPointSolutionExecuting {
+        (bool success, bytes memory result) = target.call{value: value}(data);
+        if (!success) {
+            assembly {
+                revert(add(result, 32), mload(result))
+            }
+        }
     }
 
     /**

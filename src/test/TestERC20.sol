@@ -9,7 +9,7 @@ contract TestERC20 is ERC20 {
         ERC20("TST20", "TestERC20")
     {}
 
-    function mint(address sender, uint256 amount) external {
-        _mint(sender, amount);
+    function mint(address to, uint256 amount) external {
+        _mint(to, amount);
     }
 }

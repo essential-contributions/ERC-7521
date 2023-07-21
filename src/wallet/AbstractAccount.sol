@@ -6,11 +6,11 @@ import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {_packValidationData} from "../utils/Helpers.sol";
 import {IAssetRelease} from "../standards/assetbased/IAssetRelease.sol";
-import {_balanceOf, _transferFrom, AssetType} from "../standards/assetbased/utils/AssetWrapper.sol";
+import {_balanceOf, _transfer, AssetType} from "../standards/assetbased/utils/AssetWrapper.sol";
 import {TokenCallbackHandler} from "./TokenCallbackHandler.sol";
 import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 
-contract Account is BaseAccount, TokenCallbackHandler, IAssetRelease {
+contract AbstractAccount is BaseAccount, TokenCallbackHandler, IAssetRelease {
     using ECDSA for bytes32;
 
     address public owner;
@@ -50,7 +50,7 @@ contract Account is BaseAccount, TokenCallbackHandler, IAssetRelease {
         onlyFromEntryPointIntentExecuting
     {
         require(_balanceOf(assetType, assetContract, assetId, address(this)) >= amount, "insufficient release balance");
-        _transferFrom(assetType, assetContract, assetId, address(this), to, amount);
+        _transfer(assetType, assetContract, assetId, address(this), to, amount);
     }
 
     /// implement template method of BaseAccount
