@@ -33,7 +33,7 @@ contract GasslessAirdropConditionalPurchaseNFT is ScenarioTestEnvironment {
         _reqTokenId = _testERC721.nextNFTForSale();
     }
 
-    function test_gasslessAirdrop() public {
+    function test_gasslessAirdropConditionalPurchaseNFT() public {
         //create account intent
         bytes memory intentCallData1 = _accountClaimAirdropERC20(100 ether);
         bytes memory intentCallData2 =

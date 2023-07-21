@@ -32,7 +32,7 @@ contract ConditionalPurchaseNFT is ScenarioTestEnvironment {
         vm.deal(address(_account), 10 ether);
     }
 
-    function test_gasslessAirdrop() public {
+    function test_conditionalPurchaseNFT() public {
         //create account intent
         bytes memory intentCallData1;
         bytes memory intentCallData2 =

@@ -25,7 +25,7 @@ contract GasslessAirdropPurchaseNFT is ScenarioTestEnvironment {
         super.setUp();
     }
 
-    function test_gasslessAirdrop() public {
+    function test_gasslessAirdropPurchaseNFT() public {
         //create account intent
         bytes memory intentCallData1 = _accountClaimAirdropERC20(100 ether);
         bytes memory intentCallData2 = _accountBuyERC1155(1 ether);
