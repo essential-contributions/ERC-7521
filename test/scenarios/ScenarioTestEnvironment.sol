@@ -60,6 +60,8 @@ abstract contract ScenarioTestEnvironment is Test {
 
     /**
      * Private helper function to quickly mint wrapped native tokens.
+     * @param to The address to receive the minted tokens.
+     * @param amount The amount of tokens to mint.
      */
     function _mintWrappedNativeToken(address to, uint256 amount) internal {
         vm.deal(address(this), amount);
@@ -69,6 +71,8 @@ abstract contract ScenarioTestEnvironment is Test {
 
     /**
      * Private helper function to build call data for the account buying an ERC721 NFT.
+     * @param price The price of the ERC721 NFT to buy.
+     * @return The encoded call data for the buy action.
      */
     function _accountBuyERC721(uint256 price) internal view returns (bytes memory) {
         bytes memory buyCall = abi.encodeWithSelector(TestERC721.buyNFT.selector, address(_account));
@@ -77,6 +81,8 @@ abstract contract ScenarioTestEnvironment is Test {
 
     /**
      * Private helper function to build call data for the account buying an ERC1155 NFT.
+     * @param price The price of the ERC1155 NFT to buy.
+     * @return The encoded call data for the buy action.
      */
     function _accountBuyERC1155(uint256 price) internal view returns (bytes memory) {
         bytes memory buyCall = abi.encodeWithSelector(TestERC1155.buyNFT.selector, address(_account));
@@ -84,7 +90,11 @@ abstract contract ScenarioTestEnvironment is Test {
     }
 
     /**
-     * Private helper function to build call data for the account buying an ERC1155 NFT and then transfering an ERC721.
+     * Private helper function to build call data for the account buying an ERC1155 NFT and then transferring an ERC721.
+     * @param price The price of the ERC1155 NFT to buy.
+     * @param transferAssetId The ID of the ERC721 token to transfer after buying the ERC1155.
+     * @param transferTo The address to transfer the ERC721 token to.
+     * @return The encoded call data for the buy and transfer actions.
      */
     function _accountBuyERC1155AndTransferERC721(uint256 price, uint256 transferAssetId, address transferTo)
         internal
@@ -109,6 +119,8 @@ abstract contract ScenarioTestEnvironment is Test {
 
     /**
      * Private helper function to build call data for the account claiming an ERC20 airdrop.
+     * @param amount The amount of ERC20 tokens to claim in the airdrop.
+     * @return The encoded call data for the claim airdrop action.
      */
     function _accountClaimAirdropERC20(uint256 amount) internal view returns (bytes memory) {
         bytes memory mintCall = abi.encodeWithSelector(TestERC20.mint.selector, address(_account), amount);
@@ -117,6 +129,7 @@ abstract contract ScenarioTestEnvironment is Test {
 
     /**
      * Private helper function to build solver solution steps approving token transfer for swaps.
+     * @return The array of solution steps for token approvals.
      */
     function _solverApproveERC20() internal view returns (IEntryPoint.SolutionStep[] memory) {
         address tokenHolder = address(_intentStandard);
@@ -138,6 +151,9 @@ abstract contract ScenarioTestEnvironment is Test {
 
     /**
      * Private helper function to build solver solution steps for swapping tokens.
+     * @param minETH The minimum amount of ETH to be received after the swap.
+     * @param to The address to receive the swapped ETH.
+     * @return The array of solution steps for swapping tokens.
      */
     function _solverSwapAllERC20ForETH(uint256 minETH, address to)
         internal
@@ -163,7 +179,12 @@ abstract contract ScenarioTestEnvironment is Test {
     }
 
     /**
-     * Private helper function to build solver solution steps for swapping tokens.
+     * Private helper function to build solver solution steps for swapping tokens and forwarding some ETH.
+     * @param minETH The minimum amount of ETH to be received after the swap.
+     * @param to The address to receive the swapped ETH.
+     * @param forwardAmount The amount of ETH to forward to another address.
+     * @param forwardTo The address to forward the ETH to.
+     * @return The array of solution steps for swapping tokens and forwarding ETH.
      */
     function _solverSwapAllERC20ForETHAndForward(uint256 minETH, address to, uint256 forwardAmount, address forwardTo)
         internal
@@ -197,6 +218,9 @@ abstract contract ScenarioTestEnvironment is Test {
 
     /**
      * Private helper function to build solver solution steps for buying and forwarding an ERC721 token.
+     * @param price The price of the ERC721 token to buy.
+     * @param forwardTo The address to forward the purchased ERC721 token to.
+     * @return The array of solution steps for buying and forwarding an ERC721 token.
      */
     function _solverBuyERC721AndForward(uint256 price, address forwardTo)
         internal
@@ -218,7 +242,10 @@ abstract contract ScenarioTestEnvironment is Test {
     }
 
     /**
-     * Private helper function to build solver solution steps for buying and forwarding an ERC721 token.
+     * Private helper function to build solver solution steps for selling an ERC721 token and forwarding ETH.
+     * @param tokenId The ID of the ERC721 token to sell.
+     * @param forwardTo The address to forward the received ETH to.
+     * @return The array of solution steps for selling an ERC721 token and forwarding ETH.
      */
     function _solverSellERC721AndForward(uint256 tokenId, address forwardTo)
         internal
@@ -244,7 +271,10 @@ abstract contract ScenarioTestEnvironment is Test {
     }
 
     /**
-     * Private helper function to build an asset based intent struct.
+     * Private helper function to build an asset-based intent struct.
+     * @param callData1 The encoded call data for the first pass of the intent.
+     * @param callData2 The encoded call data for the second pass of the intent.
+     * @return The created UserIntent struct.
      */
     function _createIntent(bytes memory callData1, bytes memory callData2) internal view returns (UserIntent memory) {
         return
@@ -253,6 +283,10 @@ abstract contract ScenarioTestEnvironment is Test {
 
     /**
      * Private helper function to build an intent solution struct.
+     * @param userIntent The UserIntent struct representing the user's intent.
+     * @param steps1 The array of solution steps for the first pass.
+     * @param steps2 The array of solution steps for the second pass.
+     * @return The created IntentSolution struct.
      */
     function _createSolution(
         UserIntent memory userIntent,
@@ -265,7 +299,9 @@ abstract contract ScenarioTestEnvironment is Test {
     }
 
     /**
-     * Private helper function to add account owner signature to an intent.
+     * Private helper function to add the account owner's signature to an intent.
+     * @param userIntent The UserIntent struct representing the user's intent.
+     * @return The UserIntent struct with the added signature.
      */
     function _signIntent(UserIntent memory userIntent) internal pure returns (UserIntent memory) {
         bytes32 userIntentHash = userIntent.hash();
@@ -277,6 +313,9 @@ abstract contract ScenarioTestEnvironment is Test {
 
     /**
      * Private helper function to combine solution steps.
+     * @param a The array of solution steps for the first action.
+     * @param b The array of solution steps for the second action.
+     * @return The combined array of solution steps.
      */
     function _combineSolutionSteps(IEntryPoint.SolutionStep[] memory a, IEntryPoint.SolutionStep[] memory b)
         internal
@@ -295,6 +334,8 @@ abstract contract ScenarioTestEnvironment is Test {
 
     /**
      * Private helper function to get the public address of a private key.
+     * @param privateKey The private key to derive the public address from.
+     * @return The derived public address.
      */
     function _getPublicAddress(uint256 privateKey) internal pure returns (address) {
         bytes32 digest = keccak256(abi.encodePacked("test data"));
