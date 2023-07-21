@@ -31,10 +31,10 @@ abstract contract ScenarioTestEnvironment is Test {
     TestWrappedNativeToken internal _testWrappedNativeToken;
     SolverUtils internal _solverUtils;
 
-    uint256 internal constant _privateKey = 0x0ea23cd08ccb92dd31e14f9b238b4367f8e96715780d0f6295a43141d14f8df9;
+    uint256 internal constant _privateKey = uint256(keccak256("account_private_key"));
     address internal _publicAddress = _getPublicAddress(_privateKey);
 
-    uint256 internal constant _privateKeySolver = 0x295a43141d14f8df90ea23cd08ccb92dd31e14f9b238b4367f8e96715780d0f6;
+    uint256 internal constant _privateKeySolver = uint256(keccak256("solver_private_key"));
     address internal _publicAddressSolver = _getPublicAddress(_privateKeySolver);
 
     /**

@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import "openzeppelin/token/ERC721/ERC721.sol";
 
 contract TestERC721 is ERC721 {
-    uint256 private constant _NFT_TOKEN_SEED = 0x09aa695c0d71bb929d9551218002d26e8c31a6028bdcfe77c0f4994d2287e545;
+    uint256 private constant _NFT_TOKEN_SEED = uint256(keccak256("ERC721_NFT_TOKEN_SEED"));
     uint256 private constant _NFT_COST = 1 ether;
 
     uint256 private _nftIncrimenter = 0;
