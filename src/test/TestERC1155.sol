@@ -40,4 +40,8 @@ contract TestERC1155 is ERC1155 {
     function lastBoughtNFT() external view returns (uint256) {
         return _lastBoughtNFT;
     }
+
+    function nextNFTForSale() external view returns (uint256) {
+        return uint256(keccak256(abi.encode(_NFT_TOKEN_SEED, _nftIncrimenter)));
+    }
 }

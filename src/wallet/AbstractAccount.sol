@@ -33,12 +33,25 @@ contract AbstractAccount is BaseAccount, TokenCallbackHandler, IAssetRelease {
     /**
      * Execute a transaction called from entry point while the entry point is in intent executing state.
      */
-    function execute(address _target, uint256 _value, bytes calldata _data)
+    function execute(address target, uint256 value, bytes calldata data) external onlyFromEntryPointIntentExecuting {
+        _call(target, value, data);
+        emit Executed(_entryPoint, target, value, data);
+    }
+
+    /**
+     * Execute multiple transactions called from entry point while the entry point is in intent executing state.
+     */
+    function executeMulti(address[] calldata targets, uint256[] calldata values, bytes[] calldata datas)
         external
         onlyFromEntryPointIntentExecuting
     {
-        _call(_target, _value, _data);
-        emit Executed(_entryPoint, _target, _value, _data);
+        require(targets.length == values.length, "invalid multi call inputs");
+        require(targets.length == datas.length, "invalid multi call inputs");
+
+        for (uint256 i = 0; i < targets.length; i++) {
+            _call(targets[i], values[i], datas[i]);
+            emit Executed(_entryPoint, targets[i], values[i], datas[i]);
+        }
     }
 
     /**

@@ -71,13 +71,27 @@ abstract contract AssetHolderProxy is EntryPointTruster, IERC721Receiver, IERC11
     }
 
     /**
-     * Execute a transaction called from the entry point while the entry point is in the intent executing state.
+     * Execute a transaction as part of an intent solution.
      * @param target The address of the contract to execute the transaction on.
      * @param value The amount of ether (in wei) to attach to the transaction.
      * @param data The data containing the function selector and parameters to be executed on the target contract.
      */
     function execute(address target, uint256 value, bytes calldata data) external onlyFromEntryPointSolutionExecuting {
         (bool success, bytes memory result) = target.call{value: value}(data);
+        if (!success) {
+            assembly {
+                revert(add(result, 32), mload(result))
+            }
+        }
+    }
+
+    /**
+     * Execute a transaction as part of an intent solution.
+     * @param target The address of the contract to execute the transaction on.
+     * @param data The data containing the function selector and parameters to be executed on the target contract.
+     */
+    function delegate(address target, bytes calldata data) external onlyFromEntryPointSolutionExecuting {
+        (bool success, bytes memory result) = target.delegatecall(data);
         if (!success) {
             assembly {
                 revert(add(result, 32), mload(result))

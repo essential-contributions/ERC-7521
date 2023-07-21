@@ -18,21 +18,25 @@ library AssetBasedIntentBuilder {
      * @param standard The standard ID for the intent.
      * @param sender The address of the intent sender.
      * @param nonce The nonce to prevent replay attacks.
+     * @param timestamp The unix time stamp (in seconds) from when this intent was signed.
      * @param callData1 The data for the first call.
      * @param callData2 The data for the second call.
      * @return userIntent The created user intent.
      */
-    function create(bytes32 standard, address sender, uint256 nonce, bytes memory callData1, bytes memory callData2)
-        public
-        view
-        returns (UserIntent memory userIntent)
-    {
+    function create(
+        bytes32 standard,
+        address sender,
+        uint256 nonce,
+        uint256 timestamp,
+        bytes memory callData1,
+        bytes memory callData2
+    ) public pure returns (UserIntent memory userIntent) {
         AssetBasedIntentCurve[] memory assetReleaseCurves;
         AssetBasedIntentCurve[] memory assetConstraintCurves;
 
         AssetBasedIntentData memory assetBasedIntentData = AssetBasedIntentData({
-            callGasLimit1: 100000,
-            callGasLimit2: 100000,
+            callGasLimit1: 1000000,
+            callGasLimit2: 1000000,
             callData1: callData1,
             callData2: callData2,
             assetReleases: assetReleaseCurves,
@@ -43,8 +47,8 @@ library AssetBasedIntentBuilder {
             standard: standard,
             sender: sender,
             nonce: nonce,
-            timestamp: block.timestamp,
-            verificationGasLimit: 100000,
+            timestamp: timestamp,
+            verificationGasLimit: 1000000,
             intentData: "",
             signature: ""
         });
@@ -333,7 +337,7 @@ function linearCurve(int256 m, int256 b, uint256 max, bool flipY) pure returns (
  * @return params The array containing the curve parameters.
  */
 function exponentialCurve(int256 m, int256 b, int256 e, uint256 max, bool flipY) pure returns (int256[] memory) {
-    int256[] memory params = new int256[](1);
+    int256[] memory params = new int256[](4);
     int256 signedMax = int256(max);
     if (flipY) signedMax = -signedMax;
     params[0] = m;

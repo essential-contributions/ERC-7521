@@ -14,6 +14,7 @@ import "../../src/test/TestERC721.sol";
 import "../../src/test/TestERC1155.sol";
 import "../../src/test/TestUniswap.sol";
 import "../../src/test/TestWrappedNativeToken.sol";
+import "../../src/test/SolverUtils.sol";
 
 abstract contract ScenarioTestEnvironment is Test {
     using UserIntentLib for UserIntent;
@@ -28,6 +29,7 @@ abstract contract ScenarioTestEnvironment is Test {
     TestERC1155 internal _testERC1155;
     TestUniswap internal _testUniswap;
     TestWrappedNativeToken internal _testWrappedNativeToken;
+    SolverUtils internal _solverUtils;
 
     uint256 internal constant _privateKey = 0x0ea23cd08ccb92dd31e14f9b238b4367f8e96715780d0f6295a43141d14f8df9;
     address internal _publicAddress = _getPublicAddress(_privateKey);
@@ -49,6 +51,7 @@ abstract contract ScenarioTestEnvironment is Test {
         _testERC1155 = new TestERC1155();
         _testWrappedNativeToken = new TestWrappedNativeToken();
         _testUniswap = new TestUniswap(_testWrappedNativeToken);
+        _solverUtils = new SolverUtils();
 
         //fund exchange
         _testERC20.mint(address(_testUniswap), 1000 ether);
@@ -81,6 +84,30 @@ abstract contract ScenarioTestEnvironment is Test {
     }
 
     /**
+     * Private helper function to build call data for the account buying an ERC1155 NFT and then transfering an ERC721.
+     */
+    function _accountBuyERC1155AndTransferERC721(uint256 price, uint256 transferAssetId, address transferTo)
+        internal
+        view
+        returns (bytes memory)
+    {
+        address[] memory targets = new address[](2);
+        uint256[] memory values = new uint256[](2);
+        bytes[] memory datas = new bytes[](2);
+
+        targets[0] = address(_testERC1155);
+        datas[0] = abi.encodeWithSelector(TestERC1155.buyNFT.selector, address(_account));
+        values[0] = price;
+
+        targets[1] = address(_testERC721);
+        datas[1] = abi.encodeWithSelector(
+            IERC721.transferFrom.selector, address(_account), address(transferTo), transferAssetId
+        );
+
+        return abi.encodeWithSelector(AbstractAccount.executeMulti.selector, targets, values, datas);
+    }
+
+    /**
      * Private helper function to build call data for the account claiming an ERC20 airdrop.
      */
     function _accountClaimAirdropERC20(uint256 amount) internal view returns (bytes memory) {
@@ -89,20 +116,14 @@ abstract contract ScenarioTestEnvironment is Test {
     }
 
     /**
-     * Private helper function to build solver solution steps for swapping tokens.
+     * Private helper function to build solver solution steps approving token transfer for swaps.
      */
-    function _solverSwapERC20ForETH(uint256 amountERC20, uint256 amountETH, uint256 forwardAmount, address forwardTo)
-        internal
-        view
-        returns (IEntryPoint.SolutionStep[] memory)
-    {
+    function _solverApproveERC20() internal view returns (IEntryPoint.SolutionStep[] memory) {
         address tokenHolder = address(_intentStandard);
-        bytes memory callFromEntryPoint;
-        bytes memory callFromTokenHolder;
-        IEntryPoint.SolutionStep[] memory steps = new IEntryPoint.SolutionStep[](5);
+        IEntryPoint.SolutionStep[] memory steps = new IEntryPoint.SolutionStep[](1);
 
         //set token approvals for "uniswap"
-        callFromEntryPoint = abi.encodeWithSelector(
+        bytes memory approvalCall = abi.encodeWithSelector(
             AssetHolderProxy.setApprovalForAll.selector,
             AssetType.ERC20,
             address(_testERC20),
@@ -110,46 +131,114 @@ abstract contract ScenarioTestEnvironment is Test {
             address(_testUniswap),
             true
         );
-        steps[0] = IEntryPoint.SolutionStep({target: tokenHolder, value: uint256(0), callData: callFromEntryPoint});
+        steps[0] = IEntryPoint.SolutionStep({target: tokenHolder, value: uint256(0), callData: approvalCall});
 
-        //swap ERC20 for wrapped native token
-        ExactInputSingleParams memory swapParams = ExactInputSingleParams({
-            tokenIn: address(_testERC20),
-            tokenOut: address(_testWrappedNativeToken),
-            fee: uint24(0),
-            recipient: tokenHolder,
-            deadline: uint256(0),
-            amountIn: amountERC20,
-            amountOutMinimum: amountETH,
-            sqrtPriceLimitX96: uint160(0)
-        });
-        callFromEntryPoint = abi.encodeWithSelector(TestUniswap.exactInputSingle.selector, swapParams);
-        callFromTokenHolder =
-            abi.encodeWithSelector(AssetHolderProxy.execute.selector, address(_testUniswap), 0, callFromEntryPoint);
-        steps[1] = IEntryPoint.SolutionStep({target: tokenHolder, value: uint256(0), callData: callFromTokenHolder});
+        return steps;
+    }
 
-        //unwrap to native tokens for forwarding
-        callFromEntryPoint = abi.encodeWithSelector(TestWrappedNativeToken.withdraw.selector, forwardAmount);
-        callFromTokenHolder = abi.encodeWithSelector(
-            AssetHolderProxy.execute.selector, address(_testWrappedNativeToken), 0, callFromEntryPoint
+    /**
+     * Private helper function to build solver solution steps for swapping tokens.
+     */
+    function _solverSwapAllERC20ForETH(uint256 minETH, address to)
+        internal
+        view
+        returns (IEntryPoint.SolutionStep[] memory)
+    {
+        address tokenHolder = address(_intentStandard);
+        IEntryPoint.SolutionStep[] memory steps = new IEntryPoint.SolutionStep[](2);
+
+        //set token approvals for "uniswap"
+        steps[0] = _solverApproveERC20()[0];
+
+        //swap to eth and forward part of it using the solver util library
+        bytes memory swapCall = abi.encodeWithSelector(
+            SolverUtils.swapAllERC20ForETH.selector, _testUniswap, _testERC20, _testWrappedNativeToken, minETH, to
         );
-        steps[2] = IEntryPoint.SolutionStep({target: tokenHolder, value: uint256(0), callData: callFromTokenHolder});
+        bytes memory delegateSwapAndForwardCall =
+            abi.encodeWithSelector(AssetHolderProxy.delegate.selector, address(_solverUtils), swapCall);
+        steps[1] =
+            IEntryPoint.SolutionStep({target: tokenHolder, value: uint256(0), callData: delegateSwapAndForwardCall});
 
-        //forward the native tokens
-        callFromEntryPoint = abi.encodeWithSelector(
-            AssetHolderProxy.transfer.selector, AssetType.ETH, address(0), uint256(0), forwardTo, forwardAmount
-        );
-        steps[3] = IEntryPoint.SolutionStep({target: tokenHolder, value: uint256(0), callData: callFromEntryPoint});
+        return steps;
+    }
 
-        //sweep remaining tokens to solvers address
-        callFromEntryPoint = abi.encodeWithSelector(
-            AssetHolderProxy.transferAll.selector,
-            AssetType.ERC20,
-            address(_testWrappedNativeToken),
-            uint256(0),
-            _publicAddressSolver
+    /**
+     * Private helper function to build solver solution steps for swapping tokens.
+     */
+    function _solverSwapAllERC20ForETHAndForward(uint256 minETH, address to, uint256 forwardAmount, address forwardTo)
+        internal
+        view
+        returns (IEntryPoint.SolutionStep[] memory)
+    {
+        address tokenHolder = address(_intentStandard);
+        IEntryPoint.SolutionStep[] memory steps = new IEntryPoint.SolutionStep[](2);
+
+        //set token approvals for "uniswap"
+        steps[0] = _solverApproveERC20()[0];
+
+        //swap to eth and forward part of it using the solver util library
+        bytes memory swapAndForwardCall = abi.encodeWithSelector(
+            SolverUtils.swapAllERC20ForETHAndForward.selector,
+            _testUniswap,
+            _testERC20,
+            _testWrappedNativeToken,
+            minETH,
+            to,
+            forwardAmount,
+            forwardTo
         );
-        steps[4] = IEntryPoint.SolutionStep({target: tokenHolder, value: uint256(0), callData: callFromEntryPoint});
+        bytes memory delegateSwapAndForwardCall =
+            abi.encodeWithSelector(AssetHolderProxy.delegate.selector, address(_solverUtils), swapAndForwardCall);
+        steps[1] =
+            IEntryPoint.SolutionStep({target: tokenHolder, value: uint256(0), callData: delegateSwapAndForwardCall});
+
+        return steps;
+    }
+
+    /**
+     * Private helper function to build solver solution steps for buying and forwarding an ERC721 token.
+     */
+    function _solverBuyERC721AndForward(uint256 price, address forwardTo)
+        internal
+        view
+        returns (IEntryPoint.SolutionStep[] memory)
+    {
+        address tokenHolder = address(_intentStandard);
+        IEntryPoint.SolutionStep[] memory steps = new IEntryPoint.SolutionStep[](1);
+
+        //buy the ERC721 token and forward
+        bytes memory buyAndForwardCall =
+            abi.encodeWithSelector(SolverUtils.buyERC721.selector, _testERC721, price, forwardTo);
+        bytes memory delegateBuyAndForwardCall =
+            abi.encodeWithSelector(AssetHolderProxy.delegate.selector, address(_solverUtils), buyAndForwardCall);
+        steps[0] =
+            IEntryPoint.SolutionStep({target: tokenHolder, value: uint256(0), callData: delegateBuyAndForwardCall});
+
+        return steps;
+    }
+
+    /**
+     * Private helper function to build solver solution steps for buying and forwarding an ERC721 token.
+     */
+    function _solverSellERC721AndForward(uint256 tokenId, address forwardTo)
+        internal
+        view
+        returns (IEntryPoint.SolutionStep[] memory)
+    {
+        address tokenHolder = address(_intentStandard);
+        IEntryPoint.SolutionStep[] memory steps = new IEntryPoint.SolutionStep[](2);
+
+        //sell the ERC721 token
+        bytes memory sellCall = abi.encodeWithSelector(TestERC721.sellNFT.selector, address(_intentStandard), tokenId);
+        bytes memory executeSellCall =
+            abi.encodeWithSelector(AssetHolderProxy.execute.selector, address(_testERC721), 0, sellCall);
+        steps[0] = IEntryPoint.SolutionStep({target: tokenHolder, value: uint256(0), callData: executeSellCall});
+
+        //move all remaining ETH
+        bytes memory transferAllCall = abi.encodeWithSelector(
+            AssetHolderProxy.transferAll.selector, AssetType.ETH, address(0), uint256(0), forwardTo
+        );
+        steps[1] = IEntryPoint.SolutionStep({target: tokenHolder, value: uint256(0), callData: transferAllCall});
 
         return steps;
     }
@@ -158,7 +247,8 @@ abstract contract ScenarioTestEnvironment is Test {
      * Private helper function to build an asset based intent struct.
      */
     function _createIntent(bytes memory callData1, bytes memory callData2) internal view returns (UserIntent memory) {
-        return AssetBasedIntentBuilder.create(_intentStandard.standardId(), address(_account), 0, callData1, callData2);
+        return
+            AssetBasedIntentBuilder.create(_intentStandard.standardId(), address(_account), 0, 0, callData1, callData2);
     }
 
     /**
@@ -183,6 +273,24 @@ abstract contract ScenarioTestEnvironment is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(_privateKey, digest);
         userIntent.signature = abi.encodePacked(r, s, v);
         return userIntent;
+    }
+
+    /**
+     * Private helper function to combine solution steps.
+     */
+    function _combineSolutionSteps(IEntryPoint.SolutionStep[] memory a, IEntryPoint.SolutionStep[] memory b)
+        internal
+        pure
+        returns (IEntryPoint.SolutionStep[] memory)
+    {
+        IEntryPoint.SolutionStep[] memory steps = new IEntryPoint.SolutionStep[](a.length + b.length);
+        for (uint256 i = 0; i < a.length; i++) {
+            steps[i] = a[i];
+        }
+        for (uint256 i = 0; i < b.length; i++) {
+            steps[a.length + i] = b[i];
+        }
+        return steps;
     }
 
     /**
