@@ -152,12 +152,12 @@ interface IEntryPoint is INonceManager {
     function validationExecuting() external view returns (bool);
 
     /**
-     * returns if intent specific actions are currently being executed.
-     */
-    function intentExecuting() external view returns (bool);
-
-    /**
      * returns if intent solution specific actions are currently being executed.
      */
     function solutionExecuting() external view returns (bool);
+
+    /**
+     * returns the sender of the currently executing intent (or address(0) is no intent is executing).
+     */
+    function executingIntentSender() external view returns (address);
 }
