@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "forge-std/Test.sol";
+/* solhint-disable func-name-mixedcase */
 
-import {calldataKeccak} from "../src/core/Helpers.sol";
+import "forge-std/Test.sol";
 import "../src/core/EntryPoint.sol";
-import "../src/standards/AssetBasedIntentCurve.sol";
-import "../src/standards/AssetBasedIntentData.sol";
+import "../src/standards/assetbased/AssetBasedIntentCurve.sol";
+import "../src/standards/assetbased/AssetBasedIntentData.sol";
 import "../src/interfaces/UserIntent.sol";
 
 // TODO: move to src/test and possibly separate

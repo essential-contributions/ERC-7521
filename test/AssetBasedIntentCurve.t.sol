@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "forge-std/Test.sol";
+/* solhint-disable func-name-mixedcase */
 
-import "../src/standards/AssetBasedIntentCurve.sol";
+import "forge-std/Test.sol";
+import "../src/standards/assetbased/AssetBasedIntentCurve.sol";
 import "./TestUtil.sol";
 
 // TODO: lines that check the validity of enums are unreachable

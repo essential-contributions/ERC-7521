@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "forge-std/Test.sol";
+/* solhint-disable func-name-mixedcase */
 
+import "forge-std/Test.sol";
 import "../src/interfaces/UserIntent.sol";
 import "./TestUtil.sol";
 
