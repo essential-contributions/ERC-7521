@@ -52,6 +52,38 @@ function _balanceOf(AssetType assetType, address assetContract, uint256 assetId,
  * @param assetType the type of asset (ETH, ERC-20, ERC721, etc).
  * @param assetContract the contract that controls the asset.
  * @param assetId the identifier for a specific asset.
+ * @param caller the caller address.
+ * @param to the address to send the assets to.
+ * @param amount the amount to release.
+ */
+function _transfer(
+    AssetType assetType,
+    address assetContract,
+    uint256 assetId,
+    address caller,
+    address to,
+    uint256 amount
+) {
+    if (assetType == AssetType.ETH) {
+        payable(to).transfer(amount);
+    } else if (assetType == AssetType.ERC20) {
+        IERC20(assetContract).transfer(to, amount);
+    } else if (assetType == AssetType.ERC721) {
+        // not supported
+    } else if (assetType == AssetType.ERC721_ID) {
+        // recipient must implement IERC721Receiver-onERC721Received
+        IERC721(assetContract).safeTransferFrom(caller, to, assetId);
+    } else if (assetType == AssetType.ERC1155) {
+        // recipient must implement IERC1155Receiver-onERC1155Received
+        IERC1155(assetContract).safeTransferFrom(caller, to, assetId, amount, "");
+    }
+}
+
+/**
+ * Transfers the given asset from a given address.
+ * @param assetType the type of asset (ETH, ERC-20, ERC721, etc).
+ * @param assetContract the contract that controls the asset.
+ * @param assetId the identifier for a specific asset.
  * @param from the current assets owner.
  * @param to the address to send the assets to.
  * @param amount the amount to release.
@@ -65,7 +97,7 @@ function _transferFrom(
     uint256 amount
 ) {
     if (assetType == AssetType.ETH) {
-        payable(to).transfer(amount);
+        // not supported
     } else if (assetType == AssetType.ERC20) {
         IERC20(assetContract).transferFrom(from, to, amount);
     } else if (assetType == AssetType.ERC721) {

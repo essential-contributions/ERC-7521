@@ -6,11 +6,11 @@ import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {_packValidationData} from "../utils/Helpers.sol";
 import {IAssetRelease} from "../standards/assetbased/IAssetRelease.sol";
-import {_balanceOf, _transferFrom, AssetType} from "../standards/assetbased/utils/AssetWrapper.sol";
+import {_balanceOf, _transfer, AssetType} from "../standards/assetbased/utils/AssetWrapper.sol";
 import {TokenCallbackHandler} from "./TokenCallbackHandler.sol";
 import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 
-contract Account is BaseAccount, TokenCallbackHandler, IAssetRelease {
+contract AbstractAccount is BaseAccount, TokenCallbackHandler, IAssetRelease {
     using ECDSA for bytes32;
 
     address public owner;
@@ -33,12 +33,25 @@ contract Account is BaseAccount, TokenCallbackHandler, IAssetRelease {
     /**
      * Execute a transaction called from entry point while the entry point is in intent executing state.
      */
-    function execute(address _target, uint256 _value, bytes calldata _data)
+    function execute(address target, uint256 value, bytes calldata data) external onlyFromEntryPointIntentExecuting {
+        _call(target, value, data);
+        emit Executed(_entryPoint, target, value, data);
+    }
+
+    /**
+     * Execute multiple transactions called from entry point while the entry point is in intent executing state.
+     */
+    function executeMulti(address[] calldata targets, uint256[] calldata values, bytes[] calldata datas)
         external
         onlyFromEntryPointIntentExecuting
     {
-        _call(_target, _value, _data);
-        emit Executed(_entryPoint, _target, _value, _data);
+        require(targets.length == values.length, "invalid multi call inputs");
+        require(targets.length == datas.length, "invalid multi call inputs");
+
+        for (uint256 i = 0; i < targets.length; i++) {
+            _call(targets[i], values[i], datas[i]);
+            emit Executed(_entryPoint, targets[i], values[i], datas[i]);
+        }
     }
 
     /**
@@ -50,7 +63,7 @@ contract Account is BaseAccount, TokenCallbackHandler, IAssetRelease {
         onlyFromEntryPointIntentExecuting
     {
         require(_balanceOf(assetType, assetContract, assetId, address(this)) >= amount, "insufficient release balance");
-        _transferFrom(assetType, assetContract, assetId, address(this), to, amount);
+        _transfer(assetType, assetContract, assetId, address(this), to, amount);
     }
 
     /// implement template method of BaseAccount

@@ -8,8 +8,10 @@ pragma solidity ^0.8.13;
  * note: this library has been modified from it's original version so that "getReturnData"
  * doesn't take in a max length and instead there is a new function called "getReturnDataSize"
  * to allow for manually overflow checking and custom error throwing by the application
- * using this library. The function "callAndRevert" was also modified with an added "txGas"
- * parameter.
+ * using this library. The function "callAndRevert" was modified with an added "txGas"
+ * parameter. The function "getRevertReasonMax" was added to get just the reason string from
+ * a revert or require. The function "getReturnDataMax" was added to allow specifying an offset
+ * as well as a max length when fetching return data.
  */
 library Exec {
     function call(address to, uint256 value, bytes memory data, uint256 txGas) internal returns (bool success) {
@@ -50,16 +52,24 @@ library Exec {
     }
 
     // get returned data from last call or calldelegate
-    function getReturnDataMax(uint256 maxLen) internal pure returns (bytes memory returnData) {
+    function getReturnDataMax(uint256 offset, uint256 maxLen) internal pure returns (bytes memory returnData) {
         assembly {
             let len := returndatasize()
-            if gt(len, maxLen) { len := maxLen }
-            let ptr := mload(0x40)
-            mstore(0x40, add(ptr, add(len, 0x20)))
-            mstore(ptr, len)
-            returndatacopy(add(ptr, 0x20), 0, len)
-            returnData := ptr
+            if gt(len, offset) {
+                len := sub(len, offset)
+                if gt(len, maxLen) { len := maxLen }
+                let ptr := mload(0x40)
+                mstore(0x40, add(ptr, add(len, 0x20)))
+                mstore(ptr, len)
+                returndatacopy(add(ptr, 0x20), offset, len)
+                returnData := ptr
+            }
         }
+    }
+
+    // get revert reason from last call or calldelegate
+    function getRevertReasonMax(uint256 maxLen) internal pure returns (bytes memory returnData) {
+        returnData = getReturnDataMax(0x44, maxLen);
     }
 
     // revert with explicit byte array (probably reverted info from call)
@@ -72,7 +82,7 @@ library Exec {
     function callAndRevert(address to, bytes memory data, uint256 txGas, uint256 maxLen) internal {
         bool success = call(to, 0, data, txGas);
         if (!success) {
-            revertWithData(getReturnDataMax(maxLen));
+            revertWithData(getReturnDataMax(0, maxLen));
         }
     }
 }

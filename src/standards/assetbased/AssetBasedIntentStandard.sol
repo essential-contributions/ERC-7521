@@ -23,15 +23,24 @@ contract AssetBasedIntentStandard is AssetHolderProxy, IIntentStandard {
      * Basic state and constants.
      */
     IEntryPoint private immutable _entryPoint;
+    bytes32 private immutable _standardId;
     uint256 private constant REVERT_REASON_MAX_LEN = 2048;
 
     /**
      * Contract constructor.
-     * @param entryPoint the address of the entrypoint contract
+     * @param entryPointContract the address of the entrypoint contract
      */
-    constructor(IEntryPoint entryPoint) {
-        _entryPoint = entryPoint;
-        entryPoint.registerIntentStandard(this);
+    constructor(IEntryPoint entryPointContract) {
+        _entryPoint = entryPointContract;
+        _standardId = _entryPoint.registerIntentStandard(this);
+    }
+
+    function entryPoint() public view virtual override returns (IEntryPoint) {
+        return _entryPoint;
+    }
+
+    function standardId() public view returns (bytes32) {
+        return _standardId;
     }
 
     /**
@@ -56,7 +65,7 @@ contract AssetBasedIntentStandard is AssetHolderProxy, IIntentStandard {
         external
         returns (bytes memory endContext)
     {
-        IEntryPoint entryPoint = IEntryPoint(address(this));
+        IEntryPoint entryPointContract = IEntryPoint(address(this));
         AssetBasedIntentData calldata data = parseAssetBasedIntentData(userInt);
 
         //record starting balances
@@ -79,7 +88,7 @@ contract AssetBasedIntentStandard is AssetHolderProxy, IIntentStandard {
         }
 
         //release tokens
-        address releaseTo = address(entryPoint.getIntentStandardContract(userInt.getStandard()));
+        address releaseTo = address(entryPointContract.getIntentStandardContract(userInt.getStandard()));
         uint256 evaluateAt = 0;
         if (timestamp > userInt.timestamp) {
             evaluateAt = timestamp - userInt.timestamp;
@@ -118,7 +127,7 @@ contract AssetBasedIntentStandard is AssetHolderProxy, IIntentStandard {
 
     function verifyEndState(UserIntent calldata userInt, uint256 timestamp, bytes memory context) external view {
         AssetBasedIntentData calldata data = parseAssetBasedIntentData(userInt);
-        uint256[] memory startingBalances = abi.decode(context, (uint256[]));
+        (uint256[] memory startingBalances) = abi.decode(context, (uint256[]));
 
         //check end balances
         uint256 evaluateAt = 0;
