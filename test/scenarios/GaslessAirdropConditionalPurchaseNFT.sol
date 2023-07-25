@@ -21,7 +21,7 @@ import "./ScenarioTestEnvironment.sol";
  * Solution Part2:
  * 1. the solver sells the ERC721 NFT and moves all remaining ETH to their wallet
  */
-contract GasslessAirdropConditionalPurchaseNFT is ScenarioTestEnvironment {
+contract GasslesAirdropConditionalPurchaseNFT is ScenarioTestEnvironment {
     using AssetBasedIntentBuilder for UserIntent;
 
     uint256 private _reqTokenId;
@@ -33,7 +33,7 @@ contract GasslessAirdropConditionalPurchaseNFT is ScenarioTestEnvironment {
         _reqTokenId = _testERC721.nextNFTForSale();
     }
 
-    function test_gasslessAirdropConditionalPurchaseNFT() public {
+    function test_gaslessAirdropConditionalPurchaseNFT() public {
         //create account intent
         bytes memory intentCallData1 = _accountClaimAirdropERC20(100 ether);
         bytes memory intentCallData2 =

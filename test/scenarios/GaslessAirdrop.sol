@@ -15,14 +15,14 @@ import "./ScenarioTestEnvironment.sol";
  * 1. the solver takes the users released ERC20s and swaps them all to wrappedETH
  * 2. the solver unwraps all to ETH and moves them to their own wallet
  */
-contract GasslessAirdrop is ScenarioTestEnvironment {
+contract GaslessAirdrop is ScenarioTestEnvironment {
     using AssetBasedIntentBuilder for UserIntent;
 
     function setUp() public override {
         super.setUp();
     }
 
-    function test_gasslessAirdrop() public {
+    function test_gaslessAirdrop() public {
         //create account intent
         bytes memory intentCallData1 = _accountClaimAirdropERC20(100 ether);
         bytes memory intentCallData2;
