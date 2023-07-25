@@ -201,7 +201,7 @@ library AssetBasedIntentBuilder {
     }
 
     /**
-     * Encodes the asset based intent data onto the user intent.
+     * Decodes the asset based intent data from the user intent.
      * @param intent The user intent to decode data from.
      * @return The asset based intent data.
      */
