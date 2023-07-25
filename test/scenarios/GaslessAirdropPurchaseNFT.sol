@@ -18,14 +18,14 @@ import "./ScenarioTestEnvironment.sol";
  *
  * Intent Action Part2: user account makes the intended purchase with the newly received ETH
  */
-contract GasslessAirdropPurchaseNFT is ScenarioTestEnvironment {
+contract GaslessAirdropPurchaseNFT is ScenarioTestEnvironment {
     using AssetBasedIntentBuilder for UserIntent;
 
     function setUp() public override {
         super.setUp();
     }
 
-    function test_gasslessAirdropPurchaseNFT() public {
+    function test_gaslessAirdropPurchaseNFT() public {
         //create account intent
         bytes memory intentCallData1 = _accountClaimAirdropERC20(100 ether);
         bytes memory intentCallData2 = _accountBuyERC1155(1 ether);
