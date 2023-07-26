@@ -5,7 +5,7 @@ pragma solidity ^0.8.13;
 /* solhint-disable const-name-snakecase */
 
 import "forge-std/Test.sol";
-import "../utils/AssetBasedIntentBuilder.sol";
+import "../AssetBasedIntentBuilder.sol";
 import "../../src/core/EntryPoint.sol";
 import "../../src/wallet/AbstractAccount.sol";
 import "../../src/standards/assetbased/AssetBasedIntentStandard.sol";

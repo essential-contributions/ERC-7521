@@ -80,5 +80,23 @@ contract TokenSwaps is ScenarioTestEnvironment {
         assertEq(userERC20Tokens, 92.25 ether, "The user released more ERC20 tokens than expected");
     }
 
+    function test_failSolutionFirstPass() public {
+        UserIntent memory userIntent = _createIntent("", "");
+        userIntent = userIntent.addReleaseERC20(address(_testERC20), constantCurve(10 ether));
+        userIntent = userIntent.addRequiredETH(linearCurve((3 ether) / 3000, 7 ether, 3000, true), true);
+        userIntent = _signIntent(userIntent);
+
+        // 11 ether is more than 10 ether
+        IEntryPoint.SolutionStep[] memory steps1 =
+            _solverSwapAllERC20ForETHAndForward(10 ether, address(_publicAddressSolver), 11 ether, address(_account));
+        IEntryPoint.SolutionStep[] memory steps2;
+        IEntryPoint.IntentSolution memory solution = _createSolution(userIntent, steps1, steps2);
+
+        vm.expectRevert(
+            abi.encodeWithSignature("FailedSolution(uint256,string)", 1, "AA71 first pass reverted (or OOG)")
+        );
+        _entryPoint.handleIntents(solution);
+    }
+
     //TODO: clone the success scenario and tweak it to verify correct failures (ex. signature validation)
 }

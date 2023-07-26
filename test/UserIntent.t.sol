@@ -3,30 +3,30 @@ pragma solidity ^0.8.13;
 
 /* solhint-disable func-name-mixedcase */
 
-import "forge-std/Test.sol";
 import "../src/interfaces/UserIntent.sol";
-import "./TestUtil.sol";
+import "./TestEnvironment.sol";
 
-contract UserIntentTest is Test, TestUtil {
+contract UserIntentTest is Test, TestEnvironment {
     using UserIntentLib for UserIntent;
 
-    // gas consumption 17719
+    bytes32 constant EXPECTED_STANDARD_ID = 0xa47768038d55ae947d4e5f5b3a48b387956e249f58f093039b870e30eb7cb907;
+    bytes32 constant EXPECTED_HASH = 0xacbff197b0eedca19d59b708ab54d127c8bc33b21213c25bc54bb1077d22e474;
+
+    // gas consumption 603920
     function test_getStandard() public {
-        bytes32 standard = userIntent.getStandard();
-        assertEq(standard, STANDARD_ID);
-        userIntent.standard;
+        bytes32 standard = _intent().getStandard();
+        assertEq(standard, EXPECTED_STANDARD_ID);
     }
 
-    // TODO: discuss
-    // gas consumption 2361
+    // TODO: discuss removing `getStandard()` since it is more expensive
+    // gas consumption 596377
     function test_getStandardDirectly() public {
-        bytes32 standard = userIntent.standard;
-        assertEq(standard, STANDARD_ID);
+        bytes32 standard = _intent().standard;
+        assertEq(standard, EXPECTED_STANDARD_ID);
     }
 
     function test_hash() public {
-        bytes32 hash = userIntent.hash();
-        bytes32 expectedHash = 0xbe9fe352c4139c62140a45927b8b491dd231b947b3c2c8ad95538a9fda06dba4;
-        assertEq(hash, expectedHash);
+        bytes32 hash = _intent().hash();
+        assertEq(hash, EXPECTED_HASH);
     }
 }

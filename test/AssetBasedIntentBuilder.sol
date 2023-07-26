@@ -3,10 +3,10 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 import "openzeppelin/utils/cryptography/ECDSA.sol";
-import "../../src/interfaces/UserIntent.sol";
-import "../../src/standards/assetbased/AssetBasedIntentStandard.sol";
-import "../../src/standards/assetbased/AssetBasedIntentData.sol";
-import "../../src/standards/assetbased/AssetBasedIntentCurve.sol";
+import "../src/interfaces/UserIntent.sol";
+import "../src/standards/assetbased/AssetBasedIntentStandard.sol";
+import "../src/standards/assetbased/AssetBasedIntentData.sol";
+import "../src/standards/assetbased/AssetBasedIntentCurve.sol";
 
 /**
  * @title AssetBasedIntentBuilder
@@ -218,6 +218,15 @@ library AssetBasedIntentBuilder {
     }
 
     /**
+     * Internal helper function to determine the type of the curve based on its parameters.
+     */
+    function getCurveType(int256[] memory params) internal pure returns (CurveType) {
+        if (params.length == 4) return CurveType.EXPONENTIAL;
+        if (params.length == 3) return CurveType.LINEAR;
+        return CurveType.CONSTANT;
+    }
+
+    /**
      * Private helper function to add an asset release curve to a user intent.
      */
     function _addAssetReqCurve(
@@ -237,7 +246,7 @@ library AssetBasedIntentBuilder {
             assetContract: assetContract,
             assetId: assetId,
             assetType: assetType,
-            curveType: _getCurveType(curveParams),
+            curveType: getCurveType(curveParams),
             evaluationType: evalType,
             params: curveParams
         });
@@ -271,7 +280,7 @@ library AssetBasedIntentBuilder {
             assetContract: assetContract,
             assetId: assetId,
             assetType: assetType,
-            curveType: _getCurveType(curveParams),
+            curveType: getCurveType(curveParams),
             evaluationType: EvaluationType.ABSOLUTE,
             params: curveParams
         });
@@ -286,15 +295,6 @@ library AssetBasedIntentBuilder {
 
         userIntent = encodeData(userIntent, data);
         return userIntent;
-    }
-
-    /**
-     * Private helper function to determine the type of the curve based on its parameters.
-     */
-    function _getCurveType(int256[] memory params) private pure returns (CurveType) {
-        if (params.length == 4) return CurveType.EXPONENTIAL;
-        if (params.length == 3) return CurveType.LINEAR;
-        return CurveType.CONSTANT;
     }
 }
 

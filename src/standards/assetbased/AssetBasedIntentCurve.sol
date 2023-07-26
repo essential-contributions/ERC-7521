@@ -42,9 +42,12 @@ enum EvaluationType {
  */
 library AssetBasedIntentCurveLib {
     function validate(AssetBasedIntentCurve calldata curve) public pure {
-        require(curve.curveType < CurveType.COUNT, "invalid curve type");
-        require(curve.assetType < AssetType.COUNT, "invalid curve asset type");
-        require(curve.evaluationType < EvaluationType.COUNT, "invalid curve eval type");
+        require(CurveType(0) <= curve.curveType && curve.curveType < CurveType.COUNT, "invalid curve type");
+        require(AssetType(0) <= curve.assetType && curve.assetType < AssetType.COUNT, "invalid curve asset type");
+        require(
+            EvaluationType(0) <= curve.evaluationType && curve.evaluationType < EvaluationType.COUNT,
+            "invalid curve eval type"
+        );
 
         if (curve.curveType == CurveType.CONSTANT) {
             require(curve.params.length == 1, "invalid curve params");
@@ -53,8 +56,6 @@ library AssetBasedIntentCurveLib {
         } else if (curve.curveType == CurveType.EXPONENTIAL) {
             require(curve.params.length == 4, "invalid curve params");
             require(curve.params[2] >= 0, "invalid curve params"); //negative exponent
-        } else {
-            revert("unknown curve type");
         }
     }
 
@@ -95,8 +96,6 @@ library AssetBasedIntentCurveLib {
                 sx = max;
             }
             val = (m * (sx ** e)) + b;
-        } else {
-            val = 0;
         }
     }
 

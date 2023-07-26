@@ -64,5 +64,53 @@ contract ConditionalPurchaseNFT is ScenarioTestEnvironment {
         assertEq(userERC1155Tokens, 1, "The user did not get their NFT");
     }
 
+    // function test_failIntentSecondPass() public {
+    //     bytes memory intentCallData1;
+    //     // 101 ether is 1 ether more than what the account was funded
+    //     bytes memory intentCallData2 =
+    //         _accountBuyERC1155AndTransferERC721(101 ether, _reqTokenId, address(_intentStandard));
+
+    //     UserIntent memory userIntent = _createIntent(intentCallData1, intentCallData2);
+    //     userIntent = userIntent.addReleaseETH(constantCurve(2 ether));
+    //     userIntent = userIntent.addRequiredERC721(address(_testERC721), _reqTokenId, constantCurve(0), false);
+    //     userIntent = _signIntent(userIntent);
+
+    //     IEntryPoint.SolutionStep[] memory steps1 = _solverBuyERC721AndForward(1 ether, address(_account));
+    //     IEntryPoint.SolutionStep[] memory steps2 =
+    //         _solverSellERC721AndForward(_reqTokenId, address(_publicAddressSolver));
+
+    //     IEntryPoint.IntentSolution memory solution = _createSolution(userIntent, steps1, steps2);
+
+    //     // TODO: investigate why the caught revert is slightly different
+    //     vm.expectRevert(
+    //         abi.encodeWithSignature("FailedIntent(uint256,string)", 0, "AA63 second pass reverted: (or OOG)")
+    //     );
+    //     _entryPoint.handleIntents(solution);
+    // }
+
+    // function test_failSolutionSecondPass() public {
+    //     bytes memory intentCallData1;
+    //     bytes memory intentCallData2 =
+    //         _accountBuyERC1155AndTransferERC721(1 ether, _reqTokenId, address(_intentStandard));
+
+    //     UserIntent memory userIntent = _createIntent(intentCallData1, intentCallData2);
+    //     userIntent = userIntent.addReleaseETH(constantCurve(2 ether));
+    //     userIntent = userIntent.addRequiredERC721(address(_testERC721), _reqTokenId, constantCurve(0), false);
+    //     userIntent = _signIntent(userIntent);
+
+    //     IEntryPoint.SolutionStep[] memory steps1 = _solverBuyERC721AndForward(1 ether, address(_account));
+    //     // invalid token ID
+    //     IEntryPoint.SolutionStep[] memory steps2 =
+    //         _solverSellERC721AndForward(_reqTokenId - 1, address(_publicAddressSolver));
+
+    //     IEntryPoint.IntentSolution memory solution = _createSolution(userIntent, steps1, steps2);
+
+    //     // TODO: investigate why the caught revert is slightly different
+    //     vm.expectRevert(
+    //         abi.encodeWithSignature("FailedSolution(uint256,string)", 0, "AA72 second pass reverted: Invalid ID")
+    //     );
+    //     _entryPoint.handleIntents(solution);
+    // }
+
     //TODO: clone the success scenario and tweak it to verify correct failures (ex. signature validation)
 }
