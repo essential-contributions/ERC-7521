@@ -10,7 +10,12 @@ import {Exec} from "../../utils/Exec.sol";
 import {_balanceOf} from "./utils/AssetWrapper.sol";
 import {IAssetRelease} from "./IAssetRelease.sol";
 import {AssetHolderProxy} from "./AssetHolderProxy.sol";
-import {AssetBasedIntentData, parseAssetBasedIntentData, AssetBasedIntentDataLib} from "./AssetBasedIntentData.sol";
+import {
+    AssetBasedIntentData,
+    AssetBasedIntentSegment,
+    parseAssetBasedIntentData,
+    AssetBasedIntentDataLib
+} from "./AssetBasedIntentData.sol";
 import {AssetBasedIntentCurve, EvaluationType, AssetBasedIntentCurveLib} from "./AssetBasedIntentCurve.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
 
@@ -61,91 +66,89 @@ contract AssetBasedIntentStandard is AssetHolderProxy, IIntentStandard {
         data.validate();
     }
 
-    function executeFirstPass(UserIntent calldata userInt, uint256 timestamp)
+    /**
+     * Performs part or all of the execution for an intent.
+     * @param userInt the intent to execute.
+     * @param timestamp the time at which to evaluate the intent.
+     * @param context context data from the previous step in execution (no data means execution is just starting).
+     * @return context to remember for further execution (no data means execution has finished).
+     */
+    function executeUserIntent(UserIntent calldata userInt, uint256 timestamp, bytes memory context)
         external
-        returns (bytes memory endContext)
+        returns (bytes memory)
     {
         IEntryPoint entryPointContract = IEntryPoint(address(this));
         AssetBasedIntentData calldata data = parseAssetBasedIntentData(userInt);
-
-        //record starting balances
-        uint256 constraintLen = data.assetConstraints.length;
-        uint256[] memory startingBalances = new uint256[](constraintLen);
-        for (uint256 i = 0; i < constraintLen; i++) {
-            if (data.assetConstraints[i].evaluationType == EvaluationType.RELATIVE) {
-                startingBalances[i] = _balanceOf(
-                    data.assetConstraints[i].assetType,
-                    data.assetConstraints[i].assetContract,
-                    data.assetConstraints[i].assetId,
-                    userInt.sender
-                );
-            }
+        uint256 intentSegmentIndex = 0;
+        uint256[] memory startingBalances;
+        if (context.length > 0) {
+            (intentSegmentIndex, startingBalances) = abi.decode(context, (uint256, uint256[]));
         }
-
-        //execute
-        if (data.callData1.length > 0) {
-            Exec.callAndRevert(userInt.sender, data.callData1, data.callGasLimit1, REVERT_REASON_MAX_LEN);
-        }
-
-        //release tokens
-        address releaseTo = address(entryPointContract.getIntentStandardContract(userInt.getStandard()));
         uint256 evaluateAt = 0;
         if (timestamp > userInt.timestamp) {
             evaluateAt = timestamp - userInt.timestamp;
         }
-        for (uint256 i = 0; i < data.assetReleases.length; i++) {
-            int256 releaseAmount = data.assetReleases[i].evaluate(evaluateAt);
-            if (releaseAmount < 0) releaseAmount = 0;
-            IAssetRelease(userInt.sender).releaseAsset(
-                data.assetReleases[i].assetType,
-                data.assetReleases[i].assetContract,
-                data.assetReleases[i].assetId,
-                releaseTo,
-                uint256(releaseAmount)
+        AssetBasedIntentSegment calldata intentSegment = data.intentSegments[intentSegmentIndex];
+
+        //check asset requirements
+        _checkAssetRequirements(intentSegment, intentSegmentIndex, evaluateAt, startingBalances, userInt.sender);
+
+        //record balances for relative requirements later
+        if ((intentSegmentIndex + 1) < data.intentSegments.length) {
+            AssetBasedIntentSegment calldata nextIntentSegment = data.intentSegments[intentSegmentIndex + 1];
+            startingBalances = _recordStartingBalances(nextIntentSegment, userInt.sender);
+        }
+
+        //execute calldata
+        if (intentSegment.callData.length > 0) {
+            Exec.callAndRevert(
+                userInt.sender, intentSegment.callData, intentSegment.callGasLimit, REVERT_REASON_MAX_LEN
             );
         }
 
-        // return list of starting balances for reference later
-        return abi.encode(startingBalances);
+        //release tokens
+        _releaseAssets(
+            intentSegment,
+            evaluateAt,
+            userInt.sender,
+            address(entryPointContract.getIntentStandardContract(userInt.getStandard()))
+        );
+
+        // return list of starting balances for reference later (or nothing if this was the last step)
+        if ((intentSegmentIndex + 1) < data.intentSegments.length) {
+            intentSegmentIndex = intentSegmentIndex + 1;
+            return abi.encode(intentSegmentIndex, startingBalances);
+        }
+        return "";
     }
 
-    // solhint-disable-next-line no-unused-vars
-    function executeSecondPass(UserIntent calldata userInt, uint256 timestamp, bytes memory context)
-        external
-        returns (bytes memory endContext)
-    {
-        AssetBasedIntentData calldata data = parseAssetBasedIntentData(userInt);
-
-        //execute
-        if (data.callData2.length > 0) {
-            Exec.callAndRevert(userInt.sender, data.callData2, data.callGasLimit2, REVERT_REASON_MAX_LEN);
-        }
-
-        //return unchanged context
-        return context;
-    }
-
-    function verifyEndState(UserIntent calldata userInt, uint256 timestamp, bytes memory context) external view {
-        AssetBasedIntentData calldata data = parseAssetBasedIntentData(userInt);
-        (uint256[] memory startingBalances) = abi.decode(context, (uint256[]));
-
-        //check end balances
-        uint256 evaluateAt = 0;
-        if (timestamp > userInt.timestamp) {
-            evaluateAt = timestamp - userInt.timestamp;
-        }
-        for (uint256 i = 0; i < data.assetConstraints.length; i++) {
-            int256 requiredBalance = data.assetConstraints[i].evaluate(evaluateAt);
-            if (data.assetConstraints[i].evaluationType == EvaluationType.RELATIVE) {
+    /**
+     * Checks asset requirements.
+     * @param intentSegment The intent segment to check requirements for.
+     * @param intentSegmentIndex The index of the intent segment within the intent data.
+     * @param evaluateAt The time offset at which to evaluate the asset requirements.
+     * @param startingBalances The array of starting balances for relative requirements.
+     * @param owner The address of the owner to check requirements for.
+     */
+    function _checkAssetRequirements(
+        AssetBasedIntentSegment calldata intentSegment,
+        uint256 intentSegmentIndex,
+        uint256 evaluateAt,
+        uint256[] memory startingBalances,
+        address owner
+    ) private view {
+        for (uint256 i = 0; i < intentSegment.assetRequirements.length; i++) {
+            int256 requiredBalance = intentSegment.assetRequirements[i].evaluate(evaluateAt);
+            if (intentSegment.assetRequirements[i].isRelativeEvaluation()) {
+                require(intentSegmentIndex > 0, "relative requirements not allowed at beginning of intent");
                 requiredBalance = int256(startingBalances[i]) + requiredBalance;
                 if (requiredBalance < 0) requiredBalance = 0;
             }
-
             uint256 currentBalance = _balanceOf(
-                data.assetConstraints[i].assetType,
-                data.assetConstraints[i].assetContract,
-                data.assetConstraints[i].assetId,
-                userInt.sender
+                intentSegment.assetRequirements[i].assetType,
+                intentSegment.assetRequirements[i].assetContract,
+                intentSegment.assetRequirements[i].assetId,
+                owner
             );
             require(
                 currentBalance >= uint256(requiredBalance),
@@ -156,6 +159,58 @@ contract AssetBasedIntentStandard is AssetHolderProxy, IIntentStandard {
                     Strings.toString(currentBalance),
                     ")"
                 )
+            );
+        }
+    }
+
+    /**
+     * Records balances for relative requirements later.
+     * @param nextIntentSegment The next intent segment for which to record starting balances.
+     * @param owner The address of the owner whose balances need to be recorded.
+     * @return The array of starting balances for relative requirements.
+     */
+    function _recordStartingBalances(AssetBasedIntentSegment calldata nextIntentSegment, address owner)
+        private
+        view
+        returns (uint256[] memory)
+    {
+        uint256 requirementsLen = nextIntentSegment.assetRequirements.length;
+        uint256[] memory startingBalances = new uint256[](requirementsLen);
+        for (uint256 i = 0; i < requirementsLen; i++) {
+            if (nextIntentSegment.assetRequirements[i].isRelativeEvaluation()) {
+                startingBalances[i] = _balanceOf(
+                    nextIntentSegment.assetRequirements[i].assetType,
+                    nextIntentSegment.assetRequirements[i].assetContract,
+                    nextIntentSegment.assetRequirements[i].assetId,
+                    owner
+                );
+            }
+        }
+        return startingBalances;
+    }
+
+    /**
+     * Release tokens.
+     * @param intentSegment The intent segment containing the asset releases.
+     * @param evaluateAt The time offset at which to evaluate the asset releases.
+     * @param from The address from which to release the assets.
+     * @param to The address to which the assets are released.
+     */
+    function _releaseAssets(
+        AssetBasedIntentSegment calldata intentSegment,
+        uint256 evaluateAt,
+        address from,
+        address to
+    ) private {
+        for (uint256 i = 0; i < intentSegment.assetReleases.length; i++) {
+            int256 releaseAmount = intentSegment.assetReleases[i].evaluate(evaluateAt);
+            if (releaseAmount < 0) releaseAmount = 0;
+            IAssetRelease(from).releaseAsset(
+                intentSegment.assetReleases[i].assetType,
+                intentSegment.assetReleases[i].assetContract,
+                intentSegment.assetReleases[i].assetId,
+                to,
+                uint256(releaseAmount)
             );
         }
     }

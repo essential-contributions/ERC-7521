@@ -20,6 +20,7 @@ import "./ScenarioTestEnvironment.sol";
  */
 contract GaslessAirdropPurchaseNFT is ScenarioTestEnvironment {
     using AssetBasedIntentBuilder for UserIntent;
+    using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
 
     function setUp() public override {
         super.setUp();
@@ -27,20 +28,18 @@ contract GaslessAirdropPurchaseNFT is ScenarioTestEnvironment {
 
     function test_gaslessAirdropPurchaseNFT() public {
         //create account intent
-        bytes memory intentCallData1 = _accountClaimAirdropERC20(100 ether);
-        bytes memory intentCallData2 = _accountBuyERC1155(1 ether);
-
-        UserIntent memory userIntent = _createIntent(intentCallData1, intentCallData2);
-        userIntent = userIntent.addReleaseERC20(address(_testERC20), constantCurve(2 ether));
-        userIntent = userIntent.addRequiredETH(constantCurve(0), false);
+        UserIntent memory userIntent = _intent();
+        userIntent = userIntent.addSegment(
+            _segment(_accountClaimAirdropERC20(100 ether)).releaseERC20(address(_testERC20), constantCurve(2 ether))
+        );
+        userIntent = userIntent.addSegment(_segment(_accountBuyERC1155(1 ether)));
+        userIntent = userIntent.addSegment(_segment("").requireETH(constantCurve(0), false));
         userIntent = _signIntent(userIntent);
 
         //create solution
         IEntryPoint.SolutionStep[] memory steps1 =
             _solverSwapAllERC20ForETHAndForward(2 ether, address(_publicAddressSolver), 1 ether, address(_account));
-        IEntryPoint.SolutionStep[] memory steps2;
-
-        IEntryPoint.IntentSolution memory solution = _createSolution(userIntent, steps1, steps2);
+        IEntryPoint.IntentSolution memory solution = _solution(userIntent, steps1, _noSteps(), _noSteps());
 
         //execute
         uint256 gasBefore = gasleft();

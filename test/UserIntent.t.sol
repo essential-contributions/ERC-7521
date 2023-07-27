@@ -26,7 +26,7 @@ contract UserIntentTest is Test, TestUtil {
 
     function test_hash() public {
         bytes32 hash = userIntent.hash();
-        bytes32 expectedHash = 0xbe9fe352c4139c62140a45927b8b491dd231b947b3c2c8ad95538a9fda06dba4;
+        bytes32 expectedHash = 0x10d486dc35300fd99c0e90a174277eab9568e8fa8494467dbbc8c9a369d54d18;
         assertEq(hash, expectedHash);
     }
 }

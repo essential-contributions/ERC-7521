@@ -272,30 +272,59 @@ abstract contract ScenarioTestEnvironment is Test {
 
     /**
      * Private helper function to build an asset-based intent struct.
-     * @param callData1 The encoded call data for the first pass of the intent.
-     * @param callData2 The encoded call data for the second pass of the intent.
      * @return The created UserIntent struct.
      */
-    function _createIntent(bytes memory callData1, bytes memory callData2) internal view returns (UserIntent memory) {
-        return
-            AssetBasedIntentBuilder.create(_intentStandard.standardId(), address(_account), 0, 0, callData1, callData2);
+    function _intent() internal view returns (UserIntent memory) {
+        return AssetBasedIntentBuilder.create(_intentStandard.standardId(), address(_account), 0, 0);
+    }
+
+    /**
+     * Private helper function to build an asset-based intent struct.
+     * @param callData The data for an intended call.
+     * @return The created AssetBasedIntentSegment struct.
+     */
+    function _segment(bytes memory callData) internal pure returns (AssetBasedIntentSegment memory) {
+        return AssetBasedIntentSegmentBuilder.create(callData);
     }
 
     /**
      * Private helper function to build an intent solution struct.
      * @param userIntent The UserIntent struct representing the user's intent.
-     * @param steps1 The array of solution steps for the first pass.
-     * @param steps2 The array of solution steps for the second pass.
+     * @param steps1 The array of solution steps for a first segment.
+     * @param steps2 The array of solution steps for a second segment.
+     * @param steps3 The array of solution steps for a third segment.
      * @return The created IntentSolution struct.
      */
-    function _createSolution(
+    function _solution(
         UserIntent memory userIntent,
         IEntryPoint.SolutionStep[] memory steps1,
-        IEntryPoint.SolutionStep[] memory steps2
+        IEntryPoint.SolutionStep[] memory steps2,
+        IEntryPoint.SolutionStep[] memory steps3
     ) internal pure returns (IEntryPoint.IntentSolution memory) {
         UserIntent[] memory userIntents = new UserIntent[](1);
         userIntents[0] = userIntent;
-        return IEntryPoint.IntentSolution({userIntents: userIntents, steps1: steps1, steps2: steps2});
+
+        uint256 numSegments = 0;
+        if (steps1.length > 0) numSegments++;
+        if (steps2.length > 0) numSegments++;
+        if (steps3.length > 0) numSegments++;
+
+        uint256 segmentsIndex = 0;
+        IEntryPoint.SolutionSegment[] memory solutionSegments = new IEntryPoint.SolutionSegment[](numSegments);
+        if (steps1.length > 0) {
+            solutionSegments[segmentsIndex] = IEntryPoint.SolutionSegment({steps: steps1});
+            segmentsIndex++;
+        }
+        if (steps2.length > 0) {
+            solutionSegments[segmentsIndex] = IEntryPoint.SolutionSegment({steps: steps2});
+            segmentsIndex++;
+        }
+        if (steps3.length > 0) {
+            solutionSegments[segmentsIndex] = IEntryPoint.SolutionSegment({steps: steps3});
+            segmentsIndex++;
+        }
+
+        return IEntryPoint.IntentSolution({userIntents: userIntents, solutionSegments: solutionSegments});
     }
 
     /**
@@ -341,5 +370,10 @@ abstract contract ScenarioTestEnvironment is Test {
         bytes32 digest = keccak256(abi.encodePacked("test data"));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
         return ecrecover(digest, v, r, s);
+    }
+
+    function _noSteps() internal pure returns (IEntryPoint.SolutionStep[] memory) {
+        IEntryPoint.SolutionStep[] memory steps;
+        return steps;
     }
 }

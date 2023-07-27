@@ -40,114 +40,75 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     function _executeSolution(IntentSolution calldata solution, uint256 timestamp) private {
         uint256 intslen = solution.userIntents.length;
         bytes[] memory contextData = new bytes[](intslen);
+        bool[] memory executionFinished = new bool[](intslen);
+        bool solutionFinished = solution.solutionSegments.length == 0;
+        bool intentsFinished = false;
+        uint256 passIndex = 0;
 
         unchecked {
-            //Execute intent first pass
-            for (uint256 i = 0; i < intslen; i++) {
-                UserIntent calldata intent = solution.userIntents[i];
-                _executionStateContext = intent.sender;
-                IIntentStandard standard = _registeredStandards[intent.getStandard()];
-                bool success = Exec.delegateCall(
-                    address(standard),
-                    abi.encodeWithSelector(IIntentStandard.executeFirstPass.selector, intent, timestamp),
-                    gasleft()
-                );
-                if (success) {
-                    if (Exec.getReturnDataSize() > CONTEXT_DATA_MAX_LEN) {
-                        revert FailedIntent(i, "AA60 first pass invalid context");
-                    }
-                    contextData[i] = Exec.getReturnDataMax(0x40, CONTEXT_DATA_MAX_LEN);
-                } else {
-                    bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
-                    if (reason.length > 0) {
-                        revert FailedIntent(i, string.concat("AA61 first pass reverted: ", string(reason)));
-                    } else {
-                        revert FailedIntent(i, "AA61 first pass reverted (or OOG)");
-                    }
-                }
-            }
-
-            //Execute solution first pass
-            uint256 solLen1 = solution.steps1.length;
-            if (solLen1 > 0) {
-                _executionStateContext = EX_STATE_SOLUTION_EXECUTING;
-                for (uint256 i = 0; i < solLen1; i++) {
-                    SolutionStep calldata step = solution.steps1[i];
-                    bool success = Exec.call(step.target, step.value, step.callData, gasleft());
-                    if (!success) {
-                        bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
-                        if (reason.length > 0) {
-                            revert FailedSolution(i, string.concat("AA71 first pass reverted: ", string(reason)));
-                        } else {
-                            revert FailedSolution(i, "AA71 first pass reverted (or OOG)");
+            while (!intentsFinished || !solutionFinished) {
+                //Execute intents
+                if (!intentsFinished) {
+                    bool stillExecuting = false;
+                    for (uint256 i = 0; i < intslen; i++) {
+                        if (!executionFinished[i]) {
+                            UserIntent calldata intent = solution.userIntents[i];
+                            _executionStateContext = intent.sender;
+                            IIntentStandard standard = _registeredStandards[intent.getStandard()];
+                            bool success = Exec.delegateCall(
+                                address(standard),
+                                abi.encodeWithSelector(
+                                    IIntentStandard.executeUserIntent.selector, intent, timestamp, contextData[i]
+                                ),
+                                gasleft()
+                            );
+                            if (success) {
+                                if (Exec.getReturnDataSize() > CONTEXT_DATA_MAX_LEN) {
+                                    revert FailedIntent(i, passIndex, "AA60 invalid execution context");
+                                }
+                                contextData[i] = Exec.getReturnDataMax(0x40, CONTEXT_DATA_MAX_LEN);
+                                if (contextData[i].length > 0) {
+                                    stillExecuting = true;
+                                } else {
+                                    executionFinished[i] = true;
+                                }
+                            } else {
+                                bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
+                                if (reason.length > 0) {
+                                    revert FailedIntent(
+                                        i, passIndex, string.concat("AA61 execution failed: ", string(reason))
+                                    );
+                                } else {
+                                    revert FailedIntent(i, passIndex, "AA61 execution failed (or OOG)");
+                                }
+                            }
                         }
                     }
+                    intentsFinished = !stillExecuting;
                 }
-            }
 
-            //Execute intent second pass
-            for (uint256 i = 0; i < intslen; i++) {
-                UserIntent calldata intent = solution.userIntents[i];
-                _executionStateContext = intent.sender;
-                IIntentStandard standard = _registeredStandards[intent.getStandard()];
-                bool success = Exec.delegateCall(
-                    address(standard),
-                    abi.encodeWithSelector(
-                        IIntentStandard.executeSecondPass.selector, intent, timestamp, contextData[i]
-                    ),
-                    gasleft()
-                );
-                if (success) {
-                    if (Exec.getReturnDataSize() > CONTEXT_DATA_MAX_LEN) {
-                        revert FailedIntent(i, "AA62 second pass invalid context");
-                    }
-                    contextData[i] = Exec.getReturnDataMax(0x40, CONTEXT_DATA_MAX_LEN);
-                } else {
-                    bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
-                    if (reason.length > 0) {
-                        revert FailedIntent(i, string.concat("AA63 second pass reverted: ", string(reason)));
-                    } else {
-                        revert FailedIntent(i, "AA63 second pass reverted (or OOG)");
-                    }
-                }
-            }
-
-            //Execute solution second pass
-            uint256 solLen2 = solution.steps2.length;
-            if (solLen2 > 0) {
-                _executionStateContext = EX_STATE_SOLUTION_EXECUTING;
-                for (uint256 i = 0; i < solLen2; i++) {
-                    SolutionStep calldata step = solution.steps2[i];
-                    bool success = Exec.call(step.target, step.value, step.callData, gasleft());
-                    if (!success) {
-                        bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
-                        if (reason.length > 0) {
-                            revert FailedSolution(i, string.concat("AA72 second pass reverted: ", string(reason)));
-                        } else {
-                            revert FailedSolution(i, "AA72 second pass reverted (or OOG)");
+                //Execute solution
+                if (!solutionFinished) {
+                    uint256 solLen = solution.solutionSegments[passIndex].steps.length;
+                    if (solLen > 0) {
+                        _executionStateContext = EX_STATE_SOLUTION_EXECUTING;
+                        for (uint256 i = 0; i < solLen; i++) {
+                            SolutionStep calldata step = solution.solutionSegments[passIndex].steps[i];
+                            bool success = Exec.call(step.target, step.value, step.callData, gasleft());
+                            if (!success) {
+                                bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
+                                if (reason.length > 0) {
+                                    revert FailedSolution(i, string.concat("AA71 execution failed: ", string(reason)));
+                                } else {
+                                    revert FailedSolution(i, "AA71 execution failed (or OOG)");
+                                }
+                            }
                         }
                     }
+                    solutionFinished = (passIndex + 1) >= solution.solutionSegments.length;
                 }
-            }
 
-            //Verify end state
-            for (uint256 i = 0; i < intslen; i++) {
-                UserIntent calldata intent = solution.userIntents[i];
-                _executionStateContext = intent.sender;
-                IIntentStandard standard = _registeredStandards[intent.getStandard()];
-                bool success = Exec.delegateCall(
-                    address(standard),
-                    abi.encodeWithSelector(IIntentStandard.verifyEndState.selector, intent, timestamp, contextData[i]),
-                    gasleft()
-                );
-                if (!success) {
-                    bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
-                    if (reason.length > 0) {
-                        revert FailedIntent(i, string.concat("AA64 end verify reverted: ", string(reason)));
-                    } else {
-                        revert FailedIntent(i, "AA64 end verify reverted (or OOG)");
-                    }
-                }
+                passIndex++;
             }
 
             //Intent no longer executing
@@ -333,7 +294,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     function _simulationOnlyValidations(UserIntent calldata userInt, uint256 userIntIndex) internal view {
         // make sure sender is a deployed contract
         if (userInt.sender.code.length == 0) {
-            revert FailedIntent(userIntIndex, "AA20 account not deployed");
+            revert FailedIntent(userIntIndex, 0, "AA20 account not deployed");
         }
     }
 
@@ -354,15 +315,15 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         // validate intent standard is recognized
         IIntentStandard standard = _registeredStandards[userInt.getStandard()];
         if (address(standard) == address(0)) {
-            revert FailedIntent(userIntIndex, "AA81 unknown standard");
+            revert FailedIntent(userIntIndex, 0, "AA81 unknown standard");
         }
 
         // validate the intent itself
         try standard.validateUserInt(userInt) {}
         catch Error(string memory revertReason) {
-            revert FailedIntent(userIntIndex, string.concat("AA65 reverted: ", revertReason));
+            revert FailedIntent(userIntIndex, 0, string.concat("AA62 reverted: ", revertReason));
         } catch {
-            revert FailedIntent(userIntIndex, "AA65 reverted (or OOG)");
+            revert FailedIntent(userIntIndex, 0, "AA62 reverted (or OOG)");
         }
 
         // validate intent with account
@@ -371,14 +332,14 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         ) {
             validationData = _validationData;
         } catch Error(string memory revertReason) {
-            revert FailedIntent(userIntIndex, string.concat("AA23 reverted: ", revertReason));
+            revert FailedIntent(userIntIndex, 0, string.concat("AA23 reverted: ", revertReason));
         } catch {
-            revert FailedIntent(userIntIndex, "AA23 reverted (or OOG)");
+            revert FailedIntent(userIntIndex, 0, "AA23 reverted (or OOG)");
         }
 
         // validate nonce
         if (!_validateAndUpdateNonce(userInt.sender, userInt.nonce)) {
-            revert FailedIntent(userIntIndex, "AA25 invalid account nonce");
+            revert FailedIntent(userIntIndex, 0, "AA25 invalid account nonce");
         }
 
         // end validation state
@@ -392,12 +353,12 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         if (validationData == 0) {
             ValidationData memory data = _parseValidationData(validationData);
             if (data.sigFailed) {
-                revert FailedIntent(userIntIndex, "AA24 signature error");
+                revert FailedIntent(userIntIndex, 0, "AA24 signature error");
             }
             // solhint-disable-next-line not-rely-on-time
             bool outOfTimeRange = block.timestamp > data.validUntil || block.timestamp < data.validAfter;
             if (outOfTimeRange) {
-                revert FailedIntent(userIntIndex, "AA22 expired or not due");
+                revert FailedIntent(userIntIndex, 0, "AA22 expired or not due");
             }
         }
     }
@@ -418,11 +379,13 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         if (selector == FailedIntent.selector) {
             // revert was due to a FailedIntent error
             uint256 intIndex;
+            uint256 segIndex;
             assembly {
-                solIndex := mload(add(0x24, reason))
-                reason := add(reason, 0x64)
+                intIndex := mload(add(0x24, reason))
+                segIndex := mload(add(0x44, reason))
+                reason := add(reason, 0x84)
             }
-            emit UserIntentRevertReason(solIndex, intIndex, string(reason));
+            emit UserIntentRevertReason(solIndex, intIndex, segIndex, string(reason));
         } else if (selector == FailedSolution.selector) {
             // revert was due to a FailedSolution error
             uint256 stepIndex;
@@ -436,10 +399,10 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             emit SolutionRevertReason(solIndex, 0, string(reason));
         } else if (reason.length > 0) {
             //revert was due to some unknown with a reason string
-            emit SolutionRevertReason(solIndex, 0, string.concat("AA73 reverted: ", string(reason)));
+            emit SolutionRevertReason(solIndex, 0, string.concat("AA72 reverted: ", string(reason)));
         } else {
             //revert was due to some unknown
-            emit SolutionRevertReason(solIndex, 0, "AA73 reverted (or OOG)");
+            emit SolutionRevertReason(solIndex, 0, "AA72 reverted (or OOG)");
         }
     }
 

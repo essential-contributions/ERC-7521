@@ -23,6 +23,7 @@ import "./ScenarioTestEnvironment.sol";
  */
 contract GaslessAirdropConditionalPurchaseNFT is ScenarioTestEnvironment {
     using AssetBasedIntentBuilder for UserIntent;
+    using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
 
     uint256 private _reqTokenId;
 
@@ -35,14 +36,18 @@ contract GaslessAirdropConditionalPurchaseNFT is ScenarioTestEnvironment {
 
     function test_gaslessAirdropConditionalPurchaseNFT() public {
         //create account intent
-        bytes memory intentCallData1 = _accountClaimAirdropERC20(100 ether);
-        bytes memory intentCallData2 =
-            _accountBuyERC1155AndTransferERC721(1 ether, _reqTokenId, address(_intentStandard));
-
-        UserIntent memory userIntent = _createIntent(intentCallData1, intentCallData2);
-        userIntent = userIntent.addReleaseERC20(address(_testERC20), constantCurve(2 ether));
-        userIntent = userIntent.addRequiredETH(constantCurve(0), false);
-        userIntent = userIntent.addRequiredERC721(address(_testERC721), _reqTokenId, constantCurve(0), false);
+        UserIntent memory userIntent = _intent();
+        userIntent = userIntent.addSegment(
+            _segment(_accountClaimAirdropERC20(100 ether)).releaseERC20(address(_testERC20), constantCurve(2 ether))
+        );
+        userIntent = userIntent.addSegment(
+            _segment(_accountBuyERC1155AndTransferERC721(1 ether, _reqTokenId, address(_intentStandard)))
+        );
+        userIntent = userIntent.addSegment(
+            _segment("").requireETH(constantCurve(0), false).requireERC721(
+                address(_testERC721), _reqTokenId, constantCurve(0), false
+            )
+        );
         userIntent = _signIntent(userIntent);
 
         //create solution
@@ -52,8 +57,7 @@ contract GaslessAirdropConditionalPurchaseNFT is ScenarioTestEnvironment {
         );
         IEntryPoint.SolutionStep[] memory steps2 =
             _solverSellERC721AndForward(_reqTokenId, address(_publicAddressSolver));
-
-        IEntryPoint.IntentSolution memory solution = _createSolution(userIntent, steps1, steps2);
+        IEntryPoint.IntentSolution memory solution = _solution(userIntent, steps1, steps2, _noSteps());
 
         //execute
         uint256 gasBefore = gasleft();
