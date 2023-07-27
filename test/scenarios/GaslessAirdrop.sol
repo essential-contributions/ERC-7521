@@ -17,6 +17,7 @@ import "./ScenarioTestEnvironment.sol";
  */
 contract GaslessAirdrop is ScenarioTestEnvironment {
     using AssetBasedIntentBuilder for UserIntent;
+    using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
 
     function setUp() public override {
         super.setUp();
@@ -24,18 +25,15 @@ contract GaslessAirdrop is ScenarioTestEnvironment {
 
     function test_gaslessAirdrop() public {
         //create account intent
-        bytes memory intentCallData1 = _accountClaimAirdropERC20(100 ether);
-        bytes memory intentCallData2;
-
-        UserIntent memory userIntent = _createIntent(intentCallData1, intentCallData2);
-        userIntent = userIntent.addReleaseERC20(address(_testERC20), constantCurve(2 ether));
+        UserIntent memory userIntent = _intent();
+        userIntent = userIntent.addSegment(
+            _segment(_accountClaimAirdropERC20(100 ether)).releaseERC20(address(_testERC20), constantCurve(2 ether))
+        );
         userIntent = _signIntent(userIntent);
 
         //create solution
         IEntryPoint.SolutionStep[] memory steps1 = _solverSwapAllERC20ForETH(2 ether, address(_publicAddressSolver));
-        IEntryPoint.SolutionStep[] memory steps2;
-
-        IEntryPoint.IntentSolution memory solution = _createSolution(userIntent, steps1, steps2);
+        IEntryPoint.IntentSolution memory solution = _solution(userIntent, steps1, _noSteps(), _noSteps());
 
         //execute
         uint256 gasBefore = gasleft();

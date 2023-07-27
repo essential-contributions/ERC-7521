@@ -1,27 +1,31 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-//TODO: is callGasLimit1 and callGasLimit2 necessary?
+//TODO: is callGasLimit necessary?
 
 import {UserIntent} from "../../interfaces/UserIntent.sol";
 import {AssetBasedIntentCurve, AssetBasedIntentCurveLib} from "./AssetBasedIntentCurve.sol";
 
 /**
  * Asset Based Intent Data struct
- * @param callGasLimit1 max gas to be spent on the first part of intent call data.
- * @param callGasLimit2 max gas to be spent on the second part of intent call data.
- * @param callData1 the first part of the intents desired call data.
- * @param callData2 the second part of the intents desired call data.
- * @param assetRelease list of assets that are released before the solution gets executed.
- * @param assetConstraint list of assets that are required to be owned by the account at the end of the solution execution.
+ * @param intentSegments list of different segments in an asset based defined intent.
  */
 struct AssetBasedIntentData {
-    uint256 callGasLimit1;
-    uint256 callGasLimit2;
-    bytes callData1;
-    bytes callData2;
+    AssetBasedIntentSegment[] intentSegments;
+}
+
+/**
+ * Asset Based Intent Segment struct
+ * @param callGasLimit max gas to be spent on the intent call data.
+ * @param callData the intents desired call data.
+ * @param assetRelease list of assets that are released before the solution gets executed.
+ * @param assetRequirements list of assets that are required to be owned by the account at the end of the solution execution.
+ */
+struct AssetBasedIntentSegment {
+    uint256 callGasLimit;
+    bytes callData;
     AssetBasedIntentCurve[] assetReleases;
-    AssetBasedIntentCurve[] assetConstraints;
+    AssetBasedIntentCurve[] assetRequirements;
 }
 
 /**
@@ -31,11 +35,21 @@ library AssetBasedIntentDataLib {
     using AssetBasedIntentCurveLib for AssetBasedIntentCurve;
 
     function validate(AssetBasedIntentData calldata data) public pure {
-        for (uint256 i = 0; i < data.assetReleases.length; i++) {
-            data.assetReleases[i].validate();
+        if (data.intentSegments.length > 0) {
+            for (uint256 i = 0; i < data.intentSegments[0].assetRequirements.length; i++) {
+                require(
+                    !data.intentSegments[0].assetRequirements[i].isRelativeEvaluation(),
+                    "relative requirements not allowed at beginning of intent"
+                );
+            }
         }
-        for (uint256 i = 0; i < data.assetConstraints.length; i++) {
-            data.assetConstraints[i].validate();
+        for (uint256 j = 0; j < data.intentSegments.length; j++) {
+            for (uint256 i = 0; i < data.intentSegments[j].assetRequirements.length; i++) {
+                data.intentSegments[j].assetRequirements[i].validate();
+            }
+            for (uint256 i = 0; i < data.intentSegments[j].assetReleases.length; i++) {
+                data.intentSegments[j].assetReleases[i].validate();
+            }
         }
     }
 }

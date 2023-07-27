@@ -19,29 +19,17 @@ library AssetBasedIntentBuilder {
      * @param sender The address of the intent sender.
      * @param nonce The nonce to prevent replay attacks.
      * @param timestamp The unix time stamp (in seconds) from when this intent was signed.
-     * @param callData1 The data for the first call.
-     * @param callData2 The data for the second call.
      * @return userIntent The created user intent.
      */
-    function create(
-        bytes32 standard,
-        address sender,
-        uint256 nonce,
-        uint256 timestamp,
-        bytes memory callData1,
-        bytes memory callData2
-    ) public pure returns (UserIntent memory userIntent) {
-        AssetBasedIntentCurve[] memory assetReleaseCurves;
-        AssetBasedIntentCurve[] memory assetConstraintCurves;
+    function create(bytes32 standard, address sender, uint256 nonce, uint256 timestamp)
+        public
+        pure
+        returns (UserIntent memory userIntent)
+    {
+        AssetBasedIntentSegment[] memory assetBasedIntentSegments;
 
-        AssetBasedIntentData memory assetBasedIntentData = AssetBasedIntentData({
-            callGasLimit1: 1000000,
-            callGasLimit2: 1000000,
-            callData1: callData1,
-            callData2: callData2,
-            assetReleases: assetReleaseCurves,
-            assetConstraints: assetConstraintCurves
-        });
+        AssetBasedIntentData memory assetBasedIntentData =
+            AssetBasedIntentData({intentSegments: assetBasedIntentSegments});
 
         userIntent = UserIntent({
             standard: standard,
@@ -56,127 +44,27 @@ library AssetBasedIntentBuilder {
     }
 
     /**
-     * Add an asset release for ETH to the user intent.
+     * Add an intent segment to the user intent.
      * @param intent The user intent to modify.
-     * @param curve The curve parameters for the asset release.
+     * @param segment The intent segment to add.
      * @return The updated user intent.
      */
-    function addReleaseETH(UserIntent memory intent, int256[] memory curve) public pure returns (UserIntent memory) {
-        return _addAssetReleaseCurve(intent, address(0), uint256(0), AssetType.ETH, curve);
-    }
-
-    /**
-     * Add an asset release for ERC20 tokens to the user intent.
-     * @param intent The user intent to modify.
-     * @param addr The address of the ERC20 token contract.
-     * @param curve The curve parameters for the asset release.
-     * @return The updated user intent.
-     */
-    function addReleaseERC20(UserIntent memory intent, address addr, int256[] memory curve)
+    function addSegment(UserIntent memory intent, AssetBasedIntentSegment memory segment)
         public
         pure
         returns (UserIntent memory)
     {
-        return _addAssetReleaseCurve(intent, addr, uint256(0), AssetType.ERC20, curve);
-    }
+        AssetBasedIntentData memory data = decodeData(intent);
 
-    /**
-     * Add an asset release for ERC721 tokens to the user intent.
-     * @param intent The user intent to modify.
-     * @param addr The address of the ERC721 token contract.
-     * @param id The ID of the ERC721 token.
-     * @param curve The curve parameters for the asset release.
-     * @return The updated user intent.
-     */
-    function addReleaseERC721(UserIntent memory intent, address addr, uint256 id, int256[] memory curve)
-        public
-        pure
-        returns (UserIntent memory)
-    {
-        return _addAssetReleaseCurve(intent, addr, id, AssetType.ERC721, curve);
-    }
+        //clone previous array and add new element
+        AssetBasedIntentSegment[] memory intentSegments = new AssetBasedIntentSegment[](data.intentSegments.length + 1);
+        for (uint256 i = 0; i < data.intentSegments.length; i++) {
+            intentSegments[i] = data.intentSegments[i];
+        }
+        intentSegments[data.intentSegments.length] = segment;
+        data.intentSegments = intentSegments;
 
-    /**
-     * Add an asset release for ERC1155 tokens to the user intent.
-     * @param intent The user intent to modify.
-     * @param addr The address of the ERC1155 token contract.
-     * @param id The ID of the ERC1155 token.
-     * @param curve The curve parameters for the asset release.
-     * @return The updated user intent.
-     */
-    function addReleaseERC1155(UserIntent memory intent, address addr, uint256 id, int256[] memory curve)
-        public
-        pure
-        returns (UserIntent memory)
-    {
-        return _addAssetReleaseCurve(intent, addr, id, AssetType.ERC1155, curve);
-    }
-
-    /**
-     * Add an end state required asset of ETH to the user intent.
-     * @param intent The user intent to modify.
-     * @param curve The curve parameters for the asset requirement.
-     * @param relative Boolean flag to indicate if the curve is relative.
-     * @return The updated user intent.
-     */
-    function addRequiredETH(UserIntent memory intent, int256[] memory curve, bool relative)
-        public
-        pure
-        returns (UserIntent memory)
-    {
-        return _addAssetReqCurve(intent, address(0), uint256(0), AssetType.ETH, curve, relative);
-    }
-
-    /**
-     * Add an end state required asset of ERC20 tokens to the user intent.
-     * @param intent The user intent to modify.
-     * @param addr The address of the ERC20 token contract.
-     * @param curve The curve parameters for the asset requirement.
-     * @param relative Boolean flag to indicate if the curve is relative.
-     * @return The updated user intent.
-     */
-    function addRequiredERC20(UserIntent memory intent, address addr, int256[] memory curve, bool relative)
-        public
-        pure
-        returns (UserIntent memory)
-    {
-        return _addAssetReqCurve(intent, addr, uint256(0), AssetType.ERC20, curve, relative);
-    }
-
-    /**
-     * Add an end state required asset of ERC721 tokens to the user intent.
-     * @param intent The user intent to modify.
-     * @param addr The address of the ERC721 token contract.
-     * @param id The ID of the ERC721 token.
-     * @param curve The curve parameters for the asset requirement.
-     * @param relative Boolean flag to indicate if the curve is relative.
-     * @return The updated user intent.
-     */
-    function addRequiredERC721(UserIntent memory intent, address addr, uint256 id, int256[] memory curve, bool relative)
-        public
-        pure
-        returns (UserIntent memory)
-    {
-        return _addAssetReqCurve(intent, addr, id, AssetType.ERC721, curve, relative);
-    }
-
-    /**
-     * Add an end state required asset of ERC1155 tokens to the user intent.
-     * @param intent The user intent to modify.
-     * @param addr The address of the ERC1155 token contract.
-     * @param id The ID of the ERC1155 token.
-     * @param curve The curve parameters for the asset requirement.
-     * @param relative Boolean flag to indicate if the curve is relative.
-     * @return The updated user intent.
-     */
-    function addRequiredERC1155(
-        UserIntent memory intent,
-        address addr,
-        uint256 id,
-        int256[] memory curve,
-        bool relative
-    ) public pure returns (UserIntent memory) {
-        return _addAssetReqCurve(intent, addr, id, AssetType.ERC1155, curve, relative);
+        return encodeData(intent, data);
     }
 
     /**
@@ -216,6 +104,29 @@ library AssetBasedIntentBuilder {
         (AssetBasedIntentData memory data) = abi.decode(raw, (AssetBasedIntentData));
         return data;
     }
+}
+
+/**
+ * @title AssetBasedIntentSegmentBuilder
+ * Utility functions helpful for building a asset based intent segments.
+ */
+library AssetBasedIntentSegmentBuilder {
+    /**
+     * Create a new intent segment with the specified parameters.
+     * @param callData The data for an intended call.
+     * @return userIntent The created user intent segment.
+     */
+    function create(bytes memory callData) public pure returns (AssetBasedIntentSegment memory) {
+        AssetBasedIntentCurve[] memory assetReleases;
+        AssetBasedIntentCurve[] memory assetRequirements;
+
+        return AssetBasedIntentSegment({
+            callGasLimit: 1000000,
+            callData: callData,
+            assetReleases: assetReleases,
+            assetRequirements: assetRequirements
+        });
+    }
 
     /**
      * Internal helper function to determine the type of the curve based on its parameters.
@@ -228,17 +139,146 @@ library AssetBasedIntentBuilder {
 
     /**
      * Private helper function to add an asset release curve to a user intent.
+     * Add an asset release for ETH to the user intent segment.
+     * @param segment The user intent segment to modify.
+     * @param curve The curve parameters for the asset release.
+     * @return The updated user intent segment.
+     */
+    function releaseETH(AssetBasedIntentSegment memory segment, int256[] memory curve)
+        public
+        pure
+        returns (AssetBasedIntentSegment memory)
+    {
+        return _addAssetRelCurve(segment, address(0), uint256(0), AssetType.ETH, curve);
+    }
+
+    /**
+     * Add an asset release for ERC20 tokens to the user intent segment.
+     * @param segment The user intent segment to modify.
+     * @param addr The address of the ERC20 token contract.
+     * @param curve The curve parameters for the asset release.
+     * @return The updated user intent segment.
+     */
+    function releaseERC20(AssetBasedIntentSegment memory segment, address addr, int256[] memory curve)
+        public
+        pure
+        returns (AssetBasedIntentSegment memory)
+    {
+        return _addAssetRelCurve(segment, addr, uint256(0), AssetType.ERC20, curve);
+    }
+
+    /**
+     * Add an asset release for ERC721 tokens to the user intent segment.
+     * @param segment The user intent segment to modify.
+     * @param addr The address of the ERC721 token contract.
+     * @param id The ID of the ERC721 token.
+     * @param curve The curve parameters for the asset release.
+     * @return The updated user intent segment.
+     */
+    function releaseERC721(AssetBasedIntentSegment memory segment, address addr, uint256 id, int256[] memory curve)
+        public
+        pure
+        returns (AssetBasedIntentSegment memory)
+    {
+        return _addAssetRelCurve(segment, addr, id, AssetType.ERC721, curve);
+    }
+
+    /**
+     * Add an asset release for ERC1155 tokens to the user intent segment.
+     * @param segment The user intent segment to modify.
+     * @param addr The address of the ERC1155 token contract.
+     * @param id The ID of the ERC1155 token.
+     * @param curve The curve parameters for the asset release.
+     * @return The updated user intent segment.
+     */
+    function releaseERC1155(AssetBasedIntentSegment memory segment, address addr, uint256 id, int256[] memory curve)
+        public
+        pure
+        returns (AssetBasedIntentSegment memory)
+    {
+        return _addAssetRelCurve(segment, addr, id, AssetType.ERC1155, curve);
+    }
+
+    /**
+     * Add an end state required asset of ETH to the user intent segment.
+     * @param segment The user intent segment to modify.
+     * @param curve The curve parameters for the asset requirement.
+     * @param relative Boolean flag to indicate if the curve is relative.
+     * @return The updated user intent segment.
+     */
+    function requireETH(AssetBasedIntentSegment memory segment, int256[] memory curve, bool relative)
+        public
+        pure
+        returns (AssetBasedIntentSegment memory)
+    {
+        return _addAssetReqCurve(segment, address(0), uint256(0), AssetType.ETH, curve, relative);
+    }
+
+    /**
+     * Add an end state required asset of ERC20 tokens to the user intent segment.
+     * @param segment The user intent segment to modify.
+     * @param addr The address of the ERC20 token contract.
+     * @param curve The curve parameters for the asset requirement.
+     * @param relative Boolean flag to indicate if the curve is relative.
+     * @return The updated user intent segment.
+     */
+    function requireERC20(AssetBasedIntentSegment memory segment, address addr, int256[] memory curve, bool relative)
+        public
+        pure
+        returns (AssetBasedIntentSegment memory)
+    {
+        return _addAssetReqCurve(segment, addr, uint256(0), AssetType.ERC20, curve, relative);
+    }
+
+    /**
+     * Add an end state required asset of ERC721 tokens to the user intent segment.
+     * @param segment The user intent segment to modify.
+     * @param addr The address of the ERC721 token contract.
+     * @param id The ID of the ERC721 token.
+     * @param curve The curve parameters for the asset requirement.
+     * @param relative Boolean flag to indicate if the curve is relative.
+     * @return The updated user intent segment.
+     */
+    function requireERC721(
+        AssetBasedIntentSegment memory segment,
+        address addr,
+        uint256 id,
+        int256[] memory curve,
+        bool relative
+    ) public pure returns (AssetBasedIntentSegment memory) {
+        return _addAssetReqCurve(segment, addr, id, AssetType.ERC721, curve, relative);
+    }
+
+    /**
+     * Add an end state required asset of ERC1155 tokens to the user intent segment.
+     * @param segment The user intent segment to modify.
+     * @param addr The address of the ERC1155 token contract.
+     * @param id The ID of the ERC1155 token.
+     * @param curve The curve parameters for the asset requirement.
+     * @param relative Boolean flag to indicate if the curve is relative.
+     * @return The updated user intent segment.
+     */
+    function requireERC1155(
+        AssetBasedIntentSegment memory segment,
+        address addr,
+        uint256 id,
+        int256[] memory curve,
+        bool relative
+    ) public pure returns (AssetBasedIntentSegment memory) {
+        return _addAssetReqCurve(segment, addr, id, AssetType.ERC1155, curve, relative);
+    }
+
+    /**
+     * Private helper function to add an asset release curve to a user intent segment.
      */
     function _addAssetReqCurve(
-        UserIntent memory userIntent,
+        AssetBasedIntentSegment memory segment,
         address assetContract,
         uint256 assetId,
         AssetType assetType,
         int256[] memory curveParams,
         bool isRelative
-    ) private pure returns (UserIntent memory) {
-        AssetBasedIntentData memory data = decodeData(userIntent);
-
+    ) private pure returns (AssetBasedIntentSegment memory) {
         //create new curve element
         EvaluationType evalType = EvaluationType.ABSOLUTE;
         if (isRelative) evalType = EvaluationType.RELATIVE;
@@ -252,29 +292,27 @@ library AssetBasedIntentBuilder {
         });
 
         //clone previous array and add new element
-        AssetBasedIntentCurve[] memory assetConstraints = new AssetBasedIntentCurve[](data.assetConstraints.length + 1);
-        for (uint256 i = 0; i < data.assetConstraints.length; i++) {
-            assetConstraints[i] = data.assetConstraints[i];
+        AssetBasedIntentCurve[] memory assetRequirements =
+            new AssetBasedIntentCurve[](segment.assetRequirements.length + 1);
+        for (uint256 i = 0; i < segment.assetRequirements.length; i++) {
+            assetRequirements[i] = segment.assetRequirements[i];
         }
-        assetConstraints[data.assetConstraints.length] = curve;
-        data.assetConstraints = assetConstraints;
+        assetRequirements[segment.assetRequirements.length] = curve;
+        segment.assetRequirements = assetRequirements;
 
-        userIntent = encodeData(userIntent, data);
-        return userIntent;
+        return segment;
     }
 
     /**
-     * Private helper function to add an asset requirement curve to a user intent.
+     * Private helper function to add an asset release curve to a user intent segment.
      */
-    function _addAssetReleaseCurve(
-        UserIntent memory userIntent,
+    function _addAssetRelCurve(
+        AssetBasedIntentSegment memory segment,
         address assetContract,
         uint256 assetId,
         AssetType assetType,
         int256[] memory curveParams
-    ) private pure returns (UserIntent memory) {
-        AssetBasedIntentData memory data = decodeData(userIntent);
-
+    ) private pure returns (AssetBasedIntentSegment memory) {
         //create new curve element
         AssetBasedIntentCurve memory curve = AssetBasedIntentCurve({
             assetContract: assetContract,
@@ -286,15 +324,14 @@ library AssetBasedIntentBuilder {
         });
 
         //clone previous array and add new element
-        AssetBasedIntentCurve[] memory assetReleases = new AssetBasedIntentCurve[](data.assetReleases.length + 1);
-        for (uint256 i = 0; i < data.assetReleases.length; i++) {
-            assetReleases[i] = data.assetReleases[i];
+        AssetBasedIntentCurve[] memory assetReleases = new AssetBasedIntentCurve[](segment.assetReleases.length + 1);
+        for (uint256 i = 0; i < segment.assetReleases.length; i++) {
+            assetReleases[i] = segment.assetReleases[i];
         }
-        assetReleases[data.assetReleases.length] = curve;
-        data.assetReleases = assetReleases;
+        assetReleases[segment.assetReleases.length] = curve;
+        segment.assetReleases = assetReleases;
 
-        userIntent = encodeData(userIntent, data);
-        return userIntent;
+        return segment;
     }
 }
 

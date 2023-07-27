@@ -19,6 +19,7 @@ import "./ScenarioTestEnvironment.sol";
  */
 contract ConditionalPurchaseNFT is ScenarioTestEnvironment {
     using AssetBasedIntentBuilder for UserIntent;
+    using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
 
     uint256 private _reqTokenId;
 
@@ -34,21 +35,21 @@ contract ConditionalPurchaseNFT is ScenarioTestEnvironment {
 
     function test_conditionalPurchaseNFT() public {
         //create account intent
-        bytes memory intentCallData1;
-        bytes memory intentCallData2 =
-            _accountBuyERC1155AndTransferERC721(1 ether, _reqTokenId, address(_intentStandard));
-
-        UserIntent memory userIntent = _createIntent(intentCallData1, intentCallData2);
-        userIntent = userIntent.addReleaseETH(constantCurve(2 ether));
-        userIntent = userIntent.addRequiredERC721(address(_testERC721), _reqTokenId, constantCurve(0), false);
+        UserIntent memory userIntent = _intent();
+        userIntent = userIntent.addSegment(_segment("").releaseETH(constantCurve(2 ether)));
+        userIntent = userIntent.addSegment(
+            _segment(_accountBuyERC1155AndTransferERC721(1 ether, _reqTokenId, address(_intentStandard)))
+        );
+        userIntent = userIntent.addSegment(
+            _segment("").requireERC721(address(_testERC721), _reqTokenId, constantCurve(0), false)
+        );
         userIntent = _signIntent(userIntent);
 
         //create solution
         IEntryPoint.SolutionStep[] memory steps1 = _solverBuyERC721AndForward(1 ether, address(_account));
         IEntryPoint.SolutionStep[] memory steps2 =
             _solverSellERC721AndForward(_reqTokenId, address(_publicAddressSolver));
-
-        IEntryPoint.IntentSolution memory solution = _createSolution(userIntent, steps1, steps2);
+        IEntryPoint.IntentSolution memory solution = _solution(userIntent, steps1, steps2, _noSteps());
 
         //execute
         uint256 gasBefore = gasleft();

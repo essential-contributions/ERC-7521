@@ -27,6 +27,7 @@ contract UserIntentTest is Test, TestEnvironment {
     // gas: 605385 whether `hash` uses `getStandard()` or `standard`
     function test_hash() public {
         bytes32 hash = _intent().hash();
-        assertEq(hash, EXPECTED_HASH);
+        bytes32 expectedHash = 0xdf3a356c91c688a30fb696a58e3f662ebc0318dccc0c1ef399b664cdd93e1be0;
+        assertEq(hash, expectedHash);
     }
 }
