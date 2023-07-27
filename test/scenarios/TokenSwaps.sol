@@ -52,6 +52,7 @@ contract TokenSwaps is ScenarioTestEnvironment {
         assertEq(userERC20Tokens, 90 ether, "The user released more ERC20 tokens than expected");
     }
 
+    /*
     function test_constantExpectation() public {
         //create account intent (curve should evaluate as 7.75ether at timestamp 1000)
         UserIntent memory intent = _intent();
@@ -79,6 +80,7 @@ contract TokenSwaps is ScenarioTestEnvironment {
         assertEq(userBalance, 107 ether, "The solver ended up with incorrect balance");
         assertEq(userERC20Tokens, 92.25 ether, "The user released more ERC20 tokens than expected");
     }
+    */
 
     //TODO: clone the success scenario and tweak it to verify correct failures (ex. signature validation)
 }

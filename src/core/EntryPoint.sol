@@ -436,10 +436,10 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             emit SolutionRevertReason(solIndex, 0, string(reason));
         } else if (reason.length > 0) {
             //revert was due to some unknown with a reason string
-            emit SolutionRevertReason(solIndex, 0, string.concat("AA73 reverted: ", string(reason)));
+            emit SolutionRevertReason(solIndex, 0, string.concat("AA72 reverted: ", string(reason)));
         } else {
             //revert was due to some unknown
-            emit SolutionRevertReason(solIndex, 0, "AA73 reverted (or OOG)");
+            emit SolutionRevertReason(solIndex, 0, "AA72 reverted (or OOG)");
         }
     }
 
