@@ -11,26 +11,24 @@ contract AssetBasedIntentCurveTest is Test, TestEnvironment {
 
     AssetBasedIntentCurve internal _testConstantCurve = _curveETH(constantCurve(10), EvaluationType.ABSOLUTE);
     AssetBasedIntentCurve internal _testConstantRelativeCurve = _curveETH(constantCurve(10), EvaluationType.RELATIVE);
-    AssetBasedIntentCurve internal _testLinearCurve = _curveETH(linearCurve(2, 10, 20, false), EvaluationType.ABSOLUTE);
-    AssetBasedIntentCurve internal _testLinearFlippedCurve =
-        _curveETH(linearCurve(2, 10, 20, true), EvaluationType.ABSOLUTE);
+    AssetBasedIntentCurve internal _testLinearCurve = _curveETH(linearCurve(2, 10, 20), EvaluationType.ABSOLUTE);
+    AssetBasedIntentCurve internal _testLinearFlippedCurve = _curveETH(linearCurve(2, 10, -20), EvaluationType.ABSOLUTE);
     AssetBasedIntentCurve internal _testExponentialCurve =
-        _curveETH(exponentialCurve(2, 10, 2, 20, false), EvaluationType.ABSOLUTE);
+        _curveETH(exponentialCurve(2, 10, 2, 20), EvaluationType.ABSOLUTE);
     AssetBasedIntentCurve internal _testExponentialFlippedCurve =
-        _curveETH(exponentialCurve(2, 10, 2, 20, true), EvaluationType.ABSOLUTE);
+        _curveETH(exponentialCurve(2, 10, 2, -20), EvaluationType.ABSOLUTE);
 
-    function test_validate_constant() public view {
-        _testConstantCurve.validate();
+    function test_validate_constant(int256 curveParam) public pure {
+        _curveETH(constantCurve(curveParam), EvaluationType.ABSOLUTE).validate();
     }
 
-    function test_validate_linear() public view {
-        _testLinearCurve.validate();
-        _testLinearFlippedCurve.validate();
+    function test_validate_linear(int256 m, int256 b, int256 max) public pure {
+        _curveETH(linearCurve(m, b, max), EvaluationType.ABSOLUTE).validate();
     }
 
-    function test_validate_exponential() public view {
-        _testExponentialCurve.validate();
-        _testExponentialFlippedCurve.validate();
+    function test_validate_exponential(int256 m, int256 b, int256 e, int256 max) public pure {
+        vm.assume(e >= 0);
+        _curveETH(exponentialCurve(m, b, e, max), EvaluationType.ABSOLUTE).validate();
     }
 
     function test_validate_invalidCurveType() public {
@@ -75,39 +73,63 @@ contract AssetBasedIntentCurveTest is Test, TestEnvironment {
         _testExponentialCurve.validate();
     }
 
-    function test_evaluate_constant() public {
-        int256 value = _testConstantCurve.evaluate(10);
-        assertEq(value, 10);
+    function test_evaluate_constant(int256 curveParam, uint256 at) public {
+        vm.assume(at <= uint256(type(int256).max));
+        int256 result = _curveETH(constantCurve(curveParam), EvaluationType.ABSOLUTE).evaluate(at);
+        assertEq(result, curveParam);
     }
 
-    function test_evaluate_linear() public {
-        int256 value = _testLinearCurve.evaluate(10);
-        assertEq(value, 30);
+    function test_evaluate_linear(int256 m, int256 b, int256 max, uint256 at) public {
+        vm.assume(at <= uint256(type(int256).max));
+        vm.assume(0 <= max);
+        vm.assume(at <= uint256(max));
+        int256 result = _curveETH(linearCurve(m, b, max), EvaluationType.ABSOLUTE).evaluate(at);
+        int256 expectedResult;
+        unchecked {
+            expectedResult = (m * int256(at)) + b;
+        }
+        assertEq(result, expectedResult);
     }
 
-    function test_evaluate_linearMax() public {
-        int256 value = _testLinearCurve.evaluate(30);
-        assertEq(value, 50);
+    function test_evaluate_linear2(int256 m, int256 b, int256 max, uint256 at) public {
+        vm.assume(at <= uint256(type(int256).max));
+        vm.assume(0 <= max);
+        vm.assume(at > uint256(max));
+        int256 result = _curveETH(linearCurve(m, b, max), EvaluationType.ABSOLUTE).evaluate(at);
+        int256 expectedResult;
+        unchecked {
+            expectedResult = (m * max) + b;
+        }
+        assertEq(result, expectedResult);
     }
 
-    function test_evaluate_linearFlippedMax() public {
-        int256 value = _testLinearFlippedCurve.evaluate(30);
-        assertEq(value, 10);
+    function test_evaluate_linear3(int256 m, int256 b, int256 max, uint256 at) public {
+        vm.assume(at <= uint256(type(int256).max));
+        vm.assume(max > type(int256).min);
+        vm.assume(0 > max);
+        vm.assume(int256(at) <= -max);
+        int256 result = _curveETH(linearCurve(m, b, max), EvaluationType.ABSOLUTE).evaluate(at);
+        int256 expectedResult;
+        unchecked {
+            expectedResult = (m * (-max - int256(at))) + b;
+        }
+        assertEq(result, expectedResult);
     }
 
-    function test_evaluate_exponential() public {
-        int256 value = _testExponentialCurve.evaluate(1);
-        assertEq(value, 12);
+    function test_evaluate_linear4(int256 m, int256 b, int256 max, uint256 at) public {
+        // TODO: max is negative and at > -max
     }
 
-    function test_evaluate_exponentialMax() public {
-        int256 value = _testExponentialCurve.evaluate(30);
-        assertEq(value, 810);
+    function test_evaluationPointOverflow() public {
+        uint256 at = uint256(type(int256).max) + 1;
+        vm.expectRevert("invalid x value");
+        _curveETH(linearCurve(0, 0, 0), EvaluationType.ABSOLUTE).evaluate(at);
     }
 
-    function test_evaluate_exponentialFlippedMax() public {
-        int256 value = _testExponentialFlippedCurve.evaluate(30);
-        assertEq(value, 10);
+    function test_maxUnderflow() public {
+        int256 max = type(int256).min;
+        vm.expectRevert("invalid max value");
+        _curveETH(linearCurve(0, 0, max), EvaluationType.ABSOLUTE).evaluate(0);
     }
 
     function test_isRelativeEvaluation() public view {

@@ -118,7 +118,7 @@ contract AbstractAccountTest is ScenarioTestEnvironment {
 
         UserIntent memory userIntent = _createIntent("", "");
         userIntent = userIntent.addReleaseERC20(address(_testERC20), constantCurve(10 ether));
-        userIntent = userIntent.addRequiredETH(linearCurve((3 ether) / 3000, 7 ether, 3000, true), true);
+        userIntent = userIntent.addRequiredETH(linearCurve((3 ether) / 3000, 7 ether, -3000), true);
 
         bytes32 userIntentHash = userIntent.hash();
         bytes32 digest = userIntentHash.toEthSignedMessageHash();

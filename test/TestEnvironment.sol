@@ -46,7 +46,7 @@ abstract contract TestEnvironment is Test {
 
     function _data() internal pure returns (AssetBasedIntentData memory) {
         AssetBasedIntentCurve memory constantETHCurve = _curveETH(constantCurve(10), EvaluationType.ABSOLUTE);
-        AssetBasedIntentCurve memory linearETHCurve = _curveETH(linearCurve(2, 10, 20, false), EvaluationType.ABSOLUTE);
+        AssetBasedIntentCurve memory linearETHCurve = _curveETH(linearCurve(2, 10, 20), EvaluationType.ABSOLUTE);
 
         AssetBasedIntentCurve[] memory assetReleases = new AssetBasedIntentCurve[](2);
         AssetBasedIntentCurve[] memory assetConstraints = new AssetBasedIntentCurve[](2);

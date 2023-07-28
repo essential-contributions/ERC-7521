@@ -29,7 +29,7 @@ contract TokenSwaps is ScenarioTestEnvironment {
         //create account intent (curve should evaluate as 9ether at timestamp 1000)
         UserIntent memory userIntent = _createIntent("", "");
         userIntent = userIntent.addReleaseERC20(address(_testERC20), constantCurve(10 ether));
-        userIntent = userIntent.addRequiredETH(linearCurve((3 ether) / 3000, 7 ether, 3000, true), true);
+        userIntent = userIntent.addRequiredETH(linearCurve((3 ether) / 3000, 7 ether, -3000), true);
         userIntent = _signIntent(userIntent);
 
         //create solution
@@ -55,8 +55,7 @@ contract TokenSwaps is ScenarioTestEnvironment {
     function test_constantExpectation() public {
         //create account intent (curve should evaluate as 7.75ether at timestamp 1000)
         UserIntent memory userIntent = _createIntent("", "");
-        userIntent =
-            userIntent.addReleaseERC20(address(_testERC20), exponentialCurve(750000000000, 7 ether, 2, 2000, false));
+        userIntent = userIntent.addReleaseERC20(address(_testERC20), exponentialCurve(750000000000, 7 ether, 2, 2000));
         userIntent = userIntent.addRequiredETH(constantCurve(7 ether), true);
         userIntent = _signIntent(userIntent);
 
@@ -83,7 +82,7 @@ contract TokenSwaps is ScenarioTestEnvironment {
     function test_failSolutionFirstPass() public {
         UserIntent memory userIntent = _createIntent("", "");
         userIntent = userIntent.addReleaseERC20(address(_testERC20), constantCurve(10 ether));
-        userIntent = userIntent.addRequiredETH(linearCurve((3 ether) / 3000, 7 ether, 3000, true), true);
+        userIntent = userIntent.addRequiredETH(linearCurve((3 ether) / 3000, 7 ether, -3000), true);
         userIntent = _signIntent(userIntent);
 
         // 11 ether is more than 10 ether

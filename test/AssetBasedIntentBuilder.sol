@@ -313,17 +313,14 @@ function constantCurve(int256 amount) pure returns (int256[] memory) {
  * @dev Helper function to generate curve parameters for a linear curve.
  * @param m The slope of the linear curve.
  * @param b The y-intercept of the linear curve.
- * @param max The maximum x value for the curve.
- * @param flipY Boolean flag to indicate if the curve should be evaluated from right to left.
+ * @param max The maximum x value for the curve. If negative, the curve should be evaluated from right to left.
  * @return params The array containing the curve parameters.
  */
-function linearCurve(int256 m, int256 b, uint256 max, bool flipY) pure returns (int256[] memory) {
+function linearCurve(int256 m, int256 b, int256 max) pure returns (int256[] memory) {
     int256[] memory params = new int256[](3);
-    int256 signedMax = int256(max);
-    if (flipY) signedMax = -signedMax;
     params[0] = m;
     params[1] = b;
-    params[2] = signedMax;
+    params[2] = max;
     return params;
 }
 
@@ -332,17 +329,14 @@ function linearCurve(int256 m, int256 b, uint256 max, bool flipY) pure returns (
  * @param m The multiplier for the exponential curve.
  * @param b The base for the exponential curve.
  * @param e The exponent for the exponential curve.
- * @param max The maximum x value for the curve.
- * @param flipY Boolean flag to indicate if the curve should be evaluated from right to left.
+ * @param max The maximum x value for the curve. If negative, the curve should be evaluated from right to left.
  * @return params The array containing the curve parameters.
  */
-function exponentialCurve(int256 m, int256 b, int256 e, uint256 max, bool flipY) pure returns (int256[] memory) {
+function exponentialCurve(int256 m, int256 b, int256 e, int256 max) pure returns (int256[] memory) {
     int256[] memory params = new int256[](4);
-    int256 signedMax = int256(max);
-    if (flipY) signedMax = -signedMax;
     params[0] = m;
     params[1] = b;
     params[2] = e;
-    params[3] = signedMax;
+    params[3] = max;
     return params;
 }

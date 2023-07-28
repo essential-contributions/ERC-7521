@@ -59,8 +59,13 @@ library AssetBasedIntentCurveLib {
         }
     }
 
+    // TODO: consider adding under/overflow custom errors
     function evaluate(AssetBasedIntentCurve calldata curve, uint256 x) public pure returns (int256 val) {
-        int256 sx = int256(x);
+        int256 sx;
+        unchecked {
+            sx = int256(x);
+            require(sx >= 0, "invalid x value");
+        }
         if (curve.curveType == CurveType.CONSTANT) {
             val = curve.params[0];
         } else if (curve.curveType == CurveType.LINEAR) {
@@ -68,8 +73,9 @@ library AssetBasedIntentCurveLib {
             //negative "max" means to evaluate from right to left
             int256 m = curve.params[0];
             int256 b = curve.params[1];
-            int256 max = int256(curve.params[2]);
+            int256 max = curve.params[2];
             if (max < 0) {
+                require(max > type(int256).min, "invalid max value");
                 //negative "max" means to flip along the y-axis
                 max = 0 - max;
                 if (sx > max) sx = max;
@@ -78,7 +84,9 @@ library AssetBasedIntentCurveLib {
             if (sx > max) {
                 sx = max;
             }
-            val = (m * sx) + b;
+            unchecked {
+                val = m * sx + b;
+            }
         } else if (curve.curveType == CurveType.EXPONENTIAL) {
             //m*(x**e) + b, params [m,b,e,max]
             //negative "max" means to evaluate from right to left
@@ -95,7 +103,9 @@ library AssetBasedIntentCurveLib {
             if (sx > max) {
                 sx = max;
             }
-            val = (m * (sx ** e)) + b;
+            unchecked {
+                val = (m * (sx ** e)) + b;
+            }
         }
     }
 
