@@ -20,21 +20,17 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     uint256 private constant REVERT_REASON_MAX_LEN = 2048;
     uint256 private constant CONTEXT_DATA_MAX_LEN = 2048;
 
+    address private constant EX_STATE_NOT_ACTIVE = address(0);
+    address private constant EX_STATE_VALIDATION_EXECUTING =
+        address(uint160(uint256(keccak256("EX_STATE_VALIDATION_EXECUTING"))));
+    address private constant EX_STATE_SOLUTION_EXECUTING =
+        address(uint160(uint256(keccak256("EX_STATE_SOLUTION_EXECUTING"))));
+
     //keeps track of registered intent standards
     mapping(bytes32 => IIntentStandard) private _registeredStandards;
 
-    //flag for applications to check current step in execution
-    ExState private _executionState;
-
-    /**
-     * execution state flags
-     */
-    enum ExState {
-        notActive,
-        validationExecuting,
-        intentExecuting,
-        solutionExecuting
-    }
+    //flag for applications to check current context of execution
+    address private _executionStateContext;
 
     /**
      * execute a user intents solution.
@@ -47,9 +43,9 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
 
         unchecked {
             //Execute intent first pass
-            _executionState = ExState.intentExecuting;
             for (uint256 i = 0; i < intslen; i++) {
                 UserIntent calldata intent = solution.userIntents[i];
+                _executionStateContext = intent.sender;
                 IIntentStandard standard = _registeredStandards[intent.getStandard()];
                 bool success = Exec.delegateCall(
                     address(standard),
@@ -74,7 +70,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             //Execute solution first pass
             uint256 solLen1 = solution.steps1.length;
             if (solLen1 > 0) {
-                _executionState = ExState.solutionExecuting;
+                _executionStateContext = EX_STATE_SOLUTION_EXECUTING;
                 for (uint256 i = 0; i < solLen1; i++) {
                     SolutionStep calldata step = solution.steps1[i];
                     bool success = Exec.call(step.target, step.value, step.callData, gasleft());
@@ -90,9 +86,9 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             }
 
             //Execute intent second pass
-            _executionState = ExState.intentExecuting;
             for (uint256 i = 0; i < intslen; i++) {
                 UserIntent calldata intent = solution.userIntents[i];
+                _executionStateContext = intent.sender;
                 IIntentStandard standard = _registeredStandards[intent.getStandard()];
                 bool success = Exec.delegateCall(
                     address(standard),
@@ -119,7 +115,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             //Execute solution second pass
             uint256 solLen2 = solution.steps2.length;
             if (solLen2 > 0) {
-                _executionState = ExState.solutionExecuting;
+                _executionStateContext = EX_STATE_SOLUTION_EXECUTING;
                 for (uint256 i = 0; i < solLen2; i++) {
                     SolutionStep calldata step = solution.steps2[i];
                     bool success = Exec.call(step.target, step.value, step.callData, gasleft());
@@ -135,9 +131,9 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             }
 
             //Verify end state
-            _executionState = ExState.intentExecuting;
             for (uint256 i = 0; i < intslen; i++) {
                 UserIntent calldata intent = solution.userIntents[i];
+                _executionStateContext = intent.sender;
                 IIntentStandard standard = _registeredStandards[intent.getStandard()];
                 bool success = Exec.delegateCall(
                     address(standard),
@@ -155,7 +151,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             }
 
             //Intent no longer executing
-            _executionState = ExState.notActive;
+            _executionStateContext = EX_STATE_NOT_ACTIVE;
         } //unchecked
     }
 
@@ -307,21 +303,28 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      * returns if intent validation actions are currently being executed.
      */
     function validationExecuting() external view returns (bool) {
-        return _executionState == ExState.validationExecuting;
+        return _executionStateContext == EX_STATE_VALIDATION_EXECUTING;
     }
 
     /**
-     * returns if intent specific actions are currently being executed.
+     * returns the sender of the currently executing intent (or address(0) is no intent is executing).
      */
-    function intentExecuting() external view returns (bool) {
-        return _executionState == ExState.intentExecuting;
+    function executingIntentSender() external view returns (address) {
+        if (
+            _executionStateContext == EX_STATE_VALIDATION_EXECUTING
+                || _executionStateContext == EX_STATE_SOLUTION_EXECUTING
+        ) {
+            return EX_STATE_NOT_ACTIVE;
+        }
+
+        return _executionStateContext;
     }
 
     /**
      * returns if intent solution specific actions are currently being executed.
      */
     function solutionExecuting() external view returns (bool) {
-        return _executionState == ExState.solutionExecuting;
+        return _executionStateContext == EX_STATE_SOLUTION_EXECUTING;
     }
 
     /**
@@ -346,7 +349,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         private
         returns (uint256 validationData)
     {
-        _executionState = ExState.validationExecuting;
+        _executionStateContext = EX_STATE_VALIDATION_EXECUTING;
 
         // validate intent standard is recognized
         IIntentStandard standard = _registeredStandards[userInt.getStandard()];
@@ -379,7 +382,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         }
 
         // end validation state
-        _executionState = ExState.notActive;
+        _executionStateContext = EX_STATE_NOT_ACTIVE;
     }
 
     /**
