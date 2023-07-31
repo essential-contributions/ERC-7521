@@ -33,15 +33,22 @@ library AssetBasedIntentDataLib {
     using AssetBasedIntentCurveLib for AssetBasedIntentCurve;
 
     function validate(AssetBasedIntentData calldata data) public pure {
+        // check over the first segment first
         if (data.intentSegments.length > 0) {
             for (uint256 i = 0; i < data.intentSegments[0].assetRequirements.length; i++) {
                 require(
                     !data.intentSegments[0].assetRequirements[i].isRelativeEvaluation(),
                     "relative requirements not allowed at beginning of intent"
                 );
+                data.intentSegments[0].assetRequirements[i].validate();
+            }
+            for (uint256 i = 0; i < data.intentSegments[0].assetReleases.length; i++) {
+                data.intentSegments[0].assetReleases[i].validate();
             }
         }
-        for (uint256 j = 0; j < data.intentSegments.length; j++) {
+
+        // check through remaining segments
+        for (uint256 j = 1; j < data.intentSegments.length; j++) {
             for (uint256 i = 0; i < data.intentSegments[j].assetRequirements.length; i++) {
                 data.intentSegments[j].assetRequirements[i].validate();
             }
