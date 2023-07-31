@@ -19,8 +19,7 @@ abstract contract TestEnvironment is Test {
     AssetBasedIntentStandard internal _intentStandard;
     AbstractAccount internal _account;
 
-    uint256 internal constant _privateKey = uint256(keccak256("account_private_key"));
-    address internal _publicAddress = _getPublicAddress(_privateKey);
+    address internal _publicAddress = _getPublicAddress(uint256(keccak256("account_private_key")));
 
     function setUp() public virtual {
         _entryPoint = new EntryPoint();

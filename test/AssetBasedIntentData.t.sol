@@ -19,4 +19,20 @@ contract AssetBasedIntentDataTest is Test, TestEnvironment {
         vm.expectRevert("invalid curve params");
         data.validate();
     }
+
+    function test_validate_relativeRequirementAtBeginning() public {
+        AssetBasedIntentSegment[] memory intentSegments = new AssetBasedIntentSegment[](2);
+        // relative requirement
+        AssetBasedIntentCurve memory constantETHCurve = _curveETH(constantCurve(10), EvaluationType.RELATIVE);
+
+        AssetBasedIntentCurve[] memory assetRequirements = new AssetBasedIntentCurve[](2);
+        assetRequirements[0] = constantETHCurve;
+
+        intentSegments[0].assetRequirements = assetRequirements;
+
+        AssetBasedIntentData memory assetBasedIntentData = AssetBasedIntentData({intentSegments: intentSegments});
+
+        vm.expectRevert("relative requirements not allowed at beginning of intent");
+        assetBasedIntentData.validate();
+    }
 }

@@ -63,6 +63,5 @@ contract ConditionalPurchaseNFT is ScenarioTestEnvironment {
         assertEq(userERC1155Tokens, 1, "The user did not get their NFT");
     }
 
-
     //TODO: clone the success scenario and tweak it to verify correct failures (ex. signature validation)
 }
