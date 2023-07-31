@@ -36,7 +36,7 @@ contract PurchaseNFT is ScenarioTestEnvironment {
         userIntent = _signIntent(userIntent);
 
         //create solution
-        IEntryPoint.SolutionStep[] memory steps1 =
+        bytes[] memory steps1 =
             _solverSwapAllERC20ForETHAndForward(2 ether, address(_publicAddressSolver), 1 ether, address(_account));
         IEntryPoint.IntentSolution memory solution = _solution(userIntent, steps1, _noSteps(), _noSteps());
 

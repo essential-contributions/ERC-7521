@@ -31,7 +31,7 @@ abstract contract AssetHolderProxy is EntryPointTruster, IERC721Receiver, IERC11
      */
     function transfer(AssetType assetType, address assetContract, uint256 assetId, address to, uint256 amount)
         external
-        onlyFromEntryPointSolutionExecuting
+        onlyFromEntryPoint
     {
         require(_balanceOf(assetType, assetContract, assetId, address(this)) >= amount, "insufficient transfer balance");
         _transfer(assetType, assetContract, assetId, address(this), to, amount);
@@ -46,7 +46,7 @@ abstract contract AssetHolderProxy is EntryPointTruster, IERC721Receiver, IERC11
      */
     function transferAll(AssetType assetType, address assetContract, uint256 assetId, address to)
         external
-        onlyFromEntryPointSolutionExecuting
+        onlyFromEntryPoint
     {
         uint256 amount = _balanceOf(assetType, assetContract, assetId, address(this));
         _transfer(assetType, assetContract, assetId, address(this), to, amount);
@@ -66,7 +66,7 @@ abstract contract AssetHolderProxy is EntryPointTruster, IERC721Receiver, IERC11
         uint256 assetId,
         address operator,
         bool approved
-    ) external onlyFromEntryPointSolutionExecuting {
+    ) external onlyFromEntryPoint {
         _setApprovalForAll(assetType, assetContract, assetId, operator, approved);
     }
 
@@ -76,7 +76,7 @@ abstract contract AssetHolderProxy is EntryPointTruster, IERC721Receiver, IERC11
      * @param value The amount of ether (in wei) to attach to the transaction.
      * @param data The data containing the function selector and parameters to be executed on the target contract.
      */
-    function execute(address target, uint256 value, bytes calldata data) external onlyFromEntryPointSolutionExecuting {
+    function execute(address target, uint256 value, bytes calldata data) external onlyFromEntryPoint {
         (bool success, bytes memory result) = target.call{value: value}(data);
         if (!success) {
             assembly {
@@ -90,7 +90,7 @@ abstract contract AssetHolderProxy is EntryPointTruster, IERC721Receiver, IERC11
      * @param target The address of the contract to execute the transaction on.
      * @param data The data containing the function selector and parameters to be executed on the target contract.
      */
-    function delegate(address target, bytes calldata data) external onlyFromEntryPointSolutionExecuting {
+    function delegate(address target, bytes calldata data) external onlyFromEntryPoint {
         (bool success, bytes memory result) = target.delegatecall(data);
         if (!success) {
             assembly {

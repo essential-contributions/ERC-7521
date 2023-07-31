@@ -99,4 +99,13 @@ contract SolverUtils {
         // forward
         TestERC721(payable(erc721)).transferFrom(address(this), forwardTo, tokenId);
     }
+
+    /**
+     * Transfers all ETH to a given address.
+     * @param to the address to send the assets to.
+     */
+    function transferAllETH(address to) external {
+        uint256 amount = address(this).balance;
+        payable(to).transfer(amount);
+    }
 }

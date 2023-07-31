@@ -46,9 +46,8 @@ contract ConditionalPurchaseNFT is ScenarioTestEnvironment {
         userIntent = _signIntent(userIntent);
 
         //create solution
-        IEntryPoint.SolutionStep[] memory steps1 = _solverBuyERC721AndForward(1 ether, address(_account));
-        IEntryPoint.SolutionStep[] memory steps2 =
-            _solverSellERC721AndForward(_reqTokenId, address(_publicAddressSolver));
+        bytes[] memory steps1 = _solverBuyERC721AndForward(1 ether, address(_account));
+        bytes[] memory steps2 = _solverSellERC721AndForward(_reqTokenId, address(_publicAddressSolver));
         IEntryPoint.IntentSolution memory solution = _solution(userIntent, steps1, steps2, _noSteps());
 
         //execute

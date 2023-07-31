@@ -53,10 +53,6 @@ contract AssetBasedIntentStandard is AssetHolderProxy, IIntentStandard {
      */
     receive() external payable {}
 
-    /////////////////////////
-    // DELEGATE/PURE CALLS //
-    /////////////////////////
-
     /**
      * Validate intent structure (typically just formatting)
      * @param userInt the intent that is about to be solved.
@@ -75,9 +71,9 @@ contract AssetBasedIntentStandard is AssetHolderProxy, IIntentStandard {
      */
     function executeUserIntent(UserIntent calldata userInt, uint256 timestamp, bytes memory context)
         external
+        onlyFromEntryPoint
         returns (bytes memory)
     {
-        IEntryPoint entryPointContract = IEntryPoint(address(this));
         AssetBasedIntentData calldata data = parseAssetBasedIntentData(userInt);
         uint256 intentSegmentIndex = 0;
         uint256[] memory startingBalances;
@@ -107,12 +103,7 @@ contract AssetBasedIntentStandard is AssetHolderProxy, IIntentStandard {
         }
 
         //release tokens
-        _releaseAssets(
-            intentSegment,
-            evaluateAt,
-            userInt.sender,
-            address(entryPointContract.getIntentStandardContract(userInt.getStandard()))
-        );
+        _releaseAssets(intentSegment, evaluateAt, userInt.sender);
 
         // return list of starting balances for reference later (or nothing if this was the last step)
         if ((intentSegmentIndex + 1) < data.intentSegments.length) {
@@ -194,14 +185,8 @@ contract AssetBasedIntentStandard is AssetHolderProxy, IIntentStandard {
      * @param intentSegment The intent segment containing the asset releases.
      * @param evaluateAt The time offset at which to evaluate the asset releases.
      * @param from The address from which to release the assets.
-     * @param to The address to which the assets are released.
      */
-    function _releaseAssets(
-        AssetBasedIntentSegment calldata intentSegment,
-        uint256 evaluateAt,
-        address from,
-        address to
-    ) private {
+    function _releaseAssets(AssetBasedIntentSegment calldata intentSegment, uint256 evaluateAt, address from) private {
         for (uint256 i = 0; i < intentSegment.assetReleases.length; i++) {
             int256 releaseAmount = intentSegment.assetReleases[i].evaluate(evaluateAt);
             if (releaseAmount < 0) releaseAmount = 0;
@@ -209,7 +194,7 @@ contract AssetBasedIntentStandard is AssetHolderProxy, IIntentStandard {
                 intentSegment.assetReleases[i].assetType,
                 intentSegment.assetReleases[i].assetContract,
                 intentSegment.assetReleases[i].assetId,
-                to,
+                address(this),
                 uint256(releaseAmount)
             );
         }
