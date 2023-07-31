@@ -8,7 +8,7 @@ import {AssetBasedIntentCurve, AssetBasedIntentCurveLib} from "./AssetBasedInten
 
 /**
  * Asset Based Intent Data struct
- * @param intentSegments list of different segments in an asset based defined intent.
+ * @param intentSegments list of different segments in an asset based intent.
  */
 struct AssetBasedIntentData {
     AssetBasedIntentSegment[] intentSegments;
