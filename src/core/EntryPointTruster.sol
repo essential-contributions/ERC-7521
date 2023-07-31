@@ -22,29 +22,11 @@ abstract contract EntryPointTruster {
     }
 
     /**
-     * ensure the entrypoint is currently in the validation stage.
-     */
-    modifier onlyFromEntryPointValidationExecuting() {
-        require(msg.sender == address(entryPoint()), "not from EntryPoint");
-        require(entryPoint().validationExecuting(), "EntryPoint not validating");
-        _;
-    }
-
-    /**
      * ensure the entrypoint is currently in the intent execution stage for this sender.
      */
-    modifier onlyFromEntryPointIntentExecuting() {
-        require(msg.sender == address(entryPoint()), "not from EntryPoint");
+    modifier onlyFromIntentStandardExecutingForSender(address intentStandard) {
+        require(msg.sender == intentStandard, "not from intent standard");
         require(entryPoint().executingIntentSender() == address(this), "EntryPoint not executing intent");
-        _;
-    }
-
-    /**
-     * ensure the entrypoint is currently in the solution execution stage.
-     */
-    modifier onlyFromEntryPointSolutionExecuting() {
-        require(msg.sender == address(entryPoint()), "not from EntryPoint");
-        require(entryPoint().solutionExecuting(), "EntryPoint not executing solution");
         _;
     }
 }

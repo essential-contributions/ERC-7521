@@ -84,14 +84,9 @@ interface IEntryPoint is INonceManager {
         SolutionSegment[] solutionSegments;
     }
 
+    //CallDataSteps are called directly to the intent standard contract with zero value
     struct SolutionSegment {
-        SolutionStep[] steps;
-    }
-
-    struct SolutionStep {
-        address target;
-        uint256 value;
-        bytes callData;
+        bytes[] callDataSteps;
     }
 
     /**

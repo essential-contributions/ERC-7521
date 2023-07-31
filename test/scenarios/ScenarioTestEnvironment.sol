@@ -44,7 +44,7 @@ abstract contract ScenarioTestEnvironment is Test {
         //deploy contracts
         _entryPoint = new EntryPoint();
         _intentStandard = new AssetBasedIntentStandard(_entryPoint);
-        _account = new AbstractAccount(_entryPoint, _publicAddress);
+        _account = new AbstractAccount(_entryPoint, _intentStandard, _publicAddress);
 
         _testERC20 = new TestERC20();
         _testERC721 = new TestERC721();
@@ -129,22 +129,15 @@ abstract contract ScenarioTestEnvironment is Test {
 
     /**
      * Private helper function to build solver solution steps approving token transfer for swaps.
+     * @param to The address to operator being approved.
      * @return The array of solution steps for token approvals.
      */
-    function _solverApproveERC20() internal view returns (IEntryPoint.SolutionStep[] memory) {
-        address tokenHolder = address(_intentStandard);
-        IEntryPoint.SolutionStep[] memory steps = new IEntryPoint.SolutionStep[](1);
+    function _solverApproveERC20(address to) internal view returns (bytes[] memory) {
+        bytes[] memory steps = new bytes[](1);
 
         //set token approvals for "uniswap"
-        bytes memory approvalCall = abi.encodeWithSelector(
-            AssetHolderProxy.setApprovalForAll.selector,
-            AssetType.ERC20,
-            address(_testERC20),
-            uint256(0),
-            address(_testUniswap),
-            true
-        );
-        steps[0] = IEntryPoint.SolutionStep({target: tokenHolder, value: uint256(0), callData: approvalCall});
+        bytes memory approveCall = abi.encodeWithSelector(IERC20.approve.selector, to, type(uint256).max);
+        steps[0] = _solutionCall(address(_testERC20), 0, approveCall);
 
         return steps;
     }
@@ -155,25 +148,17 @@ abstract contract ScenarioTestEnvironment is Test {
      * @param to The address to receive the swapped ETH.
      * @return The array of solution steps for swapping tokens.
      */
-    function _solverSwapAllERC20ForETH(uint256 minETH, address to)
-        internal
-        view
-        returns (IEntryPoint.SolutionStep[] memory)
-    {
-        address tokenHolder = address(_intentStandard);
-        IEntryPoint.SolutionStep[] memory steps = new IEntryPoint.SolutionStep[](2);
+    function _solverSwapAllERC20ForETH(uint256 minETH, address to) internal view returns (bytes[] memory) {
+        bytes[] memory steps = new bytes[](2);
 
         //set token approvals for "uniswap"
-        steps[0] = _solverApproveERC20()[0];
+        steps[0] = _solverApproveERC20(address(_testUniswap))[0];
 
         //swap to eth and forward part of it using the solver util library
         bytes memory swapCall = abi.encodeWithSelector(
             SolverUtils.swapAllERC20ForETH.selector, _testUniswap, _testERC20, _testWrappedNativeToken, minETH, to
         );
-        bytes memory delegateSwapAndForwardCall =
-            abi.encodeWithSelector(AssetHolderProxy.delegate.selector, address(_solverUtils), swapCall);
-        steps[1] =
-            IEntryPoint.SolutionStep({target: tokenHolder, value: uint256(0), callData: delegateSwapAndForwardCall});
+        steps[1] = _solutionDelegateCall(swapCall);
 
         return steps;
     }
@@ -189,13 +174,12 @@ abstract contract ScenarioTestEnvironment is Test {
     function _solverSwapAllERC20ForETHAndForward(uint256 minETH, address to, uint256 forwardAmount, address forwardTo)
         internal
         view
-        returns (IEntryPoint.SolutionStep[] memory)
+        returns (bytes[] memory)
     {
-        address tokenHolder = address(_intentStandard);
-        IEntryPoint.SolutionStep[] memory steps = new IEntryPoint.SolutionStep[](2);
+        bytes[] memory steps = new bytes[](2);
 
         //set token approvals for "uniswap"
-        steps[0] = _solverApproveERC20()[0];
+        steps[0] = _solverApproveERC20(address(_testUniswap))[0];
 
         //swap to eth and forward part of it using the solver util library
         bytes memory swapAndForwardCall = abi.encodeWithSelector(
@@ -208,10 +192,7 @@ abstract contract ScenarioTestEnvironment is Test {
             forwardAmount,
             forwardTo
         );
-        bytes memory delegateSwapAndForwardCall =
-            abi.encodeWithSelector(AssetHolderProxy.delegate.selector, address(_solverUtils), swapAndForwardCall);
-        steps[1] =
-            IEntryPoint.SolutionStep({target: tokenHolder, value: uint256(0), callData: delegateSwapAndForwardCall});
+        steps[1] = _solutionDelegateCall(swapAndForwardCall);
 
         return steps;
     }
@@ -219,24 +200,15 @@ abstract contract ScenarioTestEnvironment is Test {
     /**
      * Private helper function to build solver solution steps for buying and forwarding an ERC721 token.
      * @param price The price of the ERC721 token to buy.
-     * @param forwardTo The address to forward the purchased ERC721 token to.
+     * @param to The address to forward the purchased ERC721 token to.
      * @return The array of solution steps for buying and forwarding an ERC721 token.
      */
-    function _solverBuyERC721AndForward(uint256 price, address forwardTo)
-        internal
-        view
-        returns (IEntryPoint.SolutionStep[] memory)
-    {
-        address tokenHolder = address(_intentStandard);
-        IEntryPoint.SolutionStep[] memory steps = new IEntryPoint.SolutionStep[](1);
+    function _solverBuyERC721AndForward(uint256 price, address to) internal view returns (bytes[] memory) {
+        bytes[] memory steps = new bytes[](1);
 
         //buy the ERC721 token and forward
-        bytes memory buyAndForwardCall =
-            abi.encodeWithSelector(SolverUtils.buyERC721.selector, _testERC721, price, forwardTo);
-        bytes memory delegateBuyAndForwardCall =
-            abi.encodeWithSelector(AssetHolderProxy.delegate.selector, address(_solverUtils), buyAndForwardCall);
-        steps[0] =
-            IEntryPoint.SolutionStep({target: tokenHolder, value: uint256(0), callData: delegateBuyAndForwardCall});
+        bytes memory buyAndForwardCall = abi.encodeWithSelector(SolverUtils.buyERC721.selector, _testERC721, price, to);
+        steps[0] = _solutionDelegateCall(buyAndForwardCall);
 
         return steps;
     }
@@ -244,30 +216,41 @@ abstract contract ScenarioTestEnvironment is Test {
     /**
      * Private helper function to build solver solution steps for selling an ERC721 token and forwarding ETH.
      * @param tokenId The ID of the ERC721 token to sell.
-     * @param forwardTo The address to forward the received ETH to.
+     * @param to The address to forward the received ETH to.
      * @return The array of solution steps for selling an ERC721 token and forwarding ETH.
      */
-    function _solverSellERC721AndForward(uint256 tokenId, address forwardTo)
-        internal
-        view
-        returns (IEntryPoint.SolutionStep[] memory)
-    {
-        address tokenHolder = address(_intentStandard);
-        IEntryPoint.SolutionStep[] memory steps = new IEntryPoint.SolutionStep[](2);
+    function _solverSellERC721AndForward(uint256 tokenId, address to) internal view returns (bytes[] memory) {
+        bytes[] memory steps = new bytes[](2);
 
         //sell the ERC721 token
         bytes memory sellCall = abi.encodeWithSelector(TestERC721.sellNFT.selector, address(_intentStandard), tokenId);
-        bytes memory executeSellCall =
-            abi.encodeWithSelector(AssetHolderProxy.execute.selector, address(_testERC721), 0, sellCall);
-        steps[0] = IEntryPoint.SolutionStep({target: tokenHolder, value: uint256(0), callData: executeSellCall});
+        steps[0] = _solutionCall(address(_testERC721), 0, sellCall);
 
         //move all remaining ETH
-        bytes memory transferAllCall = abi.encodeWithSelector(
-            AssetHolderProxy.transferAll.selector, AssetType.ETH, address(0), uint256(0), forwardTo
-        );
-        steps[1] = IEntryPoint.SolutionStep({target: tokenHolder, value: uint256(0), callData: transferAllCall});
+        bytes memory transferAllCall = abi.encodeWithSelector(SolverUtils.transferAllETH.selector, to);
+        steps[1] = _solutionDelegateCall(transferAllCall);
 
         return steps;
+    }
+
+    /**
+     * Private helper function to wrap a call as an execute call for the intent standard contract to execute.
+     * @param target The address of the contract to execute the transaction on.
+     * @param value The amount of ether (in wei) to attach to the transaction.
+     * @param data The data containing the function selector and parameters to be executed on the target contract.
+     * @return The solution step that appropriately wraps for the asset based intent standard.
+     */
+    function _solutionCall(address target, uint256 value, bytes memory data) internal pure returns (bytes memory) {
+        return abi.encodeWithSelector(AssetHolderProxy.execute.selector, target, value, data);
+    }
+
+    /**
+     * Private helper function to wrap a call as a delegate call through the solver utils contract.
+     * @param data The data containing the function selector and parameters to be executed on the target contract.
+     * @return The solution step that appropriately wraps for the asset based intent standard.
+     */
+    function _solutionDelegateCall(bytes memory data) internal view returns (bytes memory) {
+        return abi.encodeWithSelector(AssetHolderProxy.delegate.selector, address(_solverUtils), data);
     }
 
     /**
@@ -297,9 +280,9 @@ abstract contract ScenarioTestEnvironment is Test {
      */
     function _solution(
         UserIntent memory userIntent,
-        IEntryPoint.SolutionStep[] memory steps1,
-        IEntryPoint.SolutionStep[] memory steps2,
-        IEntryPoint.SolutionStep[] memory steps3
+        bytes[] memory steps1,
+        bytes[] memory steps2,
+        bytes[] memory steps3
     ) internal pure returns (IEntryPoint.IntentSolution memory) {
         UserIntent[] memory userIntents = new UserIntent[](1);
         userIntents[0] = userIntent;
@@ -312,15 +295,15 @@ abstract contract ScenarioTestEnvironment is Test {
         uint256 segmentsIndex = 0;
         IEntryPoint.SolutionSegment[] memory solutionSegments = new IEntryPoint.SolutionSegment[](numSegments);
         if (steps1.length > 0) {
-            solutionSegments[segmentsIndex] = IEntryPoint.SolutionSegment({steps: steps1});
+            solutionSegments[segmentsIndex] = IEntryPoint.SolutionSegment({callDataSteps: steps1});
             segmentsIndex++;
         }
         if (steps2.length > 0) {
-            solutionSegments[segmentsIndex] = IEntryPoint.SolutionSegment({steps: steps2});
+            solutionSegments[segmentsIndex] = IEntryPoint.SolutionSegment({callDataSteps: steps2});
             segmentsIndex++;
         }
         if (steps3.length > 0) {
-            solutionSegments[segmentsIndex] = IEntryPoint.SolutionSegment({steps: steps3});
+            solutionSegments[segmentsIndex] = IEntryPoint.SolutionSegment({callDataSteps: steps3});
             segmentsIndex++;
         }
 
@@ -346,12 +329,8 @@ abstract contract ScenarioTestEnvironment is Test {
      * @param b The array of solution steps for the second action.
      * @return The combined array of solution steps.
      */
-    function _combineSolutionSteps(IEntryPoint.SolutionStep[] memory a, IEntryPoint.SolutionStep[] memory b)
-        internal
-        pure
-        returns (IEntryPoint.SolutionStep[] memory)
-    {
-        IEntryPoint.SolutionStep[] memory steps = new IEntryPoint.SolutionStep[](a.length + b.length);
+    function _combineSolutionSteps(bytes[] memory a, bytes[] memory b) internal pure returns (bytes[] memory) {
+        bytes[] memory steps = new bytes[](a.length + b.length);
         for (uint256 i = 0; i < a.length; i++) {
             steps[i] = a[i];
         }
@@ -372,8 +351,12 @@ abstract contract ScenarioTestEnvironment is Test {
         return ecrecover(digest, v, r, s);
     }
 
-    function _noSteps() internal pure returns (IEntryPoint.SolutionStep[] memory) {
-        IEntryPoint.SolutionStep[] memory steps;
+    /**
+     * Private helper function to quick get an empty array of steps.
+     * @return An empty array of steps
+     */
+    function _noSteps() internal pure returns (bytes[] memory) {
+        bytes[] memory steps;
         return steps;
     }
 }

@@ -36,7 +36,7 @@ abstract contract BaseAccount is EntryPointTruster, IAccount {
         external
         virtual
         override
-        onlyFromEntryPointValidationExecuting
+        onlyFromEntryPoint
         returns (uint256 validationData)
     {
         validationData = _validateSignature(userInt, userIntHash);
