@@ -196,14 +196,15 @@ contract AssetBasedIntentStandard is AssetHolderProxy, IIntentStandard {
     function _releaseAssets(AssetBasedIntentSegment calldata intentSegment, uint256 evaluateAt, address from) private {
         for (uint256 i = 0; i < intentSegment.assetReleases.length; i++) {
             int256 releaseAmount = intentSegment.assetReleases[i].evaluate(evaluateAt);
-            if (releaseAmount < 0) releaseAmount = 0;
-            IAssetRelease(from).releaseAsset(
-                intentSegment.assetReleases[i].assetType,
-                intentSegment.assetReleases[i].assetContract,
-                intentSegment.assetReleases[i].assetId,
-                address(this),
-                uint256(releaseAmount)
-            );
+            if (releaseAmount > 0) {
+                IAssetRelease(from).releaseAsset(
+                    intentSegment.assetReleases[i].assetType,
+                    intentSegment.assetReleases[i].assetContract,
+                    intentSegment.assetReleases[i].assetId,
+                    address(this),
+                    uint256(releaseAmount)
+                );
+            }
         }
     }
 }
