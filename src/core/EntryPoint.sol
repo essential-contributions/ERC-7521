@@ -452,6 +452,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             && (selector & 0x000000FF) <= 0x00000039;
     }
 
+
     /**
      * generates an intent standard ID for an intent standard contract.
      */
