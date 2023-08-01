@@ -141,6 +141,15 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             }
         }
 
+        // validate timestamp
+        uint256 timestamp = block.timestamp;
+        if (solution.timestamp != TIMESTAMP_NULL) {
+            timestamp = solution.timestamp;
+            if (timestamp > block.timestamp) {
+                require(timestamp - block.timestamp <= TIMESTAMP_MAX_OVER, "AA81 invalid timestamp");
+            }
+        }
+
         unchecked {
             bytes32[] memory intentHashes = new bytes32[](intsLen);
 
