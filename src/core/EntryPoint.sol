@@ -266,7 +266,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         require(intentStandard != IIntentStandard(address(0)), "AA82 unknown standard");
         return intentStandard;
     }
-    
+
     /**
      * gets the intent standard ID for the given intent standard contract.
      */
