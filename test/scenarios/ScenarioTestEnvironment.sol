@@ -310,7 +310,7 @@ abstract contract ScenarioTestEnvironment is Test {
             segmentsIndex++;
         }
 
-        return IEntryPoint.IntentSolution({userIntents: userIntents, solutionSegments: solutionSegments});
+        return IEntryPoint.IntentSolution({timestamp: 0, userIntents: userIntents, solutionSegments: solutionSegments});
     }
 
     /**

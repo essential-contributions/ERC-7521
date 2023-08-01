@@ -20,6 +20,9 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     uint256 private constant REVERT_REASON_MAX_LEN = 2048;
     uint256 private constant CONTEXT_DATA_MAX_LEN = 2048;
 
+    uint256 private constant TIMESTAMP_MAX_OVER = 6;
+    uint256 private constant TIMESTAMP_NULL = 0;
+
     address private constant EX_STATE_NOT_ACTIVE = address(0);
     address private constant EX_STATE_VALIDATION_EXECUTING =
         address(uint160(uint256(keccak256("EX_STATE_VALIDATION_EXECUTING"))));
@@ -122,12 +125,20 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      */
     function handleIntents(IntentSolution calldata solution) public nonReentrant {
         // solhint-disable-next-line not-rely-on-time
-        uint256 timestamp = block.timestamp;
         uint256 intsLen = solution.userIntents.length;
         require(intsLen > 0, "AA70 no intents");
         bytes32 standard = solution.userIntents[0].standard;
         for (uint256 i = 1; i < intsLen; i++) {
             require(solution.userIntents[1].standard == standard, "AA71 mismatched intent standards");
+        }
+
+        // validate timestamp
+        uint256 timestamp = block.timestamp;
+        if (solution.timestamp != TIMESTAMP_NULL) {
+            timestamp = solution.timestamp;
+            if (timestamp > block.timestamp) {
+                require(timestamp - block.timestamp <= TIMESTAMP_MAX_OVER, "AA81 invalid timestamp");
+            }
         }
 
         unchecked {
@@ -180,7 +191,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      * Note that in order to collect the the success/failure of the target call, it must be executed
      * with trace enabled to track the emitted events.
      * @param solution the UserIntents solution to simulate.
-     * @param timestamp the timestamp at which to evaluate the intents.
+     * @param timestamp the timestamp at which to evaluate the intents (acts in place of block.timestamp).
      * @param target if nonzero, a target address to call after user intent simulation. If called,
      *        the targetSuccess and targetResult are set to the return from that call.
      * @param targetCallData callData to pass to target address.
@@ -193,6 +204,18 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     ) external override nonReentrant {
         uint256 intsLen = solution.userIntents.length;
         require(intsLen > 0, "AA70 no intents");
+        bytes32 standard = solution.userIntents[0].standard;
+        for (uint256 i = 1; i < intsLen; i++) {
+            require(solution.userIntents[1].standard == standard, "AA71 mismatched intent standards");
+        }
+
+        // validate timestamp
+        if (solution.timestamp != TIMESTAMP_NULL) {
+            if (solution.timestamp > timestamp) {
+                require(solution.timestamp - timestamp <= TIMESTAMP_MAX_OVER, "AA81 invalid timestamp");
+            }
+            timestamp = solution.timestamp;
+        }
 
         unchecked {
             // run validation
@@ -252,7 +275,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         require(intentStandard.isIntentStandardForEntryPoint(this), "AA80 invalid standard");
 
         bytes32 standardId = _generateIntentStandardId(intentStandard);
-        require(address(_registeredStandards[standardId]) == address(0), "AA81 already registered");
+        require(address(_registeredStandards[standardId]) == address(0), "AA82 already registered");
 
         _registeredStandards[standardId] = intentStandard;
         return standardId;
@@ -263,7 +286,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      */
     function getIntentStandardContract(bytes32 standardId) external view returns (IIntentStandard) {
         IIntentStandard intentStandard = _registeredStandards[standardId];
-        require(intentStandard != IIntentStandard(address(0)), "AA82 unknown standard");
+        require(intentStandard != IIntentStandard(address(0)), "AA83 unknown standard");
         return intentStandard;
     }
 
@@ -272,7 +295,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      */
     function getIntentStandardId(IIntentStandard intentStandard) external view returns (bytes32) {
         bytes32 standardId = _generateIntentStandardId(intentStandard);
-        require(_registeredStandards[standardId] != IIntentStandard(address(0)), "AA82 unknown standard");
+        require(_registeredStandards[standardId] != IIntentStandard(address(0)), "AA83 unknown standard");
         return standardId;
     }
 
@@ -331,7 +354,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         // validate intent standard is recognized
         IIntentStandard standard = _registeredStandards[userInt.getStandard()];
         if (address(standard) == address(0)) {
-            revert FailedIntent(userIntIndex, 0, "AA82 unknown standard");
+            revert FailedIntent(userIntIndex, 0, "AA83 unknown standard");
         }
 
         // validate the intent itself
