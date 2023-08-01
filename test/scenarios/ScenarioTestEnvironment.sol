@@ -53,6 +53,9 @@ abstract contract ScenarioTestEnvironment is Test {
         _testUniswap = new TestUniswap(_testWrappedNativeToken);
         _solverUtils = new SolverUtils();
 
+        //register intent standard to entry point
+        _entryPoint.registerIntentStandard(_intentStandard);
+
         //fund exchange
         _testERC20.mint(address(_testUniswap), 1000 ether);
         _mintWrappedNativeToken(address(_testUniswap), 1000 ether);
