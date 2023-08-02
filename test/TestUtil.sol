@@ -43,49 +43,37 @@ abstract contract TestUtil {
         constantAbsoluteCurve = AssetBasedIntentCurve({
             assetContract: address(0),
             assetId: 0,
-            assetType: AssetType.ETH,
-            curveType: CurveType.CONSTANT,
-            evaluationType: EvaluationType.ABSOLUTE,
+            flags: AssetBasedIntentCurveLib.generateFlags(AssetType.ETH, CurveType.CONSTANT, EvaluationType.ABSOLUTE),
             params: constantParams
         });
         constantRelativeCurve = AssetBasedIntentCurve({
             assetContract: address(0),
             assetId: 0,
-            assetType: AssetType.ETH,
-            curveType: CurveType.CONSTANT,
-            evaluationType: EvaluationType.RELATIVE,
+            flags: AssetBasedIntentCurveLib.generateFlags(AssetType.ETH, CurveType.CONSTANT, EvaluationType.RELATIVE),
             params: constantParams
         });
         linearAbsoluteCurve = AssetBasedIntentCurve({
             assetContract: address(0),
             assetId: 0,
-            assetType: AssetType.ETH,
-            curveType: CurveType.LINEAR,
-            evaluationType: EvaluationType.ABSOLUTE,
+            flags: AssetBasedIntentCurveLib.generateFlags(AssetType.ETH, CurveType.LINEAR, EvaluationType.ABSOLUTE),
             params: linearParams
         });
         linearRelativeCurve = AssetBasedIntentCurve({
             assetContract: address(0),
             assetId: 0,
-            assetType: AssetType.ETH,
-            curveType: CurveType.LINEAR,
-            evaluationType: EvaluationType.RELATIVE,
+            flags: AssetBasedIntentCurveLib.generateFlags(AssetType.ETH, CurveType.LINEAR, EvaluationType.RELATIVE),
             params: linearParams
         });
         exponentialAbsoluteCurve = AssetBasedIntentCurve({
             assetContract: address(0),
             assetId: 0,
-            assetType: AssetType.ETH,
-            curveType: CurveType.EXPONENTIAL,
-            evaluationType: EvaluationType.ABSOLUTE,
+            flags: AssetBasedIntentCurveLib.generateFlags(AssetType.ETH, CurveType.EXPONENTIAL, EvaluationType.ABSOLUTE),
             params: exponentialParams
         });
         exponentialRelativeCurve = AssetBasedIntentCurve({
             assetContract: address(0),
             assetId: 0,
-            assetType: AssetType.ETH,
-            curveType: CurveType.EXPONENTIAL,
-            evaluationType: EvaluationType.RELATIVE,
+            flags: AssetBasedIntentCurveLib.generateFlags(AssetType.ETH, CurveType.EXPONENTIAL, EvaluationType.RELATIVE),
             params: exponentialParams
         });
 

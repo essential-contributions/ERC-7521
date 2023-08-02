@@ -3,24 +3,20 @@ pragma solidity ^0.8.13;
 
 import {AssetType} from "./utils/AssetWrapper.sol";
 
-//TODO: consider compressing all the flags into one uint256 for improved gas efficiency
-//TODO: we may want to support signed numbers for the parameters
-
 /**
  * Asset Curve struct
- * @param assetContract the address of the contract that controls the asset.
  * @param assetId the ID of the asset.
- * @param assetType the type of the asset (ETH, ERC-20, ERC-721, etc).
- * @param curveType the curve type (constant, linear, exponential).
- * @param evaluationType the evaluation type (relative, absolute).
+ * @param assetContract the address of the contract that controls the asset.
+ * @param flags flags for asset type, curve type and evaluation type.
+ *   The top 8 bytes are unused and the bottom 4 bytes are arranged as follows:
+ *   reserved    reserved    asset type  curve/eval type
+ *   [xxxx xxxx] [xxxx xxxx] [aaaa aaaa] [cccc ccee]
  * @param params the parameters for the curve.
  */
 struct AssetBasedIntentCurve {
-    address assetContract;
     uint256 assetId;
-    AssetType assetType;
-    CurveType curveType;
-    EvaluationType evaluationType;
+    address assetContract;
+    uint96 flags;
     int256[] params;
 }
 
@@ -41,16 +37,24 @@ enum EvaluationType {
  * Utility functions helpful when working with AssetBasedIntentCurve structs.
  */
 library AssetBasedIntentCurveLib {
-    function validate(AssetBasedIntentCurve calldata curve) public pure {
-        require(curve.curveType < CurveType.COUNT, "invalid curve type");
-        require(curve.assetType < AssetType.COUNT, "invalid curve asset type");
-        require(curve.evaluationType < EvaluationType.COUNT, "invalid curve eval type");
+    uint256 private constant FLAGS_EVAL_TYPE_OFFSET = 0;
+    uint256 private constant FLAGS_CURVE_TYPE_OFFSET = 2;
+    uint256 private constant FLAGS_ASSET_TYPE_OFFSET = 8;
 
-        if (curve.curveType == CurveType.CONSTANT) {
+    uint16 private constant FLAGS_EVAL_TYPE_MASK = 0x0003;
+    uint16 private constant FLAGS_CURVE_TYPE_MASK = 0x00fc;
+    uint16 private constant FLAGS_ASSET_TYPE_MASK = 0xff00;
+
+    function validate(AssetBasedIntentCurve calldata curve) public pure {
+        require(curveType(curve) < CurveType.COUNT, "invalid curve type");
+        require(assetType(curve) < AssetType.COUNT, "invalid curve asset type");
+        require(evaluationType(curve) < EvaluationType.COUNT, "invalid curve eval type");
+
+        if (curveType(curve) == CurveType.CONSTANT) {
             require(curve.params.length == 1, "invalid curve params");
-        } else if (curve.curveType == CurveType.LINEAR) {
+        } else if (curveType(curve) == CurveType.LINEAR) {
             require(curve.params.length == 3, "invalid curve params");
-        } else if (curve.curveType == CurveType.EXPONENTIAL) {
+        } else if (curveType(curve) == CurveType.EXPONENTIAL) {
             require(curve.params.length == 4, "invalid curve params");
             require(curve.params[2] >= 0, "invalid curve params"); //negative exponent
         } else {
@@ -60,9 +64,9 @@ library AssetBasedIntentCurveLib {
 
     function evaluate(AssetBasedIntentCurve calldata curve, uint256 x) public pure returns (int256 val) {
         int256 sx = int256(x);
-        if (curve.curveType == CurveType.CONSTANT) {
+        if (curveType(curve) == CurveType.CONSTANT) {
             val = curve.params[0];
-        } else if (curve.curveType == CurveType.LINEAR) {
+        } else if (curveType(curve) == CurveType.LINEAR) {
             //m*x + b, params [m,b,max]
             //negative "max" means to evaluate from right to left
             int256 m = curve.params[0];
@@ -78,7 +82,7 @@ library AssetBasedIntentCurveLib {
                 sx = max;
             }
             val = (m * sx) + b;
-        } else if (curve.curveType == CurveType.EXPONENTIAL) {
+        } else if (curveType(curve) == CurveType.EXPONENTIAL) {
             //m*(x**e) + b, params [m,b,e,max]
             //negative "max" means to evaluate from right to left
             int256 m = curve.params[0];
@@ -100,7 +104,26 @@ library AssetBasedIntentCurveLib {
         }
     }
 
+    function assetType(AssetBasedIntentCurve calldata curve) public pure returns (AssetType) {
+        return AssetType((uint16(curve.flags) & FLAGS_ASSET_TYPE_MASK) >> FLAGS_ASSET_TYPE_OFFSET);
+    }
+
+    function curveType(AssetBasedIntentCurve calldata curve) public pure returns (CurveType) {
+        return CurveType((uint16(curve.flags) & FLAGS_CURVE_TYPE_MASK) >> FLAGS_CURVE_TYPE_OFFSET);
+    }
+
+    function evaluationType(AssetBasedIntentCurve calldata curve) public pure returns (EvaluationType) {
+        return EvaluationType((uint16(curve.flags) & FLAGS_EVAL_TYPE_MASK) >> FLAGS_EVAL_TYPE_OFFSET);
+    }
+
     function isRelativeEvaluation(AssetBasedIntentCurve calldata curve) public pure returns (bool) {
-        return curve.evaluationType == EvaluationType.RELATIVE;
+        return evaluationType(curve) == EvaluationType.RELATIVE;
+    }
+
+    function generateFlags(AssetType asset, CurveType curve, EvaluationType eval) public pure returns (uint96) {
+        return uint96(
+            (uint256(asset) << FLAGS_ASSET_TYPE_OFFSET) | (uint256(curve) << FLAGS_CURVE_TYPE_OFFSET)
+                | (uint256(eval) << FLAGS_EVAL_TYPE_OFFSET)
+        );
     }
 }
