@@ -25,15 +25,15 @@ contract GaslessAirdrop is ScenarioTestEnvironment {
 
     function test_gaslessAirdrop() public {
         //create account intent
-        UserIntent memory userIntent = _intent();
-        userIntent = userIntent.addSegment(
+        UserIntent memory intent = _intent();
+        intent = intent.addSegment(
             _segment(_accountClaimAirdropERC20(100 ether)).releaseERC20(address(_testERC20), constantCurve(2 ether))
         );
-        userIntent = _signIntent(userIntent);
+        intent = _signIntent(intent);
 
         //create solution
         bytes[] memory steps1 = _solverSwapAllERC20ForETH(2 ether, address(_publicAddressSolver));
-        IEntryPoint.IntentSolution memory solution = _solution(userIntent, steps1, _noSteps(), _noSteps());
+        IEntryPoint.IntentSolution memory solution = _solution(intent, steps1, _noSteps(), _noSteps());
 
         //execute
         uint256 gasBefore = gasleft();

@@ -12,14 +12,12 @@ import {UserIntent} from "./UserIntent.sol";
 interface IEntryPoint is INonceManager {
     /**
      * An event emitted after each successful intent solution
-     * @param userIntHash - unique identifier for the intent (hash its entire content, except signature).
+     * @param intentHash - unique identifier for the intent (hash its entire content, except signature).
      * @param sender - the account that generates this intent.
      * @param submitter - the account that submitted the solution for the intent.
      * @param nonce - the nonce value from the intent.
      */
-    event UserIntentEvent(
-        bytes32 indexed userIntHash, address indexed sender, address indexed submitter, uint256 nonce
-    );
+    event UserIntentEvent(bytes32 indexed intentHash, address indexed sender, address indexed submitter, uint256 nonce);
 
     /**
      * An event emitted if the UserIntent part of the solution reverted
@@ -81,7 +79,7 @@ interface IEntryPoint is INonceManager {
     //UserIntents handled, per solution
     struct IntentSolution {
         uint256 timestamp;
-        UserIntent[] userIntents;
+        UserIntent[] intents;
         SolutionSegment[] solutionSegments;
     }
 
@@ -124,18 +122,18 @@ interface IEntryPoint is INonceManager {
     ) external;
 
     /**
-     * Simulate a call to account.validateUserInt.
+     * Simulate a call to account.validateUserIntent.
      * @dev this method always revert. Successful result is ValidationResult error. other errors are failures.
      * @dev The node must also verify it doesn't use banned opcodes, and that it doesn't reference storage outside the account's data.
-     * @param userInt the user intent to validate.
+     * @param intent the user intent to validate.
      */
-    function simulateValidation(UserIntent calldata userInt) external;
+    function simulateValidation(UserIntent calldata intent) external;
 
     /**
      * generate an intent Id - unique identifier for this intent.
-     * the intent ID is a hash over the content of the userInt (except the signature), the entrypoint and the chainid.
+     * the intent ID is a hash over the content of the intent (except the signature), the entrypoint and the chainid.
      */
-    function getUserIntHash(UserIntent calldata userInt) external view returns (bytes32);
+    function getUserIntHash(UserIntent calldata intent) external view returns (bytes32);
 
     /**
      * registers a new intent standard.

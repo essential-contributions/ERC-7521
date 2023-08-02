@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-//TODO: is callGasLimit necessary?
-
 import {UserIntent} from "../../interfaces/UserIntent.sol";
 import {AssetBasedIntentCurve, AssetBasedIntentCurveLib} from "./AssetBasedIntentCurve.sol";
 
@@ -64,8 +62,8 @@ library AssetBasedIntentDataLib {
 /**
  * Helper function to extract AssetBasedIntentData from a UserIntent.
  */
-function parseAssetBasedIntentData(UserIntent calldata userInt) pure returns (AssetBasedIntentData calldata data) {
-    bytes calldata intentData = userInt.intentData;
+function parseAssetBasedIntentData(UserIntent calldata intent) pure returns (AssetBasedIntentData calldata data) {
+    bytes calldata intentData = intent.intentData;
     assembly {
         data := intentData.offset
     }
