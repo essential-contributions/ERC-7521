@@ -41,7 +41,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      * @param timestamp the time at which to evaluate the intents
      */
     function _executeSolution(IntentSolution calldata solution, uint256 timestamp) private {
-        IIntentStandard intentStandard = _registeredStandards[solution.intents[0].getStandard()];
+        IIntentStandard intentStandard = _registeredStandards[solution.intents[0].standard];
         bytes[] memory contextData = new bytes[](solution.intents.length);
         bool[] memory executionFinished = new bool[](solution.intents.length);
         bool solutionFinished = solution.solutionSegments.length == 0;
@@ -350,7 +350,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         _executionStateContext = EX_STATE_VALIDATION_EXECUTING;
 
         // validate intent standard is recognized
-        IIntentStandard standard = _registeredStandards[intent.getStandard()];
+        IIntentStandard standard = _registeredStandards[intent.standard];
         if (address(standard) == address(0)) {
             revert FailedIntent(intentIndex, 0, "AA83 unknown standard");
         }
