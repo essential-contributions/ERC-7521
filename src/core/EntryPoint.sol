@@ -328,10 +328,10 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     /**
      * Called only during simulation.
      */
-    function _simulationOnlyValidations(UserIntent calldata intent, uint256 IntentIndex) internal view {
+    function _simulationOnlyValidations(UserIntent calldata intent, uint256 intentIndex) internal view {
         // make sure sender is a deployed contract
         if (intent.sender.code.length == 0) {
-            revert FailedIntent(IntentIndex, 0, "AA20 account not deployed");
+            revert FailedIntent(intentIndex, 0, "AA20 account not deployed");
         }
     }
 
@@ -341,9 +341,9 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      * this method is called off-chain (simulateValidation()) and on-chain (from handleIntents)
      * @param intent the user intent to validate.
      * @param intentHash hash of the user's intent data.
-     * @param IntentIndex the index of this intent.
+     * @param intentIndex the index of this intent.
      */
-    function _validateUserIntent(UserIntent calldata intent, bytes32 intentHash, uint256 IntentIndex)
+    function _validateUserIntent(UserIntent calldata intent, bytes32 intentHash, uint256 intentIndex)
         private
         returns (uint256 validationData)
     {
@@ -352,15 +352,15 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         // validate intent standard is recognized
         IIntentStandard standard = _registeredStandards[intent.getStandard()];
         if (address(standard) == address(0)) {
-            revert FailedIntent(IntentIndex, 0, "AA83 unknown standard");
+            revert FailedIntent(intentIndex, 0, "AA83 unknown standard");
         }
 
         // validate the intent itself
         try standard.validateUserIntent(intent) {}
         catch Error(string memory revertReason) {
-            revert FailedIntent(IntentIndex, 0, string.concat("AA62 reverted: ", revertReason));
+            revert FailedIntent(intentIndex, 0, string.concat("AA62 reverted: ", revertReason));
         } catch {
-            revert FailedIntent(IntentIndex, 0, "AA62 reverted (or OOG)");
+            revert FailedIntent(intentIndex, 0, "AA62 reverted (or OOG)");
         }
 
         // validate intent with account
@@ -369,14 +369,14 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         ) {
             validationData = _validationData;
         } catch Error(string memory revertReason) {
-            revert FailedIntent(IntentIndex, 0, string.concat("AA23 reverted: ", revertReason));
+            revert FailedIntent(intentIndex, 0, string.concat("AA23 reverted: ", revertReason));
         } catch {
-            revert FailedIntent(IntentIndex, 0, "AA23 reverted (or OOG)");
+            revert FailedIntent(intentIndex, 0, "AA23 reverted (or OOG)");
         }
 
         // validate nonce
         if (!_validateAndUpdateNonce(intent.sender, intent.nonce)) {
-            revert FailedIntent(IntentIndex, 0, "AA25 invalid account nonce");
+            revert FailedIntent(intentIndex, 0, "AA25 invalid account nonce");
         }
 
         // end validation state
@@ -386,16 +386,16 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     /**
      * revert if account validationData is expired
      */
-    function _validateAccountValidationData(uint256 validationData, uint256 IntentIndex) internal view {
+    function _validateAccountValidationData(uint256 validationData, uint256 intentIndex) internal view {
         if (validationData == 0) {
             ValidationData memory data = _parseValidationData(validationData);
             if (data.sigFailed) {
-                revert FailedIntent(IntentIndex, 0, "AA24 signature error");
+                revert FailedIntent(intentIndex, 0, "AA24 signature error");
             }
             // solhint-disable-next-line not-rely-on-time
             bool outOfTimeRange = block.timestamp > data.validUntil || block.timestamp < data.validAfter;
             if (outOfTimeRange) {
-                revert FailedIntent(IntentIndex, 0, "AA22 expired or not due");
+                revert FailedIntent(intentIndex, 0, "AA22 expired or not due");
             }
         }
     }
