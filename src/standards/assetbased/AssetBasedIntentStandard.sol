@@ -143,7 +143,7 @@ contract AssetBasedIntentStandard is AssetHolderProxy, IIntentStandard {
                 if (requiredBalance < 0) requiredBalance = 0;
             }
             uint256 currentBalance = _balanceOf(
-                intentSegment.assetRequirements[i].assetType,
+                intentSegment.assetRequirements[i].assetType(),
                 intentSegment.assetRequirements[i].assetContract,
                 intentSegment.assetRequirements[i].assetId,
                 owner
@@ -177,7 +177,7 @@ contract AssetBasedIntentStandard is AssetHolderProxy, IIntentStandard {
         for (uint256 i = 0; i < requirementsLen; i++) {
             if (nextIntentSegment.assetRequirements[i].isRelativeEvaluation()) {
                 startingBalances[i] = _balanceOf(
-                    nextIntentSegment.assetRequirements[i].assetType,
+                    nextIntentSegment.assetRequirements[i].assetType(),
                     nextIntentSegment.assetRequirements[i].assetContract,
                     nextIntentSegment.assetRequirements[i].assetId,
                     owner
@@ -198,7 +198,7 @@ contract AssetBasedIntentStandard is AssetHolderProxy, IIntentStandard {
             int256 releaseAmount = intentSegment.assetReleases[i].evaluate(evaluateAt);
             if (releaseAmount > 0) {
                 IAssetRelease(from).releaseAsset(
-                    intentSegment.assetReleases[i].assetType,
+                    intentSegment.assetReleases[i].assetType(),
                     intentSegment.assetReleases[i].assetContract,
                     intentSegment.assetReleases[i].assetId,
                     address(this),
