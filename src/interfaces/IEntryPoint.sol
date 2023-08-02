@@ -80,6 +80,7 @@ interface IEntryPoint is INonceManager {
 
     //UserIntents handled, per solution
     struct IntentSolution {
+        uint256 timestamp;
         UserIntent[] userIntents;
         SolutionSegment[] solutionSegments;
     }
@@ -110,7 +111,7 @@ interface IEntryPoint is INonceManager {
      * Note that in order to collect the the success/failure of the target call, it must be executed
      * with trace enabled to track the emitted events.
      * @param solution the UserIntent solution to simulate.
-     * @param timestamp the timestamp at which to evaluate the intents.
+     * @param timestamp the timestamp at which to evaluate the intents (acts in place of block.timestamp).
      * @param target if nonzero, a target address to call after user intent simulation. If called,
      *        the targetSuccess and targetResult are set to the return from that call.
      * @param targetCallData callData to pass to target address.
