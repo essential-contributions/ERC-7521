@@ -26,7 +26,7 @@ contract NonceManager is INonceManager {
 
     /**
      * validate nonce uniqueness for this account.
-     * called just after validateUserInt()
+     * called just after validateUserIntent()
      */
     function _validateAndUpdateNonce(address sender, uint256 nonce) internal returns (bool) {
         uint192 key = uint192(nonce >> 64);

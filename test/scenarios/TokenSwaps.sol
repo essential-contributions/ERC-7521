@@ -28,16 +28,15 @@ contract TokenSwaps is ScenarioTestEnvironment {
 
     function test_constantRelease() public {
         //create account intent (curve should evaluate as 9ether at timestamp 1000)
-        UserIntent memory userIntent = _intent();
-        userIntent = userIntent.addSegment(_segment("").releaseERC20(address(_testERC20), constantCurve(10 ether)));
-        userIntent =
-            userIntent.addSegment(_segment("").requireETH(linearCurve((3 ether) / 3000, 7 ether, 3000, true), true));
-        userIntent = _signIntent(userIntent);
+        UserIntent memory intent = _intent();
+        intent = intent.addSegment(_segment("").releaseERC20(address(_testERC20), constantCurve(10 ether)));
+        intent = intent.addSegment(_segment("").requireETH(linearCurve((3 ether) / 3000, 7 ether, 3000, true), true));
+        intent = _signIntent(intent);
 
         //create solution
         bytes[] memory steps1 =
             _solverSwapAllERC20ForETHAndForward(10 ether, address(_publicAddressSolver), 9 ether, address(_account));
-        IEntryPoint.IntentSolution memory solution = _solution(userIntent, steps1, _noSteps(), _noSteps());
+        IEntryPoint.IntentSolution memory solution = _solution(intent, steps1, _noSteps(), _noSteps());
 
         //execute
         uint256 gasBefore = gasleft();
@@ -56,17 +55,17 @@ contract TokenSwaps is ScenarioTestEnvironment {
     /*
     function test_constantExpectation() public {
         //create account intent (curve should evaluate as 7.75ether at timestamp 1000)
-        UserIntent memory userIntent = _intent();
-        userIntent = userIntent.addSegment(
+        UserIntent memory intent = _intent();
+        intent = intent.addSegment(
             _segment("").releaseERC20(address(_testERC20), exponentialCurve(750000000000, 7 ether, 2, 2000, false))
         );
-        userIntent = userIntent.addSegment(_segment("").requireETH(constantCurve(7 ether), true));
-        userIntent = _signIntent(userIntent);
+        intent = intent.addSegment(_segment("").requireETH(constantCurve(7 ether), true));
+        intent = _signIntent(intent);
 
         //create solution
         bytes[] memory steps1 =
             _solverSwapAllERC20ForETHAndForward(7.75 ether, address(_publicAddressSolver), 7 ether, address(_account));
-        IEntryPoint.IntentSolution memory solution = _solution(userIntent, steps1, _noSteps(), _noSteps());
+        IEntryPoint.IntentSolution memory solution = _solution(intent, steps1, _noSteps(), _noSteps());
 
         //execute
         uint256 gasBefore = gasleft();

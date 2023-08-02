@@ -53,55 +53,53 @@ contract AssetBasedIntentStandard is AssetHolderProxy, IIntentStandard {
 
     /**
      * Validate intent structure (typically just formatting)
-     * @param userInt the intent that is about to be solved.
+     * @param intent the intent that is about to be solved.
      */
-    function validateUserInt(UserIntent calldata userInt) external pure {
-        AssetBasedIntentData calldata data = parseAssetBasedIntentData(userInt);
+    function validateUserIntent(UserIntent calldata intent) external pure {
+        AssetBasedIntentData calldata data = parseAssetBasedIntentData(intent);
         data.validate();
     }
 
     /**
      * Performs part or all of the execution for an intent.
-     * @param userInt the intent to execute.
+     * @param intent the intent to execute.
      * @param timestamp the time at which to evaluate the intent.
      * @param context context data from the previous step in execution (no data means execution is just starting).
      * @return context to remember for further execution (no data means execution has finished).
      */
-    function executeUserIntent(UserIntent calldata userInt, uint256 timestamp, bytes memory context)
+    function executeUserIntent(UserIntent calldata intent, uint256 timestamp, bytes memory context)
         external
         onlyFromEntryPoint
         returns (bytes memory)
     {
-        AssetBasedIntentData calldata data = parseAssetBasedIntentData(userInt);
+        AssetBasedIntentData calldata data = parseAssetBasedIntentData(intent);
         uint256 intentSegmentIndex = 0;
         uint256[] memory startingBalances;
         if (context.length > 0) {
             (intentSegmentIndex, startingBalances) = abi.decode(context, (uint256, uint256[]));
         }
         uint256 evaluateAt = 0;
-        if (timestamp > userInt.timestamp) {
-            evaluateAt = timestamp - userInt.timestamp;
+        if (timestamp > intent.timestamp) {
+            evaluateAt = timestamp - intent.timestamp;
         }
         AssetBasedIntentSegment calldata intentSegment = data.intentSegments[intentSegmentIndex];
 
         //check asset requirements
-        _checkAssetRequirements(intentSegment, intentSegmentIndex, evaluateAt, startingBalances, userInt.sender);
+        _checkAssetRequirements(intentSegment, intentSegmentIndex, evaluateAt, startingBalances, intent.sender);
 
         //record balances for relative requirements later
         if ((intentSegmentIndex + 1) < data.intentSegments.length) {
             AssetBasedIntentSegment calldata nextIntentSegment = data.intentSegments[intentSegmentIndex + 1];
-            startingBalances = _recordStartingBalances(nextIntentSegment, userInt.sender);
+            startingBalances = _recordStartingBalances(nextIntentSegment, intent.sender);
         }
 
         //execute calldata
         if (intentSegment.callData.length > 0) {
-            Exec.callAndRevert(
-                userInt.sender, intentSegment.callData, intentSegment.callGasLimit, REVERT_REASON_MAX_LEN
-            );
+            Exec.callAndRevert(intent.sender, intentSegment.callData, intentSegment.callGasLimit, REVERT_REASON_MAX_LEN);
         }
 
         //release tokens
-        _releaseAssets(intentSegment, evaluateAt, userInt.sender);
+        _releaseAssets(intentSegment, evaluateAt, intent.sender);
 
         // return list of starting balances for reference later (or nothing if this was the last step)
         if ((intentSegmentIndex + 1) < data.intentSegments.length) {

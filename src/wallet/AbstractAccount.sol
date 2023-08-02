@@ -75,17 +75,17 @@ contract AbstractAccount is BaseAccount, TokenCallbackHandler, IAssetRelease {
     }
 
     /// implement template method of BaseAccount
-    function _validateSignature(UserIntent calldata userInt, bytes32 userIntHash)
+    function _validateSignature(UserIntent calldata intent, bytes32 intentHash)
         internal
         virtual
         override
         returns (uint256 validationData)
     {
-        bytes32 hash = userIntHash.toEthSignedMessageHash();
-        if (owner != hash.recover(userInt.signature)) {
-            return _packValidationData(true, uint48(userInt.timestamp), 0);
+        bytes32 hash = intentHash.toEthSignedMessageHash();
+        if (owner != hash.recover(intent.signature)) {
+            return _packValidationData(true, uint48(intent.timestamp), 0);
         }
-        return _packValidationData(false, uint48(userInt.timestamp), 0);
+        return _packValidationData(false, uint48(intent.timestamp), 0);
     }
 
     /**

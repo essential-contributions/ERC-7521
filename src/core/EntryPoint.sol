@@ -41,9 +41,9 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      * @param timestamp the time at which to evaluate the intents
      */
     function _executeSolution(IntentSolution calldata solution, uint256 timestamp) private {
-        IIntentStandard intentStandard = _registeredStandards[solution.userIntents[0].getStandard()];
-        bytes[] memory contextData = new bytes[](solution.userIntents.length);
-        bool[] memory executionFinished = new bool[](solution.userIntents.length);
+        IIntentStandard intentStandard = _registeredStandards[solution.intents[0].getStandard()];
+        bytes[] memory contextData = new bytes[](solution.intents.length);
+        bool[] memory executionFinished = new bool[](solution.intents.length);
         bool solutionFinished = solution.solutionSegments.length == 0;
         bool intentsFinished = false;
         uint256 passIndex = 0;
@@ -53,9 +53,9 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
                 //Execute intents
                 if (!intentsFinished) {
                     bool stillExecuting = false;
-                    for (uint256 i = 0; i < solution.userIntents.length; i++) {
+                    for (uint256 i = 0; i < solution.intents.length; i++) {
                         if (!executionFinished[i]) {
-                            UserIntent calldata intent = solution.userIntents[i];
+                            UserIntent calldata intent = solution.intents[i];
                             _executionStateContext = intent.sender;
                             bool success = Exec.call(
                                 address(intentStandard),
@@ -125,11 +125,11 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      */
     function handleIntents(IntentSolution calldata solution) public nonReentrant {
         // solhint-disable-next-line not-rely-on-time
-        uint256 intsLen = solution.userIntents.length;
+        uint256 intsLen = solution.intents.length;
         require(intsLen > 0, "AA70 no intents");
-        bytes32 standard = solution.userIntents[0].standard;
+        bytes32 standard = solution.intents[0].standard;
         for (uint256 i = 1; i < intsLen; i++) {
-            require(solution.userIntents[1].standard == standard, "AA71 mismatched intent standards");
+            require(solution.intents[1].standard == standard, "AA71 mismatched intent standards");
         }
 
         // validate timestamp
@@ -142,15 +142,15 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         }
 
         unchecked {
-            bytes32[] memory userIntHashes = new bytes32[](intsLen);
+            bytes32[] memory intentHashes = new bytes32[](intsLen);
 
             // validate intents
             for (uint256 i = 0; i < intsLen; i++) {
-                bytes32 userIntHash = getUserIntHash(solution.userIntents[i]);
-                uint256 validationData = _validateUserIntent(solution.userIntents[i], userIntHash, i);
+                bytes32 intentHash = getUserIntHash(solution.intents[i]);
+                uint256 validationData = _validateUserIntent(solution.intents[i], intentHash, i);
                 _validateAccountValidationData(validationData, i);
 
-                userIntHashes[i] = userIntHash;
+                intentHashes[i] = intentHash;
             }
 
             emit BeforeExecution();
@@ -158,9 +158,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             // execute solution
             _executeSolution(solution, timestamp);
             for (uint256 i = 0; i < intsLen; i++) {
-                emit UserIntentEvent(
-                    userIntHashes[i], solution.userIntents[i].sender, msg.sender, solution.userIntents[i].nonce
-                );
+                emit UserIntentEvent(intentHashes[i], solution.intents[i].sender, msg.sender, solution.intents[i].nonce);
             }
         } //unchecked
     }
@@ -202,11 +200,11 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         address target,
         bytes calldata targetCallData
     ) external override nonReentrant {
-        uint256 intsLen = solution.userIntents.length;
+        uint256 intsLen = solution.intents.length;
         require(intsLen > 0, "AA70 no intents");
-        bytes32 standard = solution.userIntents[0].standard;
+        bytes32 standard = solution.intents[0].standard;
         for (uint256 i = 1; i < intsLen; i++) {
-            require(solution.userIntents[1].standard == standard, "AA71 mismatched intent standards");
+            require(solution.intents[1].standard == standard, "AA71 mismatched intent standards");
         }
 
         // validate timestamp
@@ -220,9 +218,9 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         unchecked {
             // run validation
             for (uint256 i = 0; i < intsLen; i++) {
-                _simulationOnlyValidations(solution.userIntents[i], i);
-                bytes32 userIntHash = getUserIntHash(solution.userIntents[i]);
-                uint256 validationData = _validateUserIntent(solution.userIntents[i], userIntHash, i);
+                _simulationOnlyValidations(solution.intents[i], i);
+                bytes32 intentHash = getUserIntHash(solution.intents[i]);
+                uint256 validationData = _validateUserIntent(solution.intents[i], intentHash, i);
                 _validateAccountValidationData(validationData, i);
             }
 
@@ -246,15 +244,15 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     }
 
     /**
-     * Simulate a call to account.validateUserInt.
+     * Simulate a call to account.validateUserIntent.
      * @dev this method always revert. Successful result is ValidationResult error. other errors are failures.
      * @dev The node must also verify it doesn't use banned opcodes, and that it doesn't reference storage outside the account's data.
-     * @param userInt the user intent to validate.
+     * @param intent the user intent to validate.
      */
-    function simulateValidation(UserIntent calldata userInt) external {
-        _simulationOnlyValidations(userInt, 0);
-        bytes32 userIntHash = getUserIntHash(userInt);
-        uint256 validationData = _validateUserIntent(userInt, userIntHash, 0);
+    function simulateValidation(UserIntent calldata intent) external {
+        _simulationOnlyValidations(intent, 0);
+        bytes32 intentHash = getUserIntHash(intent);
+        uint256 validationData = _validateUserIntent(intent, intentHash, 0);
         ValidationData memory valData = _parseValidationData(validationData);
 
         revert ValidationResult(valData.sigFailed, valData.validAfter, valData.validUntil);
@@ -262,10 +260,10 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
 
     /**
      * generate an intent Id - unique identifier for this intent.
-     * the intent ID is a hash over the content of the userInt (except the signature), the entrypoint and the chainid.
+     * the intent ID is a hash over the content of the intent (except the signature), the entrypoint and the chainid.
      */
-    function getUserIntHash(UserIntent calldata userInt) public view returns (bytes32) {
-        return keccak256(abi.encode(userInt.hash(), address(this), block.chainid));
+    function getUserIntHash(UserIntent calldata intent) public view returns (bytes32) {
+        return keccak256(abi.encode(intent.hash(), address(this), block.chainid));
     }
 
     /**
@@ -330,10 +328,10 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     /**
      * Called only during simulation.
      */
-    function _simulationOnlyValidations(UserIntent calldata userInt, uint256 userIntIndex) internal view {
+    function _simulationOnlyValidations(UserIntent calldata intent, uint256 IntentIndex) internal view {
         // make sure sender is a deployed contract
-        if (userInt.sender.code.length == 0) {
-            revert FailedIntent(userIntIndex, 0, "AA20 account not deployed");
+        if (intent.sender.code.length == 0) {
+            revert FailedIntent(IntentIndex, 0, "AA20 account not deployed");
         }
     }
 
@@ -341,44 +339,44 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      * validate user intent.
      * also make sure total validation doesn't exceed verificationGasLimit
      * this method is called off-chain (simulateValidation()) and on-chain (from handleIntents)
-     * @param userInt the user intent to validate.
-     * @param userIntHash hash of the user's intent data.
-     * @param userIntIndex the index of this intent.
+     * @param intent the user intent to validate.
+     * @param intentHash hash of the user's intent data.
+     * @param IntentIndex the index of this intent.
      */
-    function _validateUserIntent(UserIntent calldata userInt, bytes32 userIntHash, uint256 userIntIndex)
+    function _validateUserIntent(UserIntent calldata intent, bytes32 intentHash, uint256 IntentIndex)
         private
         returns (uint256 validationData)
     {
         _executionStateContext = EX_STATE_VALIDATION_EXECUTING;
 
         // validate intent standard is recognized
-        IIntentStandard standard = _registeredStandards[userInt.getStandard()];
+        IIntentStandard standard = _registeredStandards[intent.getStandard()];
         if (address(standard) == address(0)) {
-            revert FailedIntent(userIntIndex, 0, "AA83 unknown standard");
+            revert FailedIntent(IntentIndex, 0, "AA83 unknown standard");
         }
 
         // validate the intent itself
-        try standard.validateUserInt(userInt) {}
+        try standard.validateUserIntent(intent) {}
         catch Error(string memory revertReason) {
-            revert FailedIntent(userIntIndex, 0, string.concat("AA62 reverted: ", revertReason));
+            revert FailedIntent(IntentIndex, 0, string.concat("AA62 reverted: ", revertReason));
         } catch {
-            revert FailedIntent(userIntIndex, 0, "AA62 reverted (or OOG)");
+            revert FailedIntent(IntentIndex, 0, "AA62 reverted (or OOG)");
         }
 
         // validate intent with account
-        try IAccount(userInt.sender).validateUserInt{gas: userInt.verificationGasLimit}(userInt, userIntHash) returns (
+        try IAccount(intent.sender).validateUserIntent{gas: intent.verificationGasLimit}(intent, intentHash) returns (
             uint256 _validationData
         ) {
             validationData = _validationData;
         } catch Error(string memory revertReason) {
-            revert FailedIntent(userIntIndex, 0, string.concat("AA23 reverted: ", revertReason));
+            revert FailedIntent(IntentIndex, 0, string.concat("AA23 reverted: ", revertReason));
         } catch {
-            revert FailedIntent(userIntIndex, 0, "AA23 reverted (or OOG)");
+            revert FailedIntent(IntentIndex, 0, "AA23 reverted (or OOG)");
         }
 
         // validate nonce
-        if (!_validateAndUpdateNonce(userInt.sender, userInt.nonce)) {
-            revert FailedIntent(userIntIndex, 0, "AA25 invalid account nonce");
+        if (!_validateAndUpdateNonce(intent.sender, intent.nonce)) {
+            revert FailedIntent(IntentIndex, 0, "AA25 invalid account nonce");
         }
 
         // end validation state
@@ -388,16 +386,16 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     /**
      * revert if account validationData is expired
      */
-    function _validateAccountValidationData(uint256 validationData, uint256 userIntIndex) internal view {
+    function _validateAccountValidationData(uint256 validationData, uint256 IntentIndex) internal view {
         if (validationData == 0) {
             ValidationData memory data = _parseValidationData(validationData);
             if (data.sigFailed) {
-                revert FailedIntent(userIntIndex, 0, "AA24 signature error");
+                revert FailedIntent(IntentIndex, 0, "AA24 signature error");
             }
             // solhint-disable-next-line not-rely-on-time
             bool outOfTimeRange = block.timestamp > data.validUntil || block.timestamp < data.validAfter;
             if (outOfTimeRange) {
-                revert FailedIntent(userIntIndex, 0, "AA22 expired or not due");
+                revert FailedIntent(IntentIndex, 0, "AA22 expired or not due");
             }
         }
     }
@@ -458,8 +456,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      * generates an intent standard ID for an intent standard contract.
      */
     function _generateIntentStandardId(IIntentStandard intentStandard) private view returns (bytes32) {
-        //TODO: revisit how IDs are generated
-        return keccak256(abi.encodePacked(intentStandard, address(this)));
+        return keccak256(abi.encodePacked(intentStandard, address(this), block.chainid));
     }
 
     //place the NUMBER opcode in the code.

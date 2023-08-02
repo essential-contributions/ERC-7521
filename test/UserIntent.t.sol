@@ -9,8 +9,6 @@ import "./TestEnvironment.sol";
 contract UserIntentTest is Test, TestEnvironment {
     using UserIntentLib for UserIntent;
 
-    bytes32 constant EXPECTED_HASH = 0xacbff197b0eedca19d59b708ab54d127c8bc33b21213c25bc54bb1077d22e474;
-
     // gas: 604680
     function test_getStandard() public {
         bytes32 standard = _intent().getStandard();

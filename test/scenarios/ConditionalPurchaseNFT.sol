@@ -35,20 +35,19 @@ contract ConditionalPurchaseNFT is ScenarioTestEnvironment {
 
     function test_conditionalPurchaseNFT() public {
         //create account intent
-        UserIntent memory userIntent = _intent();
-        userIntent = userIntent.addSegment(_segment("").releaseETH(constantCurve(2 ether)));
-        userIntent = userIntent.addSegment(
+        UserIntent memory intent = _intent();
+        intent = intent.addSegment(_segment("").releaseETH(constantCurve(2 ether)));
+        intent = intent.addSegment(
             _segment(_accountBuyERC1155AndTransferERC721(1 ether, _reqTokenId, address(_intentStandard)))
         );
-        userIntent = userIntent.addSegment(
-            _segment("").requireERC721(address(_testERC721), _reqTokenId, constantCurve(0), false)
-        );
-        userIntent = _signIntent(userIntent);
+        intent =
+            intent.addSegment(_segment("").requireERC721(address(_testERC721), _reqTokenId, constantCurve(0), false));
+        intent = _signIntent(intent);
 
         //create solution
         bytes[] memory steps1 = _solverBuyERC721AndForward(1 ether, address(_account));
         bytes[] memory steps2 = _solverSellERC721AndForward(_reqTokenId, address(_publicAddressSolver));
-        IEntryPoint.IntentSolution memory solution = _solution(userIntent, steps1, steps2, _noSteps());
+        IEntryPoint.IntentSolution memory solution = _solution(intent, steps1, steps2, _noSteps());
 
         //execute
         uint256 gasBefore = gasleft();
