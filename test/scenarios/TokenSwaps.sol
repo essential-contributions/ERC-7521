@@ -35,7 +35,7 @@ contract TokenSwaps is ScenarioTestEnvironment {
         userIntent = _signIntent(userIntent);
 
         //create solution
-        IEntryPoint.SolutionStep[] memory steps1 =
+        bytes[] memory steps1 =
             _solverSwapAllERC20ForETHAndForward(10 ether, address(_publicAddressSolver), 9 ether, address(_account));
         IEntryPoint.IntentSolution memory solution = _solution(userIntent, steps1, _noSteps(), _noSteps());
 
@@ -63,7 +63,7 @@ contract TokenSwaps is ScenarioTestEnvironment {
         userIntent = _signIntent(userIntent);
 
         //create solution
-        IEntryPoint.SolutionStep[] memory steps1 =
+        bytes[] memory steps1 =
             _solverSwapAllERC20ForETHAndForward(7.75 ether, address(_publicAddressSolver), 7 ether, address(_account));
         IEntryPoint.IntentSolution memory solution = _solution(userIntent, steps1, _noSteps(), _noSteps());
 

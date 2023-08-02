@@ -32,7 +32,7 @@ contract GaslessAirdrop is ScenarioTestEnvironment {
         userIntent = _signIntent(userIntent);
 
         //create solution
-        IEntryPoint.SolutionStep[] memory steps1 = _solverSwapAllERC20ForETH(2 ether, address(_publicAddressSolver));
+        bytes[] memory steps1 = _solverSwapAllERC20ForETH(2 ether, address(_publicAddressSolver));
         IEntryPoint.IntentSolution memory solution = _solution(userIntent, steps1, _noSteps(), _noSteps());
 
         //execute

@@ -38,9 +38,9 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      * @param timestamp the time at which to evaluate the intents
      */
     function _executeSolution(IntentSolution calldata solution, uint256 timestamp) private {
-        uint256 intslen = solution.userIntents.length;
-        bytes[] memory contextData = new bytes[](intslen);
-        bool[] memory executionFinished = new bool[](intslen);
+        IIntentStandard intentStandard = _registeredStandards[solution.userIntents[0].getStandard()];
+        bytes[] memory contextData = new bytes[](solution.userIntents.length);
+        bool[] memory executionFinished = new bool[](solution.userIntents.length);
         bool solutionFinished = solution.solutionSegments.length == 0;
         bool intentsFinished = false;
         uint256 passIndex = 0;
@@ -50,13 +50,13 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
                 //Execute intents
                 if (!intentsFinished) {
                     bool stillExecuting = false;
-                    for (uint256 i = 0; i < intslen; i++) {
+                    for (uint256 i = 0; i < solution.userIntents.length; i++) {
                         if (!executionFinished[i]) {
                             UserIntent calldata intent = solution.userIntents[i];
                             _executionStateContext = intent.sender;
-                            IIntentStandard standard = _registeredStandards[intent.getStandard()];
-                            bool success = Exec.delegateCall(
-                                address(standard),
+                            bool success = Exec.call(
+                                address(intentStandard),
+                                0,
                                 abi.encodeWithSelector(
                                     IIntentStandard.executeUserIntent.selector, intent, timestamp, contextData[i]
                                 ),
@@ -89,18 +89,18 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
 
                 //Execute solution
                 if (!solutionFinished) {
-                    uint256 solLen = solution.solutionSegments[passIndex].steps.length;
-                    if (solLen > 0) {
+                    SolutionSegment calldata solSeg = solution.solutionSegments[passIndex];
+                    if (solSeg.callDataSteps.length > 0) {
                         _executionStateContext = EX_STATE_SOLUTION_EXECUTING;
-                        for (uint256 i = 0; i < solLen; i++) {
-                            SolutionStep calldata step = solution.solutionSegments[passIndex].steps[i];
-                            bool success = Exec.call(step.target, step.value, step.callData, gasleft());
+                        for (uint256 i = 0; i < solSeg.callDataSteps.length; i++) {
+                            bytes calldata step = solSeg.callDataSteps[i];
+                            bool success = Exec.call(address(intentStandard), 0, step, gasleft());
                             if (!success) {
                                 bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
                                 if (reason.length > 0) {
-                                    revert FailedSolution(i, string.concat("AA71 execution failed: ", string(reason)));
+                                    revert FailedSolution(i, string.concat("AA72 execution failed: ", string(reason)));
                                 } else {
-                                    revert FailedSolution(i, "AA71 execution failed (or OOG)");
+                                    revert FailedSolution(i, "AA72 execution failed (or OOG)");
                                 }
                             }
                         }
@@ -125,6 +125,10 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         uint256 timestamp = block.timestamp;
         uint256 intsLen = solution.userIntents.length;
         require(intsLen > 0, "AA70 no intents");
+        bytes32 standard = solution.userIntents[0].standard;
+        for (uint256 i = 1; i < intsLen; i++) {
+            require(solution.userIntents[1].standard == standard, "AA71 mismatched intent standards");
+        }
 
         unchecked {
             bytes32[] memory userIntHashes = new bytes32[](intsLen);
@@ -399,10 +403,10 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             emit SolutionRevertReason(solIndex, 0, string(reason));
         } else if (reason.length > 0) {
             //revert was due to some unknown with a reason string
-            emit SolutionRevertReason(solIndex, 0, string.concat("AA72 reverted: ", string(reason)));
+            emit SolutionRevertReason(solIndex, 0, string.concat("AA73 reverted: ", string(reason)));
         } else {
             //revert was due to some unknown
-            emit SolutionRevertReason(solIndex, 0, "AA72 reverted (or OOG)");
+            emit SolutionRevertReason(solIndex, 0, "AA73 reverted (or OOG)");
         }
     }
 
