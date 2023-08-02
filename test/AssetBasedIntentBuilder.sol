@@ -285,9 +285,7 @@ library AssetBasedIntentSegmentBuilder {
         AssetBasedIntentCurve memory curve = AssetBasedIntentCurve({
             assetContract: assetContract,
             assetId: assetId,
-            assetType: assetType,
-            curveType: getCurveType(curveParams),
-            evaluationType: evalType,
+            flags: AssetBasedIntentCurveLib.generateFlags(assetType, _getCurveType(curveParams), evalType),
             params: curveParams
         });
 
@@ -317,9 +315,7 @@ library AssetBasedIntentSegmentBuilder {
         AssetBasedIntentCurve memory curve = AssetBasedIntentCurve({
             assetContract: assetContract,
             assetId: assetId,
-            assetType: assetType,
-            curveType: getCurveType(curveParams),
-            evaluationType: EvaluationType.ABSOLUTE,
+            flags: AssetBasedIntentCurveLib.generateFlags(assetType, _getCurveType(curveParams), EvaluationType.ABSOLUTE),
             params: curveParams
         });
 
