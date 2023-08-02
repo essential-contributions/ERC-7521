@@ -5,8 +5,8 @@ import {AssetType} from "./utils/AssetWrapper.sol";
 
 /**
  * Asset Curve struct
- * @param assetContract the address of the contract that controls the asset.
  * @param assetId the ID of the asset.
+ * @param assetContract the address of the contract that controls the asset.
  * @param flags flags for asset type, curve type and evaluation type.
  *   The top 8 bytes are unused and the bottom 4 bytes are arranged as follows:
  *   reserved    reserved    asset type  curve/eval type
