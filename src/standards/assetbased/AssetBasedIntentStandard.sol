@@ -28,7 +28,6 @@ contract AssetBasedIntentStandard is AssetHolderProxy, IIntentStandard {
      * Basic state and constants.
      */
     IEntryPoint private immutable _entryPoint;
-    bytes32 private immutable _standardId;
     uint256 private constant REVERT_REASON_MAX_LEN = 2048;
 
     /**
@@ -37,7 +36,6 @@ contract AssetBasedIntentStandard is AssetHolderProxy, IIntentStandard {
      */
     constructor(IEntryPoint entryPointContract) {
         _entryPoint = entryPointContract;
-        _standardId = _entryPoint.registerIntentStandard(this);
     }
 
     function entryPoint() public view virtual override returns (IEntryPoint) {
@@ -45,7 +43,7 @@ contract AssetBasedIntentStandard is AssetHolderProxy, IIntentStandard {
     }
 
     function standardId() public view returns (bytes32) {
-        return _standardId;
+        return _entryPoint.getIntentStandardId(this);
     }
 
     /**
@@ -111,6 +109,15 @@ contract AssetBasedIntentStandard is AssetHolderProxy, IIntentStandard {
             return abi.encode(intentSegmentIndex, startingBalances);
         }
         return "";
+    }
+
+    /**
+     * Verifies the intent standard is for a given entry point contract (required for registration on the entry point).
+     * @param entryPointContract the entry point contract.
+     * @return flag indicating if the intent standard is for the given entry point.
+     */
+    function isIntentStandardForEntryPoint(IEntryPoint entryPointContract) external view returns (bool) {
+        return entryPointContract == _entryPoint;
     }
 
     /**

@@ -139,12 +139,17 @@ interface IEntryPoint is INonceManager {
     /**
      * registers a new intent standard.
      */
-    function registerIntentStandard(IIntentStandard standardContract) external returns (bytes32);
+    function registerIntentStandard(IIntentStandard intentStandard) external returns (bytes32);
 
     /**
-     * gets the intent contract for the given standard (address(0) if unknown).
+     * gets the intent standard contract for the given intent standard ID.
      */
     function getIntentStandardContract(bytes32 standardId) external view returns (IIntentStandard);
+
+    /**
+     * gets the intent standard ID for the given intent standard contract.
+     */
+    function getIntentStandardId(IIntentStandard intentStandard) external view returns (bytes32);
 
     /**
      * returns if intent validation actions are currently being executed.

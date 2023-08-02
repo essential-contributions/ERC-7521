@@ -248,20 +248,32 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     /**
      * registers a new intent standard.
      */
-    function registerIntentStandard(IIntentStandard standardContract) external returns (bytes32) {
-        //TODO: revisit how IDs are generated
-        bytes32 standardId = keccak256(abi.encodePacked(standardContract, address(this)));
-        require(address(_registeredStandards[standardId]) == address(0), "AA80 already registered");
+    function registerIntentStandard(IIntentStandard intentStandard) external returns (bytes32) {
+        require(intentStandard.isIntentStandardForEntryPoint(this), "AA80 invalid standard");
 
-        _registeredStandards[standardId] = standardContract;
+        bytes32 standardId = _generateIntentStandardId(intentStandard);
+        require(address(_registeredStandards[standardId]) == address(0), "AA81 already registered");
+
+        _registeredStandards[standardId] = intentStandard;
         return standardId;
     }
 
     /**
-     * gets the intent contract for the given standard (address(0) if unknown).
+     * gets the intent standard contract for the given intent standard ID.
      */
     function getIntentStandardContract(bytes32 standardId) external view returns (IIntentStandard) {
-        return _registeredStandards[standardId];
+        IIntentStandard intentStandard = _registeredStandards[standardId];
+        require(intentStandard != IIntentStandard(address(0)), "AA82 unknown standard");
+        return intentStandard;
+    }
+
+    /**
+     * gets the intent standard ID for the given intent standard contract.
+     */
+    function getIntentStandardId(IIntentStandard intentStandard) external view returns (bytes32) {
+        bytes32 standardId = _generateIntentStandardId(intentStandard);
+        require(_registeredStandards[standardId] != IIntentStandard(address(0)), "AA82 unknown standard");
+        return standardId;
     }
 
     /**
@@ -319,7 +331,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         // validate intent standard is recognized
         IIntentStandard standard = _registeredStandards[userInt.getStandard()];
         if (address(standard) == address(0)) {
-            revert FailedIntent(userIntIndex, 0, "AA81 unknown standard");
+            revert FailedIntent(userIntIndex, 0, "AA82 unknown standard");
         }
 
         // validate the intent itself
@@ -417,6 +429,14 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         return (selector & 0xFFFF0000) == 0x41410000 && (selector & 0x0000FF00) >= 0x00003000
             && (selector & 0x0000FF00) <= 0x00003900 && (selector & 0x000000FF) >= 0x00000030
             && (selector & 0x000000FF) <= 0x00000039;
+    }
+
+    /**
+     * generates an intent standard ID for an intent standard contract.
+     */
+    function _generateIntentStandardId(IIntentStandard intentStandard) private view returns (bytes32) {
+        //TODO: revisit how IDs are generated
+        return keccak256(abi.encodePacked(intentStandard, address(this)));
     }
 
     //place the NUMBER opcode in the code.
