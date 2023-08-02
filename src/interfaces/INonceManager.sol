@@ -4,12 +4,12 @@ pragma solidity ^0.8.13;
 interface INonceManager {
     /**
      * Return the next nonce for this sender.
-     * Within a given key, the nonce values are sequenced (starting with zero, and incremented by one on each userInt)
-     * But UserInt with different keys can come with arbitrary order.
+     * Within a given key, the nonce values are sequenced (starting with zero, and incremented by one on each intent)
+     * But UserIntent with different keys can come with arbitrary order.
      *
      * @param sender the account address
      * @param key the high 192 bit of the nonce
-     * @return nonce a full nonce to pass for next UserInt with this sender.
+     * @return nonce a full nonce to pass for next UserIntent with this sender.
      */
     function getNonce(address sender, uint192 key) external view returns (uint256 nonce);
 

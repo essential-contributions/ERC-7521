@@ -36,19 +36,19 @@ contract GaslessAirdropConditionalPurchaseNFT is ScenarioTestEnvironment {
 
     function test_gaslessAirdropConditionalPurchaseNFT() public {
         //create account intent
-        UserIntent memory userIntent = _intent();
-        userIntent = userIntent.addSegment(
+        UserIntent memory intent = _intent();
+        intent = intent.addSegment(
             _segment(_accountClaimAirdropERC20(100 ether)).releaseERC20(address(_testERC20), constantCurve(2 ether))
         );
-        userIntent = userIntent.addSegment(
+        intent = intent.addSegment(
             _segment(_accountBuyERC1155AndTransferERC721(1 ether, _reqTokenId, address(_intentStandard)))
         );
-        userIntent = userIntent.addSegment(
+        intent = intent.addSegment(
             _segment("").requireETH(constantCurve(0), false).requireERC721(
                 address(_testERC721), _reqTokenId, constantCurve(0), false
             )
         );
-        userIntent = _signIntent(userIntent);
+        intent = _signIntent(intent);
 
         //create solution
         bytes[] memory steps1 = _combineSolutionSteps(
@@ -56,7 +56,7 @@ contract GaslessAirdropConditionalPurchaseNFT is ScenarioTestEnvironment {
             _solverBuyERC721AndForward(1 ether, address(_account))
         );
         bytes[] memory steps2 = _solverSellERC721AndForward(_reqTokenId, address(_publicAddressSolver));
-        IEntryPoint.IntentSolution memory solution = _solution(userIntent, steps1, steps2, _noSteps());
+        IEntryPoint.IntentSolution memory solution = _solution(intent, steps1, steps2, _noSteps());
 
         //execute
         uint256 gasBefore = gasleft();

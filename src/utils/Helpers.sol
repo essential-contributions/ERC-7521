@@ -5,8 +5,8 @@ pragma solidity ^0.8.13;
 /* solhint-disable private-vars-leading-underscore */
 
 /**
- * returned data from validateUserInt.
- * validateUserInt returns a uint256, with is created by `_packedValidationData` and parsed by `_parseValidationData`
+ * returned data from validateUserIntent.
+ * validateUserIntent returns a uint256, with is created by `_packedValidationData` and parsed by `_parseValidationData`
  * @param sigFailed - true for signature failure, false for success.
  * @param validAfter - this UserIntent is valid only after this timestamp.
  * @param validaUntil - this UserIntent is valid only up to this timestamp.
@@ -30,7 +30,7 @@ function _parseValidationData(uint256 validationData) pure returns (ValidationDa
 }
 
 /**
- * helper to pack the return value for validateUserInt
+ * helper to pack the return value for validateUserIntent
  * @param data - the ValidationData to pack
  */
 function _packValidationData(ValidationData memory data) pure returns (uint256) {
@@ -39,7 +39,7 @@ function _packValidationData(ValidationData memory data) pure returns (uint256) 
 }
 
 /**
- * helper to pack the return value for validateUserInt, when not using an aggregator
+ * helper to pack the return value for validateUserIntent, when not using an aggregator
  * @param sigFailed - true for signature failure, false for success
  * @param validUntil last timestamp this UserIntent is valid (or zero for infinite)
  * @param validAfter first timestamp this UserIntent is valid

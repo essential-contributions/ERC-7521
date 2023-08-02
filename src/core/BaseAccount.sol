@@ -12,7 +12,7 @@ import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
 
 /**
  * Basic account implementation.
- * this contract provides the basic logic for implementing the IAccount interface  - validateUserInt
+ * this contract provides the basic logic for implementing the IAccount interface  - validateUserIntent
  * specific account implementation should inherit it and provide the account-specific logic
  */
 abstract contract BaseAccount is EntryPointTruster, IAccount {
@@ -31,22 +31,21 @@ abstract contract BaseAccount is EntryPointTruster, IAccount {
      * Validate user's signature and nonce.
      * subclass doesn't need to override this method. Instead, it should override the specific internal validation methods.
      */
-    // TODO: rename
-    function validateUserInt(UserIntent calldata userInt, bytes32 userIntHash)
+    function validateUserIntent(UserIntent calldata intent, bytes32 intentHash)
         external
         virtual
         override
         onlyFromEntryPoint
         returns (uint256 validationData)
     {
-        validationData = _validateSignature(userInt, userIntHash);
-        _validateNonce(userInt.nonce);
+        validationData = _validateSignature(intent, intentHash);
+        _validateNonce(intent.nonce);
     }
 
     /**
      * validate the signature is valid for this intent.
-     * @param userInt validate the userInt.signature field
-     * @param userIntHash convenient field: the hash of the intent, to check the signature against
+     * @param intent validate the intent.signature field
+     * @param intentHash convenient field: the hash of the intent, to check the signature against
      *          (also hashes the entrypoint and chain id)
      * @return validationData signature and time-range of this intent
      *      <20-byte> sigFailed - 0 for valid signature, 1 to mark signature failure
@@ -54,7 +53,7 @@ abstract contract BaseAccount is EntryPointTruster, IAccount {
      *      <6-byte> validAfter - first timestamp this intent is valid
      *      Note that the validation code cannot use block.timestamp (or block.number) directly.
      */
-    function _validateSignature(UserIntent calldata userInt, bytes32 userIntHash)
+    function _validateSignature(UserIntent calldata intent, bytes32 intentHash)
         internal
         virtual
         returns (uint256 validationData);

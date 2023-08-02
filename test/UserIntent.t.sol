@@ -12,20 +12,20 @@ contract UserIntentTest is Test, TestUtil {
 
     // gas consumption 17719
     function test_getStandard() public {
-        bytes32 standard = userIntent.getStandard();
+        bytes32 standard = intent.getStandard();
         assertEq(standard, STANDARD_ID);
-        userIntent.standard;
+        intent.standard;
     }
 
     // TODO: discuss
     // gas consumption 2361
     function test_getStandardDirectly() public {
-        bytes32 standard = userIntent.standard;
+        bytes32 standard = intent.standard;
         assertEq(standard, STANDARD_ID);
     }
 
     function test_hash() public {
-        bytes32 hash = userIntent.hash();
+        bytes32 hash = intent.hash();
         bytes32 expectedHash = 0xc06a8ac65bee43465642e65dd4a2205e9fe20f27f9b760b4d8a433ec46de4c0f;
         assertEq(hash, expectedHash);
     }

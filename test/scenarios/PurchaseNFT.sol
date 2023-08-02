@@ -29,16 +29,16 @@ contract PurchaseNFT is ScenarioTestEnvironment {
 
     function test_purchaseNFT() public {
         //create account intent
-        UserIntent memory userIntent = _intent();
-        userIntent = userIntent.addSegment(_segment("").releaseERC20(address(_testERC20), constantCurve(2 ether)));
-        userIntent = userIntent.addSegment(_segment(_accountBuyERC1155(1 ether)));
-        userIntent = userIntent.addSegment(_segment("").requireETH(constantCurve(0), false));
-        userIntent = _signIntent(userIntent);
+        UserIntent memory intent = _intent();
+        intent = intent.addSegment(_segment("").releaseERC20(address(_testERC20), constantCurve(2 ether)));
+        intent = intent.addSegment(_segment(_accountBuyERC1155(1 ether)));
+        intent = intent.addSegment(_segment("").requireETH(constantCurve(0), false));
+        intent = _signIntent(intent);
 
         //create solution
         bytes[] memory steps1 =
             _solverSwapAllERC20ForETHAndForward(2 ether, address(_publicAddressSolver), 1 ether, address(_account));
-        IEntryPoint.IntentSolution memory solution = _solution(userIntent, steps1, _noSteps(), _noSteps());
+        IEntryPoint.IntentSolution memory solution = _solution(intent, steps1, _noSteps(), _noSteps());
 
         //execute
         uint256 gasBefore = gasleft();

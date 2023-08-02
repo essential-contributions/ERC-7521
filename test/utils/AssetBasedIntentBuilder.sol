@@ -19,19 +19,19 @@ library AssetBasedIntentBuilder {
      * @param sender The address of the intent sender.
      * @param nonce The nonce to prevent replay attacks.
      * @param timestamp The unix time stamp (in seconds) from when this intent was signed.
-     * @return userIntent The created user intent.
+     * @return intent The created user intent.
      */
     function create(bytes32 standard, address sender, uint256 nonce, uint256 timestamp)
         public
         pure
-        returns (UserIntent memory userIntent)
+        returns (UserIntent memory intent)
     {
         AssetBasedIntentSegment[] memory assetBasedIntentSegments;
 
         AssetBasedIntentData memory assetBasedIntentData =
             AssetBasedIntentData({intentSegments: assetBasedIntentSegments});
 
-        userIntent = UserIntent({
+        intent = UserIntent({
             standard: standard,
             sender: sender,
             nonce: nonce,
@@ -40,7 +40,7 @@ library AssetBasedIntentBuilder {
             intentData: "",
             signature: ""
         });
-        userIntent = encodeData(userIntent, assetBasedIntentData);
+        intent = encodeData(intent, assetBasedIntentData);
     }
 
     /**
@@ -114,7 +114,7 @@ library AssetBasedIntentSegmentBuilder {
     /**
      * Create a new intent segment with the specified parameters.
      * @param callData The data for an intended call.
-     * @return userIntent The created user intent segment.
+     * @return intent The created user intent segment.
      */
     function create(bytes memory callData) public pure returns (AssetBasedIntentSegment memory) {
         AssetBasedIntentCurve[] memory assetReleases;

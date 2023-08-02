@@ -31,7 +31,7 @@ abstract contract TestUtil {
     AssetBasedIntentCurve public exponentialAbsoluteCurve;
     AssetBasedIntentCurve public exponentialRelativeCurve;
 
-    UserIntent public userIntent;
+    UserIntent public intent;
 
     EntryPoint public entryPoint;
 
@@ -80,7 +80,7 @@ abstract contract TestUtil {
         assetReleaseCurves.push(constantAbsoluteCurve);
         assetRequirementCurves.push(constantAbsoluteCurve);
 
-        userIntent = UserIntent({
+        intent = UserIntent({
             standard: STANDARD_ID,
             sender: address(this),
             nonce: 123,
