@@ -27,21 +27,12 @@ struct UserIntent {
  * Utility functions helpful when working with UserIntent structs.
  */
 library UserIntentLib {
-    function getStandard(UserIntent calldata intent) public pure returns (bytes32) {
-        bytes32 data;
-        //read intent standard from intent, which is first intent member (saves 800 gas...)
-        assembly {
-            data := calldataload(intent)
-        }
-        return bytes32(data);
-    }
-
     function hash(UserIntent calldata intent) public pure returns (bytes32) {
         return keccak256(_pack(intent));
     }
 
     function _pack(UserIntent calldata intent) private pure returns (bytes memory ret) {
-        bytes32 standard = getStandard(intent);
+        bytes32 standard = intent.standard;
         address sender = intent.sender;
         uint256 nonce = intent.nonce;
         uint256 timestamp = intent.timestamp;
