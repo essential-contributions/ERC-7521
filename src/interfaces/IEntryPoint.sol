@@ -25,9 +25,10 @@ interface IEntryPoint is INonceManager {
      * An event emitted if the UserIntent part of the solution reverted
      * @param solIndex - index into the array of solutions to the failed one (in simulateValidation, this is always zero).
      * @param intIndex - index into the array of intents to the failed one.
+     * @param segIndex - index into the array of intent segments to the failed one.
      * @param revertReason - the return bytes from the (reverted) call.
      */
-    event UserIntentRevertReason(uint256 solIndex, uint256 intIndex, string revertReason);
+    event UserIntentRevertReason(uint256 solIndex, uint256 intIndex, uint256 segIndex, string revertReason);
 
     /**
      * An event emitted if the solution steps reverted
@@ -45,21 +46,22 @@ interface IEntryPoint is INonceManager {
 
     /**
      * a custom revert error of handleIntents, to identify the offending intent.
-     *  NOTE: if simulateValidation passes successfully, there should be no reason for handleIntents to fail.
-     *  @param intIndex - index into the array of intents to the failed one
-     *  @param reason - revert reason
-     *   Should be caught in off-chain handleIntents simulation and not happen on-chain.
-     *   Useful for mitigating DoS attempts against solvers or for troubleshooting of solution/intent reverts.
+     * NOTE: if simulateValidation passes successfully, there should be no reason for handleIntents to fail.
+     * @param intIndex - index into the array of intents to the failed one
+     * @param segIndex - index into the array of intent segments to the failed one
+     * @param reason - revert reason
+     *  Should be caught in off-chain handleIntents simulation and not happen on-chain.
+     *  Useful for mitigating DoS attempts against solvers or for troubleshooting of solution/intent reverts.
      */
-    error FailedIntent(uint256 intIndex, string reason);
+    error FailedIntent(uint256 intIndex, uint256 segIndex, string reason);
 
     /**
      * a custom revert error of handleIntents, to identify the offending solution.
-     *  NOTE: if simulateValidation passes successfully, there should be no reason for handleIntents to fail.
-     *  @param stepIndex the index of the solution step.
-     *  @param reason - revert reason
-     *   Should be caught in off-chain handleIntents simulation and not happen on-chain.
-     *   Useful for mitigating DoS attempts against solvers or for troubleshooting of solution/intent reverts.
+     * NOTE: if simulateValidation passes successfully, there should be no reason for handleIntents to fail.
+     * @param stepIndex the index of the solution step.
+     * @param reason - revert reason
+     *  Should be caught in off-chain handleIntents simulation and not happen on-chain.
+     *  Useful for mitigating DoS attempts against solvers or for troubleshooting of solution/intent reverts.
      */
     error FailedSolution(uint256 stepIndex, string reason);
 
@@ -79,8 +81,11 @@ interface IEntryPoint is INonceManager {
     //UserIntents handled, per solution
     struct IntentSolution {
         UserIntent[] userIntents;
-        SolutionStep[] steps1;
-        SolutionStep[] steps2;
+        SolutionSegment[] solutionSegments;
+    }
+
+    struct SolutionSegment {
+        SolutionStep[] steps;
     }
 
     struct SolutionStep {

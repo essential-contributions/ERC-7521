@@ -13,12 +13,13 @@ contract AssetBasedIntentDataTest is Test, TestUtil {
     using UserIntentLib for UserIntent;
 
     function test_validate() public view {
-        assetBasedIntentDataMap[0].validate();
+        AssetBasedIntentData memory assetBasedIntentData = _getTestIntentData();
+        assetBasedIntentData.validate();
     }
 
     function test_validate_invalidAssets() public {
-        AssetBasedIntentData memory assetBasedIntentData = assetBasedIntentDataMap[0];
-        assetBasedIntentData.assetReleases[0].params = new int256[](0);
+        AssetBasedIntentData memory assetBasedIntentData = _getTestIntentData();
+        assetBasedIntentData.intentSegments[0].assetReleases[0].params = new int256[](0);
         vm.expectRevert("invalid curve params");
         assetBasedIntentData.validate();
     }

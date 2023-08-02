@@ -22,7 +22,7 @@ abstract contract TestUtil {
     int256[] public exponentialParams = new int256[](4);
 
     AssetBasedIntentCurve[] public assetReleaseCurves;
-    AssetBasedIntentCurve[] public assetConstraintCurves;
+    AssetBasedIntentCurve[] public assetRequirementCurves;
 
     AssetBasedIntentCurve public constantAbsoluteCurve;
     AssetBasedIntentCurve public constantRelativeCurve;
@@ -30,8 +30,6 @@ abstract contract TestUtil {
     AssetBasedIntentCurve public linearRelativeCurve;
     AssetBasedIntentCurve public exponentialAbsoluteCurve;
     AssetBasedIntentCurve public exponentialRelativeCurve;
-
-    mapping(uint256 => AssetBasedIntentData) public assetBasedIntentDataMap;
 
     UserIntent public userIntent;
 
@@ -92,16 +90,7 @@ abstract contract TestUtil {
         });
 
         assetReleaseCurves.push(constantAbsoluteCurve);
-        assetConstraintCurves.push(constantAbsoluteCurve);
-
-        assetBasedIntentDataMap[0].callGasLimit1 = 100000;
-        assetBasedIntentDataMap[0].callGasLimit2 = 100000;
-        assetBasedIntentDataMap[0].callData1 = "call data 1"; // TODO: make use of common structs
-        assetBasedIntentDataMap[0].callData2 = "call data 2"; // TODO: make use of common structs
-        assetBasedIntentDataMap[0].assetReleases = assetReleaseCurves;
-        assetBasedIntentDataMap[0].assetConstraints = assetConstraintCurves;
-
-        AssetBasedIntentData memory assetBasedIntentData = assetBasedIntentDataMap[0];
+        assetRequirementCurves.push(constantAbsoluteCurve);
 
         userIntent = UserIntent({
             standard: STANDARD_ID,
@@ -109,10 +98,20 @@ abstract contract TestUtil {
             nonce: 123,
             timestamp: block.timestamp,
             verificationGasLimit: 100000,
-            intentData: abi.encode(assetBasedIntentData),
+            intentData: abi.encode(_getTestIntentData()),
             signature: "signature"
         });
 
         entryPoint = new EntryPoint();
+    }
+
+    function _getTestIntentData() internal view returns (AssetBasedIntentData memory) {
+        AssetBasedIntentSegment[] memory intentSegments = new AssetBasedIntentSegment[](2);
+        intentSegments[0].callData = "call data"; // TODO: make use of common structs
+        intentSegments[0].callGasLimit = 100000;
+        intentSegments[0].assetReleases = assetReleaseCurves;
+        intentSegments[1].assetRequirements = assetRequirementCurves;
+
+        return AssetBasedIntentData({intentSegments: intentSegments});
     }
 }
