@@ -15,3 +15,4 @@ contract UserIntentTest is Test, TestEnvironment {
         assertEq(hash, expectedHash);
     }
 }
+
