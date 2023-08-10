@@ -34,19 +34,22 @@ contract AssetBasedIntentCurveTest is Test, TestEnvironment {
     }
 
     function test_validate_invalidCurveType() public {
-        _testConstantCurve.curveType = CurveType.COUNT;
+        _testConstantCurve.flags =
+            AssetBasedIntentCurveLib.generateFlags(AssetType.ETH, CurveType.COUNT, EvaluationType.ABSOLUTE);
         vm.expectRevert("invalid curve type");
         _testConstantCurve.validate();
     }
 
     function test_validate_invalidAssetType() public {
-        _testConstantCurve.assetType = AssetType.COUNT;
+        _testConstantCurve.flags =
+            AssetBasedIntentCurveLib.generateFlags(AssetType.COUNT, CurveType.CONSTANT, EvaluationType.ABSOLUTE);
         vm.expectRevert("invalid curve asset type");
         _testConstantCurve.validate();
     }
 
     function test_validate_invalidEvaluationType() public {
-        _testConstantCurve.evaluationType = EvaluationType.COUNT;
+        _testConstantCurve.flags =
+            AssetBasedIntentCurveLib.generateFlags(AssetType.ETH, CurveType.CONSTANT, EvaluationType.COUNT);
         vm.expectRevert("invalid curve eval type");
         _testConstantCurve.validate();
     }

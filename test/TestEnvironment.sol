@@ -24,7 +24,8 @@ abstract contract TestEnvironment is Test {
     function setUp() public virtual {
         _entryPoint = new EntryPoint();
         _intentStandard = new AssetBasedIntentStandard(_entryPoint);
-        _account = new AbstractAccount(_entryPoint, _publicAddress);
+        _entryPoint.registerIntentStandard(_intentStandard);
+        _account = new AbstractAccount(_entryPoint, _intentStandard, _publicAddress);
     }
 
     function _curveETH(int256[] memory curveParams, EvaluationType evaluation)
@@ -35,36 +36,34 @@ abstract contract TestEnvironment is Test {
         AssetBasedIntentCurve memory curve = AssetBasedIntentCurve({
             assetContract: address(0),
             assetId: 0,
-            assetType: AssetType.ETH,
-            curveType: AssetBasedIntentBuilder.getCurveType(curveParams),
-            evaluationType: evaluation,
+            flags: AssetBasedIntentCurveLib.generateFlags(
+                AssetType.ETH, AssetBasedIntentSegmentBuilder.getCurveType(curveParams), evaluation
+                ),
             params: curveParams
         });
         return curve;
     }
 
     function _data() internal pure returns (AssetBasedIntentData memory) {
+        AssetBasedIntentSegment[] memory intentSegments = new AssetBasedIntentSegment[](2);
+
         AssetBasedIntentCurve memory constantETHCurve = _curveETH(constantCurve(10), EvaluationType.ABSOLUTE);
         AssetBasedIntentCurve memory linearETHCurve = _curveETH(linearCurve(2, 10, 20, false), EvaluationType.ABSOLUTE);
 
         AssetBasedIntentCurve[] memory assetReleases = new AssetBasedIntentCurve[](2);
-        AssetBasedIntentCurve[] memory assetConstraints = new AssetBasedIntentCurve[](2);
+        AssetBasedIntentCurve[] memory assetRequirements = new AssetBasedIntentCurve[](2);
 
         assetReleases[0] = constantETHCurve;
         assetReleases[1] = linearETHCurve;
-        assetConstraints[0] = linearETHCurve;
-        assetConstraints[1] = constantETHCurve;
+        assetRequirements[0] = linearETHCurve;
+        assetRequirements[1] = constantETHCurve;
 
-        AssetBasedIntentData memory data = AssetBasedIntentData({
-            callGasLimit1: 1000000,
-            callGasLimit2: 1000000,
-            callData1: "calldata 1",
-            callData2: "calldata 2",
-            assetReleases: assetReleases,
-            assetConstraints: assetConstraints
-        });
+        intentSegments[0].callData = "call data";
+        intentSegments[0].callGasLimit = 100000;
+        intentSegments[0].assetReleases = assetReleases;
+        intentSegments[1].assetRequirements = assetRequirements;
 
-        return data;
+        return AssetBasedIntentData({intentSegments: intentSegments});
     }
 
     function _intent() internal view returns (UserIntent memory) {

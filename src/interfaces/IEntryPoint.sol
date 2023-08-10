@@ -133,7 +133,7 @@ interface IEntryPoint is INonceManager {
      * generate an intent Id - unique identifier for this intent.
      * the intent ID is a hash over the content of the intent (except the signature), the entrypoint and the chainid.
      */
-    function getUserIntHash(UserIntent calldata intent) external view returns (bytes32);
+    function getUserIntentHash(UserIntent calldata intent) external view returns (bytes32);
 
     /**
      * registers a new intent standard.

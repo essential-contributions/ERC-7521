@@ -8,6 +8,7 @@ import {_packValidationData} from "../../src/utils/Helpers.sol";
 
 contract AbstractAccountTest is ScenarioTestEnvironment {
     using AssetBasedIntentBuilder for UserIntent;
+    using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
     using UserIntentLib for UserIntent;
     using ECDSA for bytes32;
 
@@ -28,12 +29,12 @@ contract AbstractAccountTest is ScenarioTestEnvironment {
     //     bytes memory intentCallData2 =
     //         abi.encodeWithSelector(AbstractAccount.executeMulti.selector, targets, values, datas);
 
-    //     UserIntent memory userIntent = _createIntent(intentCallData1, intentCallData2);
-    //     userIntent = _signIntent(userIntent);
+    //     UserIntent memory intent = _createIntent(intentCallData1, intentCallData2);
+    //     intent = _signIntent(intent);
 
     //     IEntryPoint.SolutionStep[] memory steps1;
     //     IEntryPoint.SolutionStep[] memory steps2;
-    //     IEntryPoint.IntentSolution memory solution = _createSolution(userIntent, steps1, steps2);
+    //     IEntryPoint.IntentSolution memory solution = _createSolution(intent, steps1, steps2);
 
     //     // TODO: investigate why the caught revert is slightly different
     //     vm.expectRevert(
@@ -54,12 +55,12 @@ contract AbstractAccountTest is ScenarioTestEnvironment {
     //     bytes memory intentCallData2 =
     //         abi.encodeWithSelector(AbstractAccount.executeMulti.selector, targets, values, datas);
 
-    //     UserIntent memory userIntent = _createIntent(intentCallData1, intentCallData2);
-    //     userIntent = _signIntent(userIntent);
+    //     UserIntent memory intent = _createIntent(intentCallData1, intentCallData2);
+    //     intent = _signIntent(intent);
 
     //     IEntryPoint.SolutionStep[] memory steps1;
     //     IEntryPoint.SolutionStep[] memory steps2;
-    //     IEntryPoint.IntentSolution memory solution = _createSolution(userIntent, steps1, steps2);
+    //     IEntryPoint.IntentSolution memory solution = _createSolution(intent, steps1, steps2);
 
     //     // TODO: investigate why the caught revert is slightly different
     //     vm.expectRevert(
@@ -71,16 +72,16 @@ contract AbstractAccountTest is ScenarioTestEnvironment {
     // }
 
     // function test_releaseAsset_insufficientBalance() public {
-    //     UserIntent memory userIntent = _createIntent("", "");
+    //     UserIntent memory intent = _createIntent("", "");
     //     // account has 100 ether but is trying to release 200 ether
-    //     userIntent = userIntent.addReleaseERC20(address(_testERC20), constantCurve(200 ether));
-    //     userIntent = userIntent.addRequiredETH(linearCurve((3 ether) / 3000, 7 ether, 3000, true), true);
-    //     userIntent = _signIntent(userIntent);
+    //     intent = intent.addReleaseERC20(address(_testERC20), constantCurve(200 ether));
+    //     intent = intent.addRequiredETH(linearCurve((3 ether) / 3000, 7 ether, 3000, true), true);
+    //     intent = _signIntent(intent);
 
     //     IEntryPoint.SolutionStep[] memory steps1 =
     //         _solverSwapAllERC20ForETHAndForward(10 ether, address(_publicAddressSolver), 9 ether, address(_account));
     //     IEntryPoint.SolutionStep[] memory steps2;
-    //     IEntryPoint.IntentSolution memory solution = _createSolution(userIntent, steps1, steps2);
+    //     IEntryPoint.IntentSolution memory solution = _createSolution(intent, steps1, steps2);
 
     //     // TODO: investigate why the caught revert is slightly different
     //     vm.expectRevert(
@@ -92,13 +93,13 @@ contract AbstractAccountTest is ScenarioTestEnvironment {
     // }
 
     // function test_validateSignature() public {
-    //     UserIntent memory userIntent = _createIntent("", "");
-    //     userIntent = userIntent.addReleaseERC20(address(_testERC20), constantCurve(10 ether));
-    //     userIntent = userIntent.addRequiredETH(linearCurve((3 ether) / 3000, 7 ether, 3000, true), true);
-    //     userIntent = _signIntent(userIntent);
+    //     UserIntent memory intent = _createIntent("", "");
+    //     intent = intent.addReleaseERC20(address(_testERC20), constantCurve(10 ether));
+    //     intent = intent.addRequiredETH(linearCurve((3 ether) / 3000, 7 ether, 3000, true), true);
+    //     intent = _signIntent(intent);
 
     //     // false for passing validation
-    //     uint256 validationData = _packValidationData(false, uint48(userIntent.timestamp), 0);
+    //     uint256 validationData = _packValidationData(false, uint48(intent.timestamp), 0);
     //     ValidationData memory valData = _parseValidationData(validationData);
 
     //     // TODO: test failing. sigFailed is true but should be false
@@ -107,33 +108,33 @@ contract AbstractAccountTest is ScenarioTestEnvironment {
     //             "ValidationResult(bool,uint48,uint48)", valData.sigFailed, valData.validAfter, valData.validUntil
     //         )
     //     );
-    //     _entryPoint.simulateValidation(userIntent);
+    //     _entryPoint.simulateValidation(intent);
     // }
 
     function test_validateSignature_wrongSignature() public {
-        AbstractAccount wrongAbstractAccount = new AbstractAccount(_entryPoint, _wrongPublicAddress);
+        AbstractAccount wrongAbstractAccount = new AbstractAccount(_entryPoint, _intentStandard, _wrongPublicAddress);
         _testERC20.mint(address(wrongAbstractAccount), 100 ether);
         vm.deal(address(wrongAbstractAccount), 100 ether);
         vm.warp(1000);
 
-        UserIntent memory userIntent = _createIntent("", "");
-        userIntent = userIntent.addReleaseERC20(address(_testERC20), constantCurve(10 ether));
-        userIntent = userIntent.addRequiredETH(linearCurve((3 ether) / 3000, 7 ether, 3000, true), true);
+        UserIntent memory intent = _intent();
+        intent = intent.addSegment(_segment("").releaseERC20(address(_testERC20), constantCurve(2 ether)));
+        intent = intent.addSegment(_segment("").requireETH(linearCurve((3 ether) / 3000, 7 ether, 3000, true), true));
 
-        bytes32 userIntentHash = userIntent.hash();
-        bytes32 digest = userIntentHash.toEthSignedMessageHash();
+        bytes32 intentHash = intent.hash();
+        bytes32 digest = intentHash.toEthSignedMessageHash();
         // sign intent with wrong private key
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(_WRONG_PRIVATE_KEY, digest);
-        userIntent.signature = abi.encodePacked(r, s, v);
+        intent.signature = abi.encodePacked(r, s, v);
 
         // true for failing validation
-        uint256 validationData = _packValidationData(true, uint48(userIntent.timestamp), 0);
+        uint256 validationData = _packValidationData(true, uint48(intent.timestamp), 0);
         ValidationData memory valData = _parseValidationData(validationData);
         vm.expectRevert(
             abi.encodeWithSignature(
                 "ValidationResult(bool,uint48,uint48)", valData.sigFailed, valData.validAfter, valData.validUntil
             )
         );
-        _entryPoint.simulateValidation(userIntent);
+        _entryPoint.simulateValidation(intent);
     }
 }
