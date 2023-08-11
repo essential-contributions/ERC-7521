@@ -141,15 +141,6 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             }
         }
 
-        // validate timestamp
-        uint256 timestamp = block.timestamp;
-        if (solution.timestamp != TIMESTAMP_NULL) {
-            timestamp = solution.timestamp;
-            if (timestamp > block.timestamp) {
-                require(timestamp - block.timestamp <= TIMESTAMP_MAX_OVER, "AA81 invalid timestamp");
-            }
-        }
-
         unchecked {
             bytes32[] memory intentHashes = new bytes32[](intsLen);
 
@@ -461,7 +452,6 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             && (selector & 0x000000FF) <= 0x00000039;
     }
 
-
     /**
      * generates an intent standard ID for an intent standard contract.
      */
@@ -478,4 +468,3 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         }
     }
 }
-

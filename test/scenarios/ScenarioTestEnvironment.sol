@@ -362,4 +362,3 @@ abstract contract ScenarioTestEnvironment is Test {
         return steps;
     }
 }
-
