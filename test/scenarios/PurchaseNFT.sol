@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 /* solhint-disable func-name-mixedcase */
 
-import "./ScenarioTestEnvironment.sol";
+import "../utils/ScenarioTestEnvironment.sol";
 
 /*
  * In this scenario, a user wants to buy an ERC1155 NFT using their ERC20 tokens but they need 
@@ -30,9 +30,11 @@ contract PurchaseNFT is ScenarioTestEnvironment {
     function test_purchaseNFT() public {
         //create account intent
         UserIntent memory intent = _intent();
-        intent = intent.addSegment(_segment("").releaseERC20(address(_testERC20), constantCurve(2 ether)));
+        intent = intent.addSegment(
+            _segment("").releaseERC20(address(_testERC20), AssetBasedIntentCurveBuilder.constantCurve(2 ether))
+        );
         intent = intent.addSegment(_segment(_accountBuyERC1155(1 ether)));
-        intent = intent.addSegment(_segment("").requireETH(constantCurve(0), false));
+        intent = intent.addSegment(_segment("").requireETH(AssetBasedIntentCurveBuilder.constantCurve(0), false));
         intent = _signIntent(intent);
 
         //create solution

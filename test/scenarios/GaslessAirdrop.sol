@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 /* solhint-disable func-name-mixedcase */
 
-import "./ScenarioTestEnvironment.sol";
+import "../utils/ScenarioTestEnvironment.sol";
 
 /*
  * In this scenario, a user wants to claim airdropped ERC20 tokens but wants to pay for gas
@@ -27,7 +27,9 @@ contract GaslessAirdrop is ScenarioTestEnvironment {
         //create account intent
         UserIntent memory intent = _intent();
         intent = intent.addSegment(
-            _segment(_accountClaimAirdropERC20(100 ether)).releaseERC20(address(_testERC20), constantCurve(2 ether))
+            _segment(_accountClaimAirdropERC20(100 ether)).releaseERC20(
+                address(_testERC20), AssetBasedIntentCurveBuilder.constantCurve(2 ether)
+            )
         );
         intent = _signIntent(intent);
 

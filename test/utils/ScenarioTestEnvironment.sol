@@ -5,7 +5,7 @@ pragma solidity ^0.8.13;
 /* solhint-disable const-name-snakecase */
 
 import "forge-std/Test.sol";
-import "../utils/AssetBasedIntentBuilder.sol";
+import "./AssetBasedIntentBuilder.sol";
 import "../../src/core/EntryPoint.sol";
 import "../../src/wallet/AbstractAccount.sol";
 import "../../src/standards/assetbased/AssetBasedIntentStandard.sol";
@@ -317,8 +317,8 @@ abstract contract ScenarioTestEnvironment is Test {
      * @param intent The UserIntent struct representing the user's intent.
      * @return The UserIntent struct with the added signature.
      */
-    function _signIntent(UserIntent memory intent) internal pure returns (UserIntent memory) {
-        bytes32 intentHash = intent.hash();
+    function _signIntent(UserIntent memory intent) internal view returns (UserIntent memory) {
+        bytes32 intentHash = _entryPoint.getUserIntentHash(intent);
         bytes32 digest = intentHash.toEthSignedMessageHash();
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(_privateKey, digest);
         intent.signature = abi.encodePacked(r, s, v);
@@ -361,4 +361,6 @@ abstract contract ScenarioTestEnvironment is Test {
         bytes[] memory steps;
         return steps;
     }
+
+    function test_nothing() public {}
 }

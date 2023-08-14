@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+import "forge-std/Test.sol";
 import "./TestERC721.sol";
 import "./TestUniswap.sol";
 import "./TestWrappedNativeToken.sol";
@@ -9,7 +10,7 @@ import "../standards/assetbased/utils/AssetWrapper.sol";
 /**
  * Library with util actions to streamline intent solving.
  */
-contract SolverUtils {
+contract SolverUtils is Test {
     /**
      * Swap all ERC20 tokens for ETH using Uniswap.
      * @param uniswap The address of the Uniswap router contract.
@@ -108,4 +109,6 @@ contract SolverUtils {
         uint256 amount = address(this).balance;
         payable(to).transfer(amount);
     }
+
+    function test_nothing() public {}
 }

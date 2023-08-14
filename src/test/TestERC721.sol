@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+import "forge-std/Test.sol";
 import "openzeppelin/token/ERC721/ERC721.sol";
 
-contract TestERC721 is ERC721 {
+contract TestERC721 is ERC721, Test {
     uint256 private constant _NFT_TOKEN_SEED = uint256(keccak256("ERC721_NFT_TOKEN_SEED"));
     uint256 private constant _NFT_COST = 1 ether;
 
@@ -39,4 +40,6 @@ contract TestERC721 is ERC721 {
     function nextNFTForSale() external view returns (uint256) {
         return uint256(keccak256(abi.encode(_NFT_TOKEN_SEED, _nftIncrimenter)));
     }
+
+    function test_nothing() public {}
 }

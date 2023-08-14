@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 /* solhint-disable func-name-mixedcase */
 
-import "./ScenarioTestEnvironment.sol";
+import "../utils/ScenarioTestEnvironment.sol";
 
 /*
  * In this scenario, a user is specifying different tokens to release and tokens expected by the end.
@@ -29,8 +29,14 @@ contract TokenSwaps is ScenarioTestEnvironment {
     function test_constantRelease() public {
         //create account intent (curve should evaluate as 9ether at timestamp 1000)
         UserIntent memory intent = _intent();
-        intent = intent.addSegment(_segment("").releaseERC20(address(_testERC20), constantCurve(10 ether)));
-        intent = intent.addSegment(_segment("").requireETH(linearCurve((3 ether) / 3000, 7 ether, 3000, true), true));
+        intent = intent.addSegment(
+            _segment("").releaseERC20(address(_testERC20), AssetBasedIntentCurveBuilder.constantCurve(10 ether))
+        );
+        intent = intent.addSegment(
+            _segment("").requireETH(
+                AssetBasedIntentCurveBuilder.linearCurve((3 ether) / 3000, 7 ether, 3000, true), true
+            )
+        );
         intent = _signIntent(intent);
 
         //create solution
@@ -56,9 +62,12 @@ contract TokenSwaps is ScenarioTestEnvironment {
         //create account intent (curve should evaluate as 7.75ether at timestamp 1000)
         UserIntent memory intent = _intent();
         intent = intent.addSegment(
-            _segment("").releaseERC20(address(_testERC20), exponentialCurve(750000000000, 7 ether, 2, 2000, false))
+            _segment("").releaseERC20(
+                address(_testERC20),
+                AssetBasedIntentCurveBuilder.exponentialCurve(750000000000, 7 ether, 2, 2000, false)
+            )
         );
-        intent = intent.addSegment(_segment("").requireETH(constantCurve(7 ether), true));
+        intent = intent.addSegment(_segment("").requireETH(AssetBasedIntentCurveBuilder.constantCurve(7 ether), true));
         intent = _signIntent(intent);
 
         //create solution

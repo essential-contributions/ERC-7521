@@ -57,8 +57,6 @@ library AssetBasedIntentCurveLib {
         } else if (curveType(curve) == CurveType.EXPONENTIAL) {
             require(curve.params.length == 4, "invalid curve params");
             require(curve.params[2] >= 0, "invalid curve params"); //negative exponent
-        } else {
-            revert("unknown curve type");
         }
     }
 
@@ -99,8 +97,6 @@ library AssetBasedIntentCurveLib {
                 sx = max;
             }
             val = (m * (sx ** e)) + b;
-        } else {
-            val = 0;
         }
     }
 

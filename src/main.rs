@@ -7,7 +7,7 @@ use ethers::{
 use eyre::Result;
 use std::{convert::TryFrom, sync::Arc, time::Duration};
 
-abigen!(Account, "out/Account.sol/Account.json");
+abigen!(Account, "out/AbstractAccount.sol/AbstractAccount.json");
 abigen!(EntryPoint, "out/EntryPoint.sol/EntryPoint.json");
 abigen!(
     AssetBasedIntentStandard,
