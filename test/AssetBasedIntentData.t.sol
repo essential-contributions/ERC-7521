@@ -3,28 +3,37 @@ pragma solidity ^0.8.13;
 
 /* solhint-disable func-name-mixedcase */
 
-import "forge-std/Test.sol";
-import "../src/interfaces/UserIntent.sol";
 import "../src/standards/assetbased/AssetBasedIntentData.sol";
-import "./TestUtil.sol";
+import "./utils/TestEnvironment.sol";
 
-contract AssetBasedIntentDataTest is Test, TestUtil {
+contract AssetBasedIntentDataTest is TestEnvironment {
     using AssetBasedIntentDataLib for AssetBasedIntentData;
-    using UserIntentLib for UserIntent;
 
-    function test_validate() public view {
-        AssetBasedIntentData memory assetBasedIntentData = _getTestIntentData();
-        assetBasedIntentData.validate();
+    function test_validate() public pure {
+        _data().validate();
     }
 
     function test_validate_invalidAssets() public {
-        AssetBasedIntentData memory assetBasedIntentData = _getTestIntentData();
-        assetBasedIntentData.intentSegments[0].assetReleases[0].params = new int256[](0);
+        AssetBasedIntentData memory data = _data();
+        data.intentSegments[0].assetReleases[0].params = new int256[](0);
         vm.expectRevert("invalid curve params");
-        assetBasedIntentData.validate();
+        data.validate();
     }
 
-    function test_parseAssetBasedIntentData() public {
-        // TODO
+    function test_validate_relativeRequirementAtBeginning() public {
+        AssetBasedIntentSegment[] memory intentSegments = new AssetBasedIntentSegment[](2);
+        // relative requirement
+        AssetBasedIntentCurve memory constantETHCurve =
+            _curveETH(AssetBasedIntentCurveBuilder.constantCurve(10), EvaluationType.RELATIVE);
+
+        AssetBasedIntentCurve[] memory assetRequirements = new AssetBasedIntentCurve[](2);
+        assetRequirements[0] = constantETHCurve;
+
+        intentSegments[0].assetRequirements = assetRequirements;
+
+        AssetBasedIntentData memory assetBasedIntentData = AssetBasedIntentData({intentSegments: intentSegments});
+
+        vm.expectRevert("relative requirements not allowed at beginning of intent");
+        assetBasedIntentData.validate();
     }
 }
