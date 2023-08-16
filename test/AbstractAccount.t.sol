@@ -97,6 +97,34 @@ contract AbstractAccountTest is ScenarioTestEnvironment {
     //     _entryPoint.handleIntents(solution);
     // }
 
+    function test_validateSignature() public {
+        AbstractAccount wrongAbstractAccount = new AbstractAccount(_entryPoint, _intentStandard, _wrongPublicAddress);
+        _testERC20.mint(address(wrongAbstractAccount), 100 ether);
+        vm.deal(address(wrongAbstractAccount), 100 ether);
+        vm.warp(1000);
+
+        UserIntent memory intent = _intent();
+        intent = intent.addSegment(
+            _segment("").releaseERC20(address(_testERC20), AssetBasedIntentCurveBuilder.constantCurve(2 ether))
+        );
+        intent = intent.addSegment(
+            _segment("").requireETH(
+                AssetBasedIntentCurveBuilder.linearCurve((3 ether) / 3000, 7 ether, 3000, true), true
+            )
+        );
+        intent = _signIntent(intent);
+
+        // sigFailed == false for passing validation
+        uint256 validationData = _packValidationData(false, uint48(intent.timestamp), 0);
+        ValidationData memory valData = _parseValidationData(validationData);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IEntryPoint.ValidationResult.selector, valData.sigFailed, valData.validAfter, valData.validUntil
+            )
+        );
+        _entryPoint.simulateValidation(intent);
+    }
+
     function test_validateSignature_wrongSignature() public {
         AbstractAccount wrongAbstractAccount = new AbstractAccount(_entryPoint, _intentStandard, _wrongPublicAddress);
         _testERC20.mint(address(wrongAbstractAccount), 100 ether);
