@@ -55,6 +55,10 @@ contract GaslessAirdrop is ScenarioTestEnvironment {
         //create solution
         IEntryPoint.IntentSolution memory solution = _solutionForCase(intent, gasPayment);
 
+        //simulate execution
+        vm.expectRevert(abi.encodeWithSelector(IEntryPoint.ExecutionResult.selector, true, false, ""));
+        _entryPoint.simulateHandleIntents(solution, block.timestamp, address(0), "");
+
         //execute
         uint256 gasBefore = gasleft();
         _entryPoint.handleIntents(solution);
