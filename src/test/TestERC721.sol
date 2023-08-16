@@ -41,5 +41,9 @@ contract TestERC721 is ERC721, Test {
         return uint256(keccak256(abi.encode(_NFT_TOKEN_SEED, _nftIncrimenter)));
     }
 
+    function nftCost() external pure returns (uint256) {
+        return _NFT_COST;
+    }
+
     function test_nothing() public {}
 }

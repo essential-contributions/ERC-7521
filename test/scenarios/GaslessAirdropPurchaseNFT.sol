@@ -22,26 +22,51 @@ contract GaslessAirdropPurchaseNFT is ScenarioTestEnvironment {
     using AssetBasedIntentBuilder for UserIntent;
     using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
 
+    function _intentForCase(uint256 claimAmount, uint256 totalAmountToSolver, uint256 nftPrice)
+        internal
+        view
+        returns (UserIntent memory)
+    {
+        UserIntent memory intent = _intent();
+        intent = intent.addSegment(
+            _segment(_accountClaimAirdropERC20(claimAmount)).releaseERC20(
+                address(_testERC20), AssetBasedIntentCurveBuilder.constantCurve(int256(totalAmountToSolver))
+            )
+        );
+        intent = intent.addSegment(_segment(_accountBuyERC1155(nftPrice)));
+        intent = intent.addSegment(_segment("").requireETH(AssetBasedIntentCurveBuilder.constantCurve(0), false));
+        return intent;
+    }
+
+    function _solutionForCase(UserIntent memory intent, uint256 totalAmountToSolver, uint256 nftPrice)
+        internal
+        view
+        returns (IEntryPoint.IntentSolution memory)
+    {
+        bytes[] memory steps1 = _solverSwapAllERC20ForETHAndForward(
+            totalAmountToSolver, address(_publicAddressSolver), nftPrice, address(_account)
+        );
+        return _solution(_singleIntent(intent), steps1, _noSteps(), _noSteps());
+    }
+
     function setUp() public override {
         super.setUp();
     }
 
-    function test_gaslessAirdropPurchaseNFT() public {
+    // the max value uint72 can hold is just more than 1000 ether,
+    // that is the amount of test tokens that were minted
+    function testFuzz_gaslessAirdropPurchaseNFT(uint72 claimAmount, uint64 totalAmountToSolver) public {
+        vm.assume(claimAmount < 1000 ether);
+        vm.assume(totalAmountToSolver < claimAmount);
+        uint256 nftPrice = _testERC1155.nftCost();
+        vm.assume(nftPrice < totalAmountToSolver);
+
         //create account intent
-        UserIntent memory intent = _intent();
-        intent = intent.addSegment(
-            _segment(_accountClaimAirdropERC20(100 ether)).releaseERC20(
-                address(_testERC20), AssetBasedIntentCurveBuilder.constantCurve(2 ether)
-            )
-        );
-        intent = intent.addSegment(_segment(_accountBuyERC1155(1 ether)));
-        intent = intent.addSegment(_segment("").requireETH(AssetBasedIntentCurveBuilder.constantCurve(0), false));
+        UserIntent memory intent = _intentForCase(claimAmount, totalAmountToSolver, nftPrice);
         intent = _signIntent(intent);
 
         //create solution
-        bytes[] memory steps1 =
-            _solverSwapAllERC20ForETHAndForward(2 ether, address(_publicAddressSolver), 1 ether, address(_account));
-        IEntryPoint.IntentSolution memory solution = _solution(intent, steps1, _noSteps(), _noSteps());
+        IEntryPoint.IntentSolution memory solution = _solutionForCase(intent, totalAmountToSolver, nftPrice);
 
         //execute
         uint256 gasBefore = gasleft();
@@ -52,10 +77,52 @@ contract GaslessAirdropPurchaseNFT is ScenarioTestEnvironment {
         uint256 solverBalance = address(_publicAddressSolver).balance;
         uint256 userERC20Tokens = _testERC20.balanceOf(address(_account));
         uint256 userERC1155Tokens = _testERC1155.balanceOf(address(_account), _testERC1155.lastBoughtNFT());
-        assertEq(solverBalance, (1 ether) + 5, "The solver ended up with incorrect balance");
-        assertEq(userERC20Tokens, 98 ether, "The user released more ERC20 tokens than expected");
+        // TODO: document the + 5
+        assertEq(solverBalance, (totalAmountToSolver - nftPrice) + 5, "The solver ended up with incorrect balance");
+        assertEq(
+            userERC20Tokens, claimAmount - totalAmountToSolver, "The user released more ERC20 tokens than expected"
+        );
         assertEq(userERC1155Tokens, 1, "The user did not get their NFT");
     }
 
-    //TODO: clone the success scenario and tweak it to verify correct failures (ex. signature validation)
+    // function test_failGaslessAirdropPurchaseNFT_insufficientReleaseBalance() public {
+    //     uint256 nftPrice = _testERC1155.nftCost();
+    //     uint256 claimAmount = 100 ether;
+    //     uint256 totalAmountToSolver = claimAmount + 1;
+
+    //     //create account intent
+    //     UserIntent memory intent = _intentForCase(claimAmount, totalAmountToSolver, nftPrice);
+    //     intent = _signIntent(intent);
+
+    //     //create solution
+    //     IEntryPoint.IntentSolution memory solution = _solutionForCase(intent, totalAmountToSolver, nftPrice);
+
+    //     //execute
+    //     // TODO: string length expected 0x37, actual 0x33
+    //     vm.expectRevert(
+    //         abi.encodeWithSelector(
+    //             IEntryPoint.FailedIntent.selector, 0, 0, "AA61 execution failed: insufficient release balance"
+    //         )
+    //     );
+    //     _entryPoint.handleIntents(solution);
+    // }
+
+    function test_failGaslessAirdropPurchaseNFT_outOfFund() public {
+        uint256 nftPrice = _testERC1155.nftCost();
+        uint256 claimAmount = nftPrice - 5;
+        uint256 totalAmountToSolver = claimAmount - 1;
+
+        //create account intent
+        UserIntent memory intent = _intentForCase(claimAmount, totalAmountToSolver, nftPrice);
+        intent = _signIntent(intent);
+
+        //create solution
+        IEntryPoint.IntentSolution memory solution = _solutionForCase(intent, totalAmountToSolver, nftPrice);
+
+        //execute
+        vm.expectRevert(
+            abi.encodeWithSelector(IEntryPoint.FailedSolution.selector, 1, "AA72 execution failed (or OOG)")
+        );
+        _entryPoint.handleIntents(solution);
+    }
 }

@@ -96,7 +96,8 @@ library AssetBasedIntentCurveLib {
             if (sx > max) {
                 sx = max;
             }
-            val = (m * (sx ** e)) + b;
+            // conditional to avoid arithmetic overflow
+            val = m == 0 ? b : (m * (sx ** e)) + b;
         }
     }
 

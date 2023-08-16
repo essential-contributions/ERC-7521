@@ -275,20 +275,17 @@ abstract contract ScenarioTestEnvironment is Test {
 
     /**
      * Private helper function to build an intent solution struct.
-     * @param intent The UserIntent struct representing the user's intent.
+     * @param intents The array of UserIntent structs representing the user's intents.
      * @param steps1 The array of solution steps for a first segment.
      * @param steps2 The array of solution steps for a second segment.
      * @param steps3 The array of solution steps for a third segment.
      * @return The created IntentSolution struct.
      */
-    function _solution(UserIntent memory intent, bytes[] memory steps1, bytes[] memory steps2, bytes[] memory steps3)
+    function _solution(UserIntent[] memory intents, bytes[] memory steps1, bytes[] memory steps2, bytes[] memory steps3)
         internal
         pure
         returns (IEntryPoint.IntentSolution memory)
     {
-        UserIntent[] memory intents = new UserIntent[](1);
-        intents[0] = intent;
-
         uint256 numSegments = 0;
         if (steps1.length > 0) numSegments++;
         if (steps2.length > 0) numSegments++;
@@ -310,6 +307,12 @@ abstract contract ScenarioTestEnvironment is Test {
         }
 
         return IEntryPoint.IntentSolution({timestamp: 0, intents: intents, solutionSegments: solutionSegments});
+    }
+
+    function _singleIntent(UserIntent memory intent) internal pure returns (UserIntent[] memory) {
+        UserIntent[] memory intents = new UserIntent[](1);
+        intents[0] = intent;
+        return intents;
     }
 
     /**

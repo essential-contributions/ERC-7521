@@ -19,23 +19,41 @@ contract GaslessAirdrop is ScenarioTestEnvironment {
     using AssetBasedIntentBuilder for UserIntent;
     using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
 
+    function _intentForCase(uint256 claimAmount, uint256 gasPayment) internal view returns (UserIntent memory) {
+        UserIntent memory intent = _intent();
+        intent = intent.addSegment(
+            _segment(_accountClaimAirdropERC20(claimAmount)).releaseERC20(
+                address(_testERC20), AssetBasedIntentCurveBuilder.constantCurve(int256(gasPayment))
+            )
+        );
+        return intent;
+    }
+
+    function _solutionForCase(UserIntent memory intent, uint256 gasPayment)
+        internal
+        view
+        returns (IEntryPoint.IntentSolution memory)
+    {
+        bytes[] memory steps1 = _solverSwapAllERC20ForETH(gasPayment, address(_publicAddressSolver));
+        return _solution(_singleIntent(intent), steps1, _noSteps(), _noSteps());
+    }
+
     function setUp() public override {
         super.setUp();
     }
 
-    function test_gaslessAirdrop() public {
+    // the max value uint72 can hold is just more than 1000 ether,
+    // that is the amount of test tokens that were minted
+    function testFuzz_gaslessAirdrop(uint72 claimAmount, uint72 gasPayment) public {
+        vm.assume(gasPayment < claimAmount);
+        vm.assume(claimAmount < 1000 ether);
+
         //create account intent
-        UserIntent memory intent = _intent();
-        intent = intent.addSegment(
-            _segment(_accountClaimAirdropERC20(100 ether)).releaseERC20(
-                address(_testERC20), AssetBasedIntentCurveBuilder.constantCurve(2 ether)
-            )
-        );
+        UserIntent memory intent = _intentForCase(claimAmount, gasPayment);
         intent = _signIntent(intent);
 
         //create solution
-        bytes[] memory steps1 = _solverSwapAllERC20ForETH(2 ether, address(_publicAddressSolver));
-        IEntryPoint.IntentSolution memory solution = _solution(intent, steps1, _noSteps(), _noSteps());
+        IEntryPoint.IntentSolution memory solution = _solutionForCase(intent, gasPayment);
 
         //execute
         uint256 gasBefore = gasleft();
@@ -45,9 +63,29 @@ contract GaslessAirdrop is ScenarioTestEnvironment {
         //verify end state
         uint256 solverBalance = address(_publicAddressSolver).balance;
         uint256 userERC20Tokens = _testERC20.balanceOf(address(_account));
-        assertEq(solverBalance, (2 ether) + 5, "The solver ended up with incorrect balance");
-        assertEq(userERC20Tokens, 98 ether, "The user released more ERC20 tokens than expected");
+        // TODO: document the + 5
+        assertEq(solverBalance, gasPayment + 5, "The solver ended up with incorrect balance");
+        assertEq(userERC20Tokens, claimAmount - gasPayment, "The user released more ERC20 tokens than expected");
     }
 
-    //TODO: clone the success scenario and tweak it to verify correct failures (ex. signature validation)
+    // function test_failGaslessAirdrop_insufficientReleaseBalance() public {
+    //     uint256 claimAmount = 100 ether;
+    //     uint256 gasPayment = claimAmount + 1;
+
+    //     //create account intent
+    //     UserIntent memory intent = _intentForCase(claimAmount, gasPayment);
+    //     intent = _signIntent(intent);
+
+    //     //create solution
+    //     IEntryPoint.IntentSolution memory solution = _solutionForCase(intent, gasPayment);
+
+    //     //execute
+    //     // TODO: string length expected 0x37, actual 0x33
+    //     vm.expectRevert(
+    //         abi.encodeWithSelector(
+    //             IEntryPoint.FailedIntent.selector, 0, 0, "AA61 execution failed: insufficient release balance"
+    //         )
+    //     );
+    //     _entryPoint.handleIntents(solution);
+    // }
 }
