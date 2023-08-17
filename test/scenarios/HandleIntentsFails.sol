@@ -194,25 +194,6 @@ contract ValidateAccountValidationDataTest is ScenarioTestEnvironment {
     }
 }
 
-contract ExecuteSolutionTest is ScenarioTestEnvironment {
-    using AssetBasedIntentBuilder for UserIntent;
-    using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
-
-    // function test_failIntentExecution_withoutReason() public {
-    //     UserIntent memory intent = _intent();
-    //     intent = _signIntent(intent);
-
-    //     IEntryPoint.IntentSolution memory solution =
-    //         _solution(_singleIntent(intent), _noSteps(), _noSteps(), _noSteps());
-
-    //     // TODO: string length expected 0x1e, actual 0x1f
-    //     vm.expectRevert(
-    //         abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA61 execution failed (or OOG))")
-    //     );
-    //     _entryPoint.handleIntents(solution);
-    // }
-}
-
 contract HandleMultiSolutionIntentsTest is ScenarioTestEnvironment {
 // TODO
 }

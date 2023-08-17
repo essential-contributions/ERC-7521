@@ -37,6 +37,9 @@ abstract contract ScenarioTestEnvironment is Test {
     uint256 internal constant _privateKeySolver = uint256(keccak256("solver_private_key"));
     address internal _publicAddressSolver = _getPublicAddress(_privateKeySolver);
 
+    uint256 internal constant _wrong_private_key = uint256(keccak256("wrong_account_private_key"));
+    address internal _wrongPublicAddress = _getPublicAddress(_wrong_private_key);
+
     /**
      * Sets up the testing environment with mock tokens and AMMs.
      */
@@ -324,6 +327,14 @@ abstract contract ScenarioTestEnvironment is Test {
         bytes32 intentHash = _entryPoint.getUserIntentHash(intent);
         bytes32 digest = intentHash.toEthSignedMessageHash();
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(_privateKey, digest);
+        intent.signature = abi.encodePacked(r, s, v);
+        return intent;
+    }
+
+    function _signIntentWithWrongKey(UserIntent memory intent) internal view returns (UserIntent memory) {
+        bytes32 intentHash = _entryPoint.getUserIntentHash(intent);
+        bytes32 digest = intentHash.toEthSignedMessageHash();
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(_wrong_private_key, digest);
         intent.signature = abi.encodePacked(r, s, v);
         return intent;
     }

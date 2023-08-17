@@ -72,24 +72,44 @@ contract GaslessAirdrop is ScenarioTestEnvironment {
         assertEq(userERC20Tokens, claimAmount - gasPayment, "The user released more ERC20 tokens than expected");
     }
 
-    // function test_failGaslessAirdrop_insufficientReleaseBalance() public {
-    //     uint256 claimAmount = 100 ether;
-    //     uint256 gasPayment = claimAmount + 1;
+    function test_failGaslessAirdrop_insufficientReleaseBalance() public {
+        uint256 claimAmount = 100 ether;
+        uint256 gasPayment = claimAmount + 1;
 
-    //     //create account intent
-    //     UserIntent memory intent = _intentForCase(claimAmount, gasPayment);
-    //     intent = _signIntent(intent);
+        //create account intent
+        UserIntent memory intent = _intentForCase(claimAmount, gasPayment);
+        intent = _signIntent(intent);
 
-    //     //create solution
-    //     IEntryPoint.IntentSolution memory solution = _solutionForCase(intent, gasPayment);
+        //create solution
+        IEntryPoint.IntentSolution memory solution = _solutionForCase(intent, gasPayment);
 
-    //     //execute
-    //     // TODO: string length expected 0x37, actual 0x33
-    //     vm.expectRevert(
-    //         abi.encodeWithSelector(
-    //             IEntryPoint.FailedIntent.selector, 0, 0, "AA61 execution failed: insufficient release balance"
-    //         )
-    //     );
-    //     _entryPoint.handleIntents(solution);
-    // }
+        //execute
+        // TODO: https://github.com/essential-contributions/galactus/issues/50
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IEntryPoint.FailedIntent.selector, 0, 0, "AA61 execution failed: __insufficient release balance__"
+            )
+        );
+        _entryPoint.handleIntents(solution);
+    }
+
+    function test_failGaslessAirdrop_wrongSignature() public {
+        uint256 claimAmount = 100 ether;
+        uint256 gasPayment = 1 ether;
+
+        //create account intent
+        UserIntent memory intent = _intentForCase(claimAmount, gasPayment);
+        //sign with wrong key
+        intent = _signIntentWithWrongKey(intent);
+
+        // sigFailed == true for failing validation
+        uint256 validationData = _packValidationData(true, uint48(intent.timestamp), 0);
+        ValidationData memory valData = _parseValidationData(validationData);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IEntryPoint.ValidationResult.selector, valData.sigFailed, valData.validAfter, valData.validUntil
+            )
+        );
+        _entryPoint.simulateValidation(intent);
+    }
 }

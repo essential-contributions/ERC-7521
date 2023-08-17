@@ -7,8 +7,6 @@ import "../../src/standards/assetbased/AssetBasedIntentStandard.sol";
 import "../../src/standards/assetbased/AssetBasedIntentData.sol";
 import "../../src/standards/assetbased/AssetBasedIntentCurve.sol";
 
-// TODO: Should be ignored in `forge coverage`
-
 /**
  * @title AssetBasedIntentBuilder
  * Utility functions helpful for building an asset based intent.

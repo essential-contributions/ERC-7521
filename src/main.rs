@@ -28,7 +28,5 @@ async fn main() -> Result<()> {
         wallet.with_chain_id(anvil.chain_id()),
     ));
 
-    // TODO
-
     Ok(())
 }
