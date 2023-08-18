@@ -10,12 +10,13 @@ import {IAccount} from "../interfaces/IAccount.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
-import {Exec} from "../utils/Exec.sol";
+import {Exec, RevertReason} from "../utils/Exec.sol";
 import {ValidationData, _parseValidationData} from "../utils/Helpers.sol";
 import {ReentrancyGuard} from "openzeppelin/security/ReentrancyGuard.sol";
 
 contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     using UserIntentLib for UserIntent;
+    using RevertReason for bytes;
 
     uint256 private constant REVERT_REASON_MAX_LEN = 2048;
     uint256 private constant CONTEXT_DATA_MAX_LEN = 2048;
@@ -77,6 +78,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
                                 }
                             } else {
                                 bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
+                                reason = reason.revertReasonWithoutPadding();
                                 if (reason.length > 0) {
                                     revert FailedIntent(
                                         i, passIndex, string.concat("AA61 execution failed: ", string(reason))

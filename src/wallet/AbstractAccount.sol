@@ -53,9 +53,8 @@ contract AbstractAccount is BaseAccount, TokenCallbackHandler, IAssetRelease {
         external
         onlyFromIntentStandardExecutingForSender(_assetBasedIntentStandard)
     {
-        // TODO: https://github.com/essential-contributions/galactus/issues/50
-        require(targets.length == values.length, "____invalid multi call inputs___");
-        require(targets.length == datas.length, "____invalid multi call inputs___");
+        require(targets.length == values.length, "invalid multi call inputs");
+        require(targets.length == datas.length, "invalid multi call inputs");
 
         for (uint256 i = 0; i < targets.length; i++) {
             _call(targets[i], values[i], datas[i]);
@@ -71,10 +70,7 @@ contract AbstractAccount is BaseAccount, TokenCallbackHandler, IAssetRelease {
         override
         onlyFromIntentStandardExecutingForSender(_assetBasedIntentStandard)
     {
-        // TODO: https://github.com/essential-contributions/galactus/issues/50
-        require(
-            _balanceOf(assetType, assetContract, assetId, address(this)) >= amount, "__insufficient release balance__"
-        );
+        require(_balanceOf(assetType, assetContract, assetId, address(this)) >= amount, "insufficient release balance");
         _transfer(assetType, assetContract, assetId, address(this), to, amount);
     }
 

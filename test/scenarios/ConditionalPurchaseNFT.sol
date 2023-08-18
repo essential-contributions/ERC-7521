@@ -109,13 +109,12 @@ contract ConditionalPurchaseNFT is ScenarioTestEnvironment {
         IEntryPoint.IntentSolution memory solution = _solutionForCase(intent, nftPrice);
 
         //execute
-        // TODO: https://github.com/essential-contributions/galactus/issues/50
         vm.expectRevert(
             abi.encodeWithSelector(
                 IEntryPoint.FailedIntent.selector,
                 0,
                 0,
-                string.concat("AA61 execution failed: ", "__insufficient release balance__")
+                string.concat("AA61 execution failed: ", "insufficient release balance")
             )
         );
         _entryPoint.handleIntents(solution);

@@ -32,10 +32,9 @@ contract AbstractAccountTest is ScenarioTestEnvironment {
         IEntryPoint.IntentSolution memory solution =
             _solution(_singleIntent(intent), _noSteps(), _noSteps(), _noSteps());
 
-        // TODO: https://github.com/essential-contributions/galactus/issues/50
         vm.expectRevert(
             abi.encodeWithSelector(
-                IEntryPoint.FailedIntent.selector, 0, 0, "AA61 execution failed: ____invalid multi call inputs___"
+                IEntryPoint.FailedIntent.selector, 0, 0, "AA61 execution failed: invalid multi call inputs"
             )
         );
         _entryPoint.handleIntents(solution);
@@ -58,11 +57,9 @@ contract AbstractAccountTest is ScenarioTestEnvironment {
         IEntryPoint.IntentSolution memory solution =
             _solution(_singleIntent(intent), _noSteps(), _noSteps(), _noSteps());
 
-        // TODO: https://github.com/essential-contributions/galactus/issues/50
-
         vm.expectRevert(
             abi.encodeWithSelector(
-                IEntryPoint.FailedIntent.selector, 0, 0, "AA61 execution failed: ____invalid multi call inputs___"
+                IEntryPoint.FailedIntent.selector, 0, 0, "AA61 execution failed: invalid multi call inputs"
             )
         );
         _entryPoint.handleIntents(solution);

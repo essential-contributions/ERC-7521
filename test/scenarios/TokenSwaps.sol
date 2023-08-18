@@ -249,10 +249,9 @@ contract TokenSwaps is ScenarioTestEnvironment {
         IEntryPoint.IntentSolution memory solution = _constantReleaseSolution(intent, ERC20ReleaseAmount, evaluation);
 
         //execute
-        // TODO: https://github.com/essential-contributions/galactus/issues/50
         vm.expectRevert(
             abi.encodeWithSelector(
-                IEntryPoint.FailedIntent.selector, 0, 0, "AA61 execution failed: __insufficient release balance__"
+                IEntryPoint.FailedIntent.selector, 0, 0, "AA61 execution failed: insufficient release balance"
             )
         );
         _entryPoint.handleIntents(solution);
