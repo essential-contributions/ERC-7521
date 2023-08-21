@@ -21,11 +21,11 @@ contract TestERC1155 is ERC1155, Test {
         _mint(to, _FUNGIBLE_TOKEN_ID, amount, "");
     }
 
-    function buyNFT(address to) external payable returns (uint256) {
-        require(msg.value >= _NFT_COST, "Insufficient payment");
+    function buyNFT(address to, uint256 amount) external payable returns (uint256) {
+        require(msg.value >= _NFT_COST * amount, "Insufficient payment");
         _lastBoughtNFT = uint256(keccak256(abi.encode(_NFT_TOKEN_SEED, _nftIncrementer)));
         _nftIncrementer++;
-        _mint(to, _lastBoughtNFT, 1, "");
+        _mint(to, _lastBoughtNFT, amount, "");
         return _lastBoughtNFT;
     }
 

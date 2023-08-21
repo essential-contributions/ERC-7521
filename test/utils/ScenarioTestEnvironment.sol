@@ -91,7 +91,7 @@ abstract contract ScenarioTestEnvironment is Test {
      * @return The encoded call data for the buy action.
      */
     function _accountBuyERC1155(uint256 price) internal view returns (bytes memory) {
-        bytes memory buyCall = abi.encodeWithSelector(TestERC1155.buyNFT.selector, address(_account));
+        bytes memory buyCall = abi.encodeWithSelector(TestERC1155.buyNFT.selector, address(_account), 1);
         return abi.encodeWithSelector(AbstractAccount.execute.selector, _testERC1155, price, buyCall);
     }
 
@@ -112,7 +112,7 @@ abstract contract ScenarioTestEnvironment is Test {
         bytes[] memory datas = new bytes[](2);
 
         targets[0] = address(_testERC1155);
-        datas[0] = abi.encodeWithSelector(TestERC1155.buyNFT.selector, address(_account));
+        datas[0] = abi.encodeWithSelector(TestERC1155.buyNFT.selector, address(_account), 1);
         values[0] = price;
 
         targets[1] = address(_testERC721);
