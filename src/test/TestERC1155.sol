@@ -29,6 +29,7 @@ contract TestERC1155 is ERC1155, Test {
         return _lastBoughtNFT;
     }
 
+
     function sellNFT(address from, uint256 id) external {
         require(from == _msgSender() || isApprovedForAll(from, _msgSender()), "Not Authorized");
         require(id != _FUNGIBLE_TOKEN_ID && balanceOf(from, id) == 1, "Invalid ID");
