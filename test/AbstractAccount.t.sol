@@ -64,4 +64,19 @@ contract AbstractAccountTest is ScenarioTestEnvironment {
         );
         _entryPoint.handleIntents(solution);
     }
+
+    function test_failCall() public {
+        UserIntent memory intent = _intent();
+        // account is not funded, the call will fail
+        intent = intent.addSegment(_segment(_accountBuyERC1155(_testERC1155.nftCost())));
+        intent = _signIntent(intent);
+
+        IEntryPoint.IntentSolution memory solution =
+            _solution(_singleIntent(intent), _noSteps(), _noSteps(), _noSteps());
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA61 execution failed (or OOG)")
+        );
+        _entryPoint.handleIntents(solution);
+    }
 }
