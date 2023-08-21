@@ -86,3 +86,13 @@ library Exec {
         }
     }
 }
+
+library RevertReason {
+    // remove the zero paddings from a revert reason
+    function revertReasonWithoutPadding(bytes calldata data) public pure returns (bytes memory) {
+        while (data[data.length - 1] == 0) {
+            data = data[:data.length - 1];
+        }
+        return data;
+    }
+}

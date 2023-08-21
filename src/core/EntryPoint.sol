@@ -10,12 +10,13 @@ import {IAccount} from "../interfaces/IAccount.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
-import {Exec} from "../utils/Exec.sol";
+import {Exec, RevertReason} from "../utils/Exec.sol";
 import {ValidationData, _parseValidationData} from "../utils/Helpers.sol";
 import {ReentrancyGuard} from "openzeppelin/security/ReentrancyGuard.sol";
 
 contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     using UserIntentLib for UserIntent;
+    using RevertReason for bytes;
 
     uint256 private constant REVERT_REASON_MAX_LEN = 2048;
     uint256 private constant CONTEXT_DATA_MAX_LEN = 2048;
@@ -77,6 +78,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
                                 }
                             } else {
                                 bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
+                                reason = reason.revertReasonWithoutPadding();
                                 if (reason.length > 0) {
                                     revert FailedIntent(
                                         i, passIndex, string.concat("AA61 execution failed: ", string(reason))
@@ -146,7 +148,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
 
             // validate intents
             for (uint256 i = 0; i < intsLen; i++) {
-                bytes32 intentHash = getUserIntHash(solution.intents[i]);
+                bytes32 intentHash = getUserIntentHash(solution.intents[i]);
                 uint256 validationData = _validateUserIntent(solution.intents[i], intentHash, i);
                 _validateAccountValidationData(validationData, i);
 
@@ -219,7 +221,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             // run validation
             for (uint256 i = 0; i < intsLen; i++) {
                 _simulationOnlyValidations(solution.intents[i], i);
-                bytes32 intentHash = getUserIntHash(solution.intents[i]);
+                bytes32 intentHash = getUserIntentHash(solution.intents[i]);
                 uint256 validationData = _validateUserIntent(solution.intents[i], intentHash, i);
                 _validateAccountValidationData(validationData, i);
             }
@@ -251,7 +253,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      */
     function simulateValidation(UserIntent calldata intent) external {
         _simulationOnlyValidations(intent, 0);
-        bytes32 intentHash = getUserIntHash(intent);
+        bytes32 intentHash = getUserIntentHash(intent);
         uint256 validationData = _validateUserIntent(intent, intentHash, 0);
         ValidationData memory valData = _parseValidationData(validationData);
 
@@ -262,7 +264,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      * generate an intent Id - unique identifier for this intent.
      * the intent ID is a hash over the content of the intent (except the signature), the entrypoint and the chainid.
      */
-    function getUserIntHash(UserIntent calldata intent) public view returns (bytes32) {
+    function getUserIntentHash(UserIntent calldata intent) public view returns (bytes32) {
         return keccak256(abi.encode(intent.hash(), address(this), block.chainid));
     }
 
@@ -387,7 +389,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      * revert if account validationData is expired
      */
     function _validateAccountValidationData(uint256 validationData, uint256 intentIndex) internal view {
-        if (validationData == 0) {
+        if (validationData != 0) {
             ValidationData memory data = _parseValidationData(validationData);
             if (data.sigFailed) {
                 revert FailedIntent(intentIndex, 0, "AA24 signature error");

@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+import "forge-std/Test.sol";
 import "openzeppelin/token/ERC1155/ERC1155.sol";
 
-contract TestERC1155 is ERC1155 {
+contract TestERC1155 is ERC1155, Test {
     uint256 private constant _FUNGIBLE_TOKEN_ID = uint256(keccak256("ERC1155_FUNGIBLE_TOKEN_ID"));
     uint256 private constant _NFT_TOKEN_SEED = uint256(keccak256("ERC1155_NFT_TOKEN_SEED"));
     uint256 private constant _NFT_COST = 1 ether;
@@ -44,4 +45,10 @@ contract TestERC1155 is ERC1155 {
     function nextNFTForSale() external view returns (uint256) {
         return uint256(keccak256(abi.encode(_NFT_TOKEN_SEED, _nftIncrimenter)));
     }
+
+    function nftCost() external pure returns (uint256) {
+        return _NFT_COST;
+    }
+
+    function test_nothing() public {}
 }

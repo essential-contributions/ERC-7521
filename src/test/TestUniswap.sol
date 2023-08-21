@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+import "forge-std/Test.sol";
 import "./TestWrappedNativeToken.sol";
 import "openzeppelin/token/ERC20/IERC20.sol";
 
@@ -30,7 +31,7 @@ struct ExactOutputSingleParams {
 
 /// @notice Very basic simulation of what Uniswap does with the swaps for the unit tests on the TokenPaymaster
 /// @dev Do not use to test any actual Uniswap interaction logic as this is way too simplistic
-contract TestUniswap {
+contract TestUniswap is Test {
     TestWrappedNativeToken public weth;
 
     constructor(TestWrappedNativeToken _weth) {
@@ -69,4 +70,6 @@ contract TestUniswap {
 
     // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
+
+    function test_nothing() public {}
 }

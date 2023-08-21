@@ -7,7 +7,7 @@ use ethers::{
 use eyre::Result;
 use std::{convert::TryFrom, sync::Arc, time::Duration};
 
-abigen!(Account, "out/Account.sol/Account.json");
+abigen!(Account, "out/AbstractAccount.sol/AbstractAccount.json");
 abigen!(EntryPoint, "out/EntryPoint.sol/EntryPoint.json");
 abigen!(
     AssetBasedIntentStandard,
@@ -27,8 +27,6 @@ async fn main() -> Result<()> {
         provider,
         wallet.with_chain_id(anvil.chain_id()),
     ));
-
-    // TODO
 
     Ok(())
 }
