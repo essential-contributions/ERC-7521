@@ -3,9 +3,10 @@ pragma solidity ^0.8.13;
 
 /* solhint-disable func-name-mixedcase */
 
+import "../src/wallet/TokenCallbackHandler.sol";
 import "./utils/ScenarioTestEnvironment.sol";
 
-contract AbstractAccountTest is ScenarioTestEnvironment {
+contract AbstractAccountTest is ScenarioTestEnvironment, TokenCallbackHandler {
     using AssetBasedIntentBuilder for UserIntent;
     using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
     using UserIntentLib for UserIntent;
@@ -15,7 +16,7 @@ contract AbstractAccountTest is ScenarioTestEnvironment {
         assertEq(address(_account.entryPoint()), address(_entryPoint));
     }
 
-    function test_executeMulti_invalidInputs() public {
+    function test_failExecuteMulti_invalidInputs() public {
         // targets.length != values.length
         address[] memory targets = new address[](2);
         uint256[] memory values = new uint256[](1);
@@ -40,7 +41,7 @@ contract AbstractAccountTest is ScenarioTestEnvironment {
         _entryPoint.handleIntents(solution);
     }
 
-    function test_executeMulti_invalidInputs2() public {
+    function test_failExecuteMulti_invalidInputs2() public {
         // targets.length != datas.length
         address[] memory targets = new address[](2);
         uint256[] memory values = new uint256[](2);
@@ -78,5 +79,66 @@ contract AbstractAccountTest is ScenarioTestEnvironment {
             abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA61 execution failed (or OOG)")
         );
         _entryPoint.handleIntents(solution);
+    }
+
+    function test_onERC721Received() public {
+        uint256 price = _testERC721.nftCost();
+        vm.deal(address(this), price);
+
+        // test contract buy NFT
+        uint256 tokenId = TestERC721(payable(address(_testERC721))).buyNFT{value: price}(address(this));
+
+        // transfer NFT to account
+        _transfer(AssetType.ERC721_ID, address(_testERC721), tokenId, address(this), address(_account), 1);
+
+        // check account balance
+        uint256 balance = _balanceOf(AssetType.ERC721_ID, address(_testERC721), tokenId, address(_account));
+        assertEq(balance, 1);
+    }
+
+    function test_onERC1155Received() public {
+        uint256 price = _testERC1155.nftCost();
+        uint256 amount = 1;
+        vm.deal(address(this), price);
+
+        // test contract buy NFT
+        uint256 tokenId = TestERC1155(payable(address(_testERC1155))).buyNFT{value: price}(address(this), amount);
+
+        // transfer NFT to account
+        _transfer(AssetType.ERC1155, address(_testERC1155), tokenId, address(this), address(_account), amount);
+
+        // check account balance
+        uint256 balance = _balanceOf(AssetType.ERC1155, address(_testERC1155), tokenId, address(_account));
+        assertEq(balance, amount);
+    }
+
+    function test_onERC1155BatchReceived() public {
+        uint256 price = _testERC1155.nftCost();
+        uint256 amount = 5;
+        uint256 totalPrice = price * amount;
+        vm.deal(address(this), totalPrice);
+
+        // test contract buy NFT
+        uint256 tokenId = TestERC1155(payable(address(_testERC1155))).buyNFT{value: totalPrice}(address(this), amount);
+
+        // transfer NFT to account
+        uint256[] memory assetIds = new uint256[](1);
+        assetIds[0] = tokenId;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = amount;
+        IERC1155(address(_testERC1155)).safeBatchTransferFrom(address(this), address(_account), assetIds, amounts, "");
+
+        // check account balance
+        uint256 balance = _balanceOf(AssetType.ERC1155, address(_testERC1155), tokenId, address(_account));
+        assertEq(balance, amount);
+    }
+
+    function test_supportsInterface() public view {
+        bool supportsIERC165 = _account.supportsInterface(type(IERC165).interfaceId);
+        bool supportsIERC721Receiver = _account.supportsInterface(type(IERC721Receiver).interfaceId);
+        bool supportsIERC1155Receiver = _account.supportsInterface(type(IERC1155Receiver).interfaceId);
+        assert(supportsIERC165);
+        assert(supportsIERC721Receiver);
+        assert(supportsIERC1155Receiver);
     }
 }
