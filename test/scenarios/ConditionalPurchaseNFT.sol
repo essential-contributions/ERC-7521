@@ -31,7 +31,7 @@ contract ConditionalPurchaseNFT is ScenarioTestEnvironment {
             _segment("").releaseETH(AssetBasedIntentCurveBuilder.constantCurve(int256(ETHReleaseAmount)))
         );
         intent = intent.addSegment(
-            _segment(_accountBuyERC1155AndTransferERC721(nftPrice, _reqTokenId, address(_intentStandard)))
+            _segment(_accountBuyERC1155AndTransferERC721(nftPrice, _reqTokenId, address(_assetBasedIntentStandard)))
         );
         intent = intent.addSegment(
             _segment("").requireERC721(

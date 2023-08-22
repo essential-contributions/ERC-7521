@@ -74,17 +74,17 @@ contract AbstractAccountTest is ScenarioTestEnvironment {
         // do not prank as owner
 
         vm.expectRevert("standard must be trusted by owner");
-        _newAccount.addTrustedIntentStandard(_intentStandard);
+        _newAccount.addTrustedIntentStandard(_assetBasedIntentStandard);
     }
 
     function test_failAddTrustedIntentStandard_notRegistered() public {
         EntryPoint _newEntryPoint = new EntryPoint();
         // new standard uses a different entry point than the one that account trusts
-        AssetBasedIntentStandard _intentStandard = new AssetBasedIntentStandard(_newEntryPoint);
+        AssetBasedIntentStandard _assetBasedIntentStandard = new AssetBasedIntentStandard(_newEntryPoint);
 
         // prank as owner and attempt to add intent standard to account's trusted standards
         vm.prank(_account.owner());
         vm.expectRevert("AA83 unknown standard");
-        _account.addTrustedIntentStandard(_intentStandard);
+        _account.addTrustedIntentStandard(_assetBasedIntentStandard);
     }
 }

@@ -21,7 +21,7 @@ abstract contract ScenarioTestEnvironment is Test {
     using ECDSA for bytes32;
 
     EntryPoint internal _entryPoint;
-    AssetBasedIntentStandard internal _intentStandard;
+    AssetBasedIntentStandard internal _assetBasedIntentStandard;
     AbstractAccount internal _account;
 
     TestERC20 internal _testERC20;
@@ -46,15 +46,15 @@ abstract contract ScenarioTestEnvironment is Test {
     function setUp() public virtual {
         //deploy contracts
         _entryPoint = new EntryPoint();
-        _intentStandard = new AssetBasedIntentStandard(_entryPoint);
+        _assetBasedIntentStandard = new AssetBasedIntentStandard(_entryPoint);
         _account = new AbstractAccount(_entryPoint, _publicAddress);
 
         //register asset based intent standard to entry point
-        _entryPoint.registerIntentStandard(_intentStandard);
+        _entryPoint.registerIntentStandard(_assetBasedIntentStandard);
 
         // add asset based intent standard to account's trusted standards
         vm.prank(_account.owner());
-        _account.addTrustedIntentStandard(_intentStandard);
+        _account.addTrustedIntentStandard(_assetBasedIntentStandard);
 
         _testERC20 = new TestERC20();
         _testERC721 = new TestERC721();
@@ -233,7 +233,8 @@ abstract contract ScenarioTestEnvironment is Test {
         bytes[] memory steps = new bytes[](2);
 
         //sell the ERC721 token
-        bytes memory sellCall = abi.encodeWithSelector(TestERC721.sellNFT.selector, address(_intentStandard), tokenId);
+        bytes memory sellCall =
+            abi.encodeWithSelector(TestERC721.sellNFT.selector, address(_assetBasedIntentStandard), tokenId);
         steps[0] = _solutionCall(address(_testERC721), 0, sellCall);
 
         //move all remaining ETH
@@ -268,7 +269,7 @@ abstract contract ScenarioTestEnvironment is Test {
      * @return The created UserIntent struct.
      */
     function _intent() internal view returns (UserIntent memory) {
-        return AssetBasedIntentBuilder.create(_intentStandard.standardId(), address(_account), 0, 0);
+        return AssetBasedIntentBuilder.create(_assetBasedIntentStandard.standardId(), address(_account), 0, 0);
     }
 
     /**
