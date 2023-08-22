@@ -5,10 +5,10 @@ pragma solidity ^0.8.13;
 
 import {IIntentStandard} from "../../interfaces/IIntentStandard.sol";
 import {IEntryPoint} from "../../interfaces/IEntryPoint.sol";
+import {IIntentDelegate} from "../../interfaces/IIntentDelegate.sol";
 import {UserIntent, UserIntentLib} from "../../interfaces/UserIntent.sol";
-import {Exec} from "../../utils/Exec.sol";
-import {_balanceOf} from "./utils/AssetWrapper.sol";
-import {IAssetRelease} from "./IAssetRelease.sol";
+import {Exec, RevertReason} from "../../utils/Exec.sol";
+import {AssetType, _balanceOf, _transfer} from "./utils/AssetWrapper.sol";
 import {AssetHolderProxy} from "./AssetHolderProxy.sol";
 import {
     AssetBasedIntentData,
@@ -23,6 +23,7 @@ contract AssetBasedIntentStandard is AssetHolderProxy, IIntentStandard {
     using AssetBasedIntentDataLib for AssetBasedIntentData;
     using AssetBasedIntentCurveLib for AssetBasedIntentCurve;
     using UserIntentLib for UserIntent;
+    using RevertReason for bytes;
 
     /**
      * Basic state and constants.
@@ -50,6 +51,22 @@ contract AssetBasedIntentStandard is AssetHolderProxy, IIntentStandard {
      * Default receive function.
      */
     receive() external payable {}
+
+    /**
+     * Release the given token(s) (both fungible and non-fungible)
+     *
+     * @param assetType the type of asset (ETH, ERC-20, ERC721, etc).
+     * @param assetContract the contract that controls the asset.
+     * @param assetId the identifier for a specific asset.
+     * @param to the target to release tokens to.
+     * @param amount the amount to release.
+     */
+    function releaseAsset(AssetType assetType, address assetContract, uint256 assetId, address to, uint256 amount)
+        external
+    {
+        require(_balanceOf(assetType, assetContract, assetId, address(this)) >= amount, "insufficient release balance");
+        _transfer(assetType, assetContract, assetId, address(this), to, amount);
+    }
 
     /**
      * Validate intent structure (typically just formatting)
@@ -195,13 +212,15 @@ contract AssetBasedIntentStandard is AssetHolderProxy, IIntentStandard {
         for (uint256 i = 0; i < intentSegment.assetReleases.length; i++) {
             int256 releaseAmount = intentSegment.assetReleases[i].evaluate(evaluateAt);
             if (releaseAmount > 0) {
-                IAssetRelease(from).releaseAsset(
+                bytes memory data = abi.encodeWithSelector(
+                    AssetBasedIntentStandard(this).releaseAsset.selector,
                     intentSegment.assetReleases[i].assetType(),
                     intentSegment.assetReleases[i].assetContract,
                     intentSegment.assetReleases[i].assetId,
                     address(this),
                     uint256(releaseAmount)
                 );
+                IIntentDelegate(address(from)).generalizedIntentDelegateCall(data);
             }
         }
     }

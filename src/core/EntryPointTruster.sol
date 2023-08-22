@@ -20,13 +20,4 @@ abstract contract EntryPointTruster {
         require(msg.sender == address(entryPoint()), "not from EntryPoint");
         _;
     }
-
-    /**
-     * ensure the entrypoint is currently in the intent execution stage for this sender.
-     */
-    modifier onlyFromIntentStandardExecutingForSender(address intentStandard) {
-        require(msg.sender == intentStandard, "not from intent standard");
-        require(entryPoint().executingIntentSender() == address(this), "EntryPoint not executing intent");
-        _;
-    }
 }
