@@ -84,8 +84,8 @@ contract AbstractAccount is BaseAccount, TokenCallbackHandler, IntentStandardTru
 
     /// implement template method of IntentStandardTruster
     function addTrustedIntentStandard(IIntentStandard intentStandard) external override returns (bytes32) {
+        require(msg.sender == owner, "standard must be trusted by owner");
         bytes32 standardId = entryPoint().getIntentStandardId(intentStandard);
-        require(standardId != 0, "AA50 not registered");
         _trustedIntentStandards[standardId] = intentStandard;
         return standardId;
     }
