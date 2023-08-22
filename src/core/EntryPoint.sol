@@ -10,6 +10,7 @@ import {IAccount} from "../interfaces/IAccount.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
+import {DefaultIntentStandard} from "../standards/default/DefaultIntentStandard.sol";
 import {Exec, RevertReason} from "../utils/Exec.sol";
 import {ValidationData, _parseValidationData} from "../utils/Helpers.sol";
 import {ReentrancyGuard} from "openzeppelin/security/ReentrancyGuard.sol";
@@ -17,6 +18,8 @@ import {ReentrancyGuard} from "openzeppelin/security/ReentrancyGuard.sol";
 contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     using UserIntentLib for UserIntent;
     using RevertReason for bytes;
+
+    bytes32 private constant DEFAULT_INTENT_STANDARD_ID = ~bytes32(0);
 
     uint256 private constant REVERT_REASON_MAX_LEN = 2048;
     uint256 private constant CONTEXT_DATA_MAX_LEN = 2048;
@@ -32,9 +35,15 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
 
     //keeps track of registered intent standards
     mapping(bytes32 => IIntentStandard) private _registeredStandards;
+    IIntentStandard defaultIntentStandard;
 
     //flag for applications to check current context of execution
     address private _executionStateContext;
+
+    constructor() {
+        defaultIntentStandard = new DefaultIntentStandard(this);
+        _registeredStandards[DEFAULT_INTENT_STANDARD_ID] = defaultIntentStandard;
+    }
 
     /**
      * execute a user intents solution.
@@ -78,8 +87,8 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
                                 }
                             } else {
                                 bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
-                                reason = reason.revertReasonWithoutPadding();
                                 if (reason.length > 0) {
+                                    reason = reason.revertReasonWithoutPadding();
                                     revert FailedIntent(
                                         i, passIndex, string.concat("AA61 execution failed: ", string(reason))
                                     );
@@ -294,9 +303,16 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      * gets the intent standard ID for the given intent standard contract.
      */
     function getIntentStandardId(IIntentStandard intentStandard) external view returns (bytes32) {
+        if (address(intentStandard) == address(defaultIntentStandard)) {
+            return DEFAULT_INTENT_STANDARD_ID;
+        }
         bytes32 standardId = _generateIntentStandardId(intentStandard);
         require(_registeredStandards[standardId] != IIntentStandard(address(0)), "AA83 unknown standard");
         return standardId;
+    }
+
+    function getDefaultIntentStandard() external view returns (bytes32, IIntentStandard) {
+        return (DEFAULT_INTENT_STANDARD_ID, _registeredStandards[DEFAULT_INTENT_STANDARD_ID]);
     }
 
     /**

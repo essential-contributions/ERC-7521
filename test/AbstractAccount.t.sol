@@ -79,7 +79,7 @@ contract AbstractAccountTest is ScenarioTestEnvironment {
 
     function test_failAddTrustedIntentStandard_notRegistered() public {
         EntryPoint _newEntryPoint = new EntryPoint();
-        // intent standard uses a different entry point than the one that account trusts
+        // new standard uses a different entry point than the one that account trusts
         AssetBasedIntentStandard _intentStandard = new AssetBasedIntentStandard(_newEntryPoint);
 
         // prank as owner and attempt to add intent standard to account's trusted standards

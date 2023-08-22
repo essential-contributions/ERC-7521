@@ -26,10 +26,10 @@ abstract contract TestEnvironment is Test {
         _intentStandard = new AssetBasedIntentStandard(_entryPoint);
         _account = new AbstractAccount(_entryPoint, _publicAddress);
 
-        //register intent standard to entry point
+        //register asset based intent standard to entry point
         _entryPoint.registerIntentStandard(_intentStandard);
 
-        // add intent standard to account's trusted standards
+        // add asset based intent standard to account's trusted standards
         vm.prank(_account.owner());
         _account.addTrustedIntentStandard(_intentStandard);
     }
