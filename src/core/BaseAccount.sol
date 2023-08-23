@@ -7,7 +7,6 @@ pragma solidity ^0.8.13;
 
 import {EntryPointTruster} from "./EntryPointTruster.sol";
 import {IAccount} from "../interfaces/IAccount.sol";
-import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
 
 /**

@@ -23,7 +23,7 @@ contract GaslessAirdropPurchaseNFT is ScenarioTestEnvironment {
     using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
 
     function _intentForCase(uint256 claimAmount, uint256 totalAmountToSolver, uint256 nftPrice)
-        internal
+        private
         view
         returns (UserIntent memory)
     {
@@ -39,7 +39,7 @@ contract GaslessAirdropPurchaseNFT is ScenarioTestEnvironment {
     }
 
     function _solutionForCase(UserIntent memory intent, uint256 totalAmountToSolver, uint256 nftPrice)
-        internal
+        private
         view
         returns (IEntryPoint.IntentSolution memory)
     {

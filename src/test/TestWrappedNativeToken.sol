@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import "openzeppelin/token/ERC20/ERC20.sol";
+import {ERC20} from "openzeppelin/token/ERC20/ERC20.sol";
 
 /**
  * @notice The minimal "Wrapped Ether" ERC-20 token implementation.
@@ -26,5 +26,5 @@ contract TestWrappedNativeToken is ERC20, Test {
         require(success, "Transfer failed");
     }
 
-    function test_nothing() public {}
+    function testNothing() public {}
 }

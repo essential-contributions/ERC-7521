@@ -16,11 +16,11 @@ contract TokenSwaps is ScenarioTestEnvironment {
     using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
     using AssetBasedIntentCurveLib for AssetBasedIntentCurve;
 
-    uint256 accountInitialETHBalance = 100 ether;
-    uint256 accountInitialERC20Balance = 100 ether;
+    uint256 private _accountInitialETHBalance = 100 ether;
+    uint256 private _accountInitialERC20Balance = 100 ether;
 
     function _constantReleaseIntent(int256[] memory ERC20ReleaseCurveParams, int256[] memory ETHRequireCurveParams)
-        internal
+        private
         view
         returns (UserIntent memory)
     {
@@ -31,7 +31,7 @@ contract TokenSwaps is ScenarioTestEnvironment {
     }
 
     function _constantReleaseSolution(UserIntent memory intent, uint256 ERC20ReleaseAmount, uint256 evaluation)
-        internal
+        private
         view
         returns (IEntryPoint.IntentSolution memory)
     {
@@ -42,7 +42,7 @@ contract TokenSwaps is ScenarioTestEnvironment {
     }
 
     function _constantExpectationIntent(int256[] memory ERC20ReleaseCurveParams, int256[] memory ETHRequireCurveParams)
-        internal
+        private
         view
         returns (UserIntent memory)
     {
@@ -53,7 +53,7 @@ contract TokenSwaps is ScenarioTestEnvironment {
     }
 
     function _constantExpectationSolution(UserIntent memory intent, uint256 ETHRequireAmount, uint256 evaluation)
-        internal
+        private
         view
         returns (IEntryPoint.IntentSolution memory)
     {
@@ -67,8 +67,8 @@ contract TokenSwaps is ScenarioTestEnvironment {
         super.setUp();
 
         //fund account
-        _testERC20.mint(address(_account), accountInitialERC20Balance);
-        vm.deal(address(_account), accountInitialETHBalance);
+        _testERC20.mint(address(_account), _accountInitialERC20Balance);
+        vm.deal(address(_account), _accountInitialETHBalance);
 
         //set specific block.timestamp
         vm.warp(1000);
@@ -85,7 +85,7 @@ contract TokenSwaps is ScenarioTestEnvironment {
         vm.assume(0 < ERC20ReleaseAmount);
         vm.assume(0 < max);
         vm.assume(0 < b);
-        vm.assume(ERC20ReleaseAmount < accountInitialERC20Balance);
+        vm.assume(ERC20ReleaseAmount < _accountInitialERC20Balance);
 
         //set specific block.timestamp
         vm.warp(timestamp);
@@ -133,12 +133,12 @@ contract TokenSwaps is ScenarioTestEnvironment {
         }
         {
             uint256 userBalance = address(_account).balance;
-            uint256 expectedUserBalance = accountInitialETHBalance + evaluation;
+            uint256 expectedUserBalance = _accountInitialETHBalance + evaluation;
             assertEq(userBalance, expectedUserBalance, "The user ended up with incorrect balance");
         }
         {
             uint256 userERC20Tokens = _testERC20.balanceOf(address(_account));
-            uint256 expectedUserERC20Balance = accountInitialERC20Balance - ERC20ReleaseAmount;
+            uint256 expectedUserERC20Balance = _accountInitialERC20Balance - ERC20ReleaseAmount;
             assertEq(userERC20Tokens, expectedUserERC20Balance, "The user released more ERC20 tokens than expected");
         }
     }
@@ -156,7 +156,7 @@ contract TokenSwaps is ScenarioTestEnvironment {
         vm.assume(0 < max);
         vm.assume(0 < b);
         vm.assume(e < 16);
-        vm.assume(ETHRequireAmount < accountInitialETHBalance);
+        vm.assume(ETHRequireAmount < _accountInitialETHBalance);
 
         // set specific block.timestamp
         vm.warp(timestamp);
@@ -181,7 +181,7 @@ contract TokenSwaps is ScenarioTestEnvironment {
 
         uint256 evaluation = uint256(ERC20ReleaseCurve.evaluate(timestamp));
         vm.assume(ETHRequireAmount < evaluation);
-        vm.assume(evaluation < accountInitialERC20Balance);
+        vm.assume(evaluation < _accountInitialERC20Balance);
 
         {
             //create account intent (curve should evaluate as 7.75ether at timestamp 1000)
@@ -211,18 +211,18 @@ contract TokenSwaps is ScenarioTestEnvironment {
         }
         {
             uint256 userBalance = address(_account).balance;
-            uint256 expectedUserBalance = accountInitialETHBalance + ETHRequireAmount;
+            uint256 expectedUserBalance = _accountInitialETHBalance + ETHRequireAmount;
             assertEq(userBalance, expectedUserBalance, "The solver ended up with incorrect balance");
         }
         {
             uint256 userERC20Tokens = _testERC20.balanceOf(address(_account));
-            uint256 exptectedUserERC20Balance = accountInitialERC20Balance - evaluation;
+            uint256 exptectedUserERC20Balance = _accountInitialERC20Balance - evaluation;
             assertEq(userERC20Tokens, exptectedUserERC20Balance, "The user released more ERC20 tokens than expected");
         }
     }
 
     function test_failConstantRelease_insufficientReleaseBalance() public {
-        uint256 ERC20ReleaseAmount = accountInitialERC20Balance + 1;
+        uint256 ERC20ReleaseAmount = _accountInitialERC20Balance + 1;
         uint16 timestamp = 1000;
 
         //set specific block.timestamp

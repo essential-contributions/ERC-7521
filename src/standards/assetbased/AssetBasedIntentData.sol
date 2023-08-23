@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import {UserIntent} from "../../interfaces/UserIntent.sol";
 import {AssetBasedIntentCurve, AssetBasedIntentCurveLib} from "./AssetBasedIntentCurve.sol";
+import {UserIntent} from "../../interfaces/UserIntent.sol";
 
 /**
  * Asset Based Intent Data struct

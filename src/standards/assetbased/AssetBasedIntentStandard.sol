@@ -3,20 +3,20 @@ pragma solidity ^0.8.13;
 
 /* solhint-disable private-vars-leading-underscore */
 
-import {IIntentStandard} from "../../interfaces/IIntentStandard.sol";
-import {IEntryPoint} from "../../interfaces/IEntryPoint.sol";
-import {UserIntent, UserIntentLib} from "../../interfaces/UserIntent.sol";
-import {Exec} from "../../utils/Exec.sol";
-import {_balanceOf} from "./utils/AssetWrapper.sol";
-import {IAssetRelease} from "./IAssetRelease.sol";
-import {AssetHolderProxy} from "./AssetHolderProxy.sol";
+import {AssetBasedIntentCurve, AssetBasedIntentCurveLib} from "./AssetBasedIntentCurve.sol";
 import {
     AssetBasedIntentData,
+    AssetBasedIntentDataLib,
     AssetBasedIntentSegment,
-    parseAssetBasedIntentData,
-    AssetBasedIntentDataLib
+    parseAssetBasedIntentData
 } from "./AssetBasedIntentData.sol";
-import {AssetBasedIntentCurve, EvaluationType, AssetBasedIntentCurveLib} from "./AssetBasedIntentCurve.sol";
+import {AssetHolderProxy} from "./AssetHolderProxy.sol";
+import {IAssetRelease} from "./IAssetRelease.sol";
+import {_balanceOf} from "./utils/AssetWrapper.sol";
+import {IEntryPoint} from "../../interfaces/IEntryPoint.sol";
+import {IIntentStandard} from "../../interfaces/IIntentStandard.sol";
+import {UserIntent, UserIntentLib} from "../../interfaces/UserIntent.sol";
+import {Exec} from "../../utils/Exec.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
 
 contract AssetBasedIntentStandard is AssetHolderProxy, IIntentStandard {

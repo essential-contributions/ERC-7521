@@ -3,7 +3,6 @@ pragma solidity ^0.8.13;
 
 /* solhint-disable func-name-mixedcase */
 
-import "../src/standards/assetbased/AssetBasedIntentData.sol";
 import "./utils/TestEnvironment.sol";
 
 contract AssetBasedIntentDataTest is TestEnvironment {

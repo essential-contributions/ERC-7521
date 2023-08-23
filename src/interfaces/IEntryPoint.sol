@@ -5,8 +5,8 @@ pragma solidity ^0.8.13;
 /* solhint-disable no-inline-assembly */
 /* solhint-disable reason-string */
 
-import {INonceManager} from "./INonceManager.sol";
 import {IIntentStandard} from "./IIntentStandard.sol";
+import {INonceManager} from "./INonceManager.sol";
 import {UserIntent} from "./UserIntent.sol";
 
 interface IEntryPoint is INonceManager {

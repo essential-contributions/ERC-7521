@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import "openzeppelin/token/ERC1155/ERC1155.sol";
+import {ERC1155} from "openzeppelin/token/ERC1155/ERC1155.sol";
 
 contract TestERC1155 is ERC1155, Test {
     uint256 private constant _FUNGIBLE_TOKEN_ID = uint256(keccak256("ERC1155_FUNGIBLE_TOKEN_ID"));
@@ -50,5 +50,5 @@ contract TestERC1155 is ERC1155, Test {
         return _NFT_COST;
     }
 
-    function test_nothing() public {}
+    function testNothing() public {}
 }

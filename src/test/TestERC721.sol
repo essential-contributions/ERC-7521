@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import "openzeppelin/token/ERC721/ERC721.sol";
+import {ERC721} from "openzeppelin/token/ERC721/ERC721.sol";
 
 contract TestERC721 is ERC721, Test {
     uint256 private constant _NFT_TOKEN_SEED = uint256(keccak256("ERC721_NFT_TOKEN_SEED"));
@@ -45,5 +45,5 @@ contract TestERC721 is ERC721, Test {
         return _NFT_COST;
     }
 
-    function test_nothing() public {}
+    function testNothing() public {}
 }

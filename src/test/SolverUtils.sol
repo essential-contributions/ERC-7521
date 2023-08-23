@@ -2,10 +2,10 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import "./TestERC721.sol";
-import "./TestUniswap.sol";
-import "./TestWrappedNativeToken.sol";
-import "../standards/assetbased/utils/AssetWrapper.sol";
+import {TestERC721} from "./TestERC721.sol";
+import {ExactInputSingleParams, TestUniswap} from "./TestUniswap.sol";
+import {TestWrappedNativeToken} from "./TestWrappedNativeToken.sol";
+import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
 /**
  * Library with util actions to streamline intent solving.
@@ -110,5 +110,5 @@ contract SolverUtils is Test {
         payable(to).transfer(amount);
     }
 
-    function test_nothing() public {}
+    function testNothing() public {}
 }
