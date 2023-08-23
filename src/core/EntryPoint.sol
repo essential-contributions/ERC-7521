@@ -74,7 +74,8 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
                                 intentStandard, solution.intents[i], contextData[i], i, intentDataIndexes[i], timestamp
                             );
 
-                            //setup next segment execution                            intentDataIndexes[i] = intentDataIndexes[i] + 1;
+                            //setup next segment execution
+                            intentDataIndexes[i] = intentDataIndexes[i] + 1;
                             if (intentDataIndexes[i] < solution.intents[i].intentData.length) {
                                 stillExecuting = true;
                             }
@@ -113,33 +114,46 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         } //unchecked
     }
 
+    /**
+     * execute a user intent.
+     * @param intentStandard the intent standard contract the intent belongs to
+     * @param intent the user intent to execute
+     * @param contextData the user intent execution context data
+     * @param intentindex the user intent index in the solution
+     * @param segmentIndex the user intent segment index to execute
+     * @param timestamp the time at which to evaluate the intent
+     */
     function _executeIntent(
         IIntentStandard intentStandard,
         UserIntent calldata intent,
         bytes memory contextData,
-        uint256 index,
-        uint256 execIndex,
+        uint256 intentindex,
+        uint256 segmentIndex,
         uint256 timestamp
     ) private returns (bytes memory) {
         bool success = Exec.call(
             address(intentStandard),
             0,
             abi.encodeWithSelector(
-                IIntentStandard.executeUserIntent.selector, intent, execIndex, timestamp, contextData
+                IIntentStandard.executeUserIntent.selector, intent, segmentIndex, timestamp, contextData
             ),
             gasleft()
         );
         if (success) {
             if (Exec.getReturnDataSize() > CONTEXT_DATA_MAX_LEN) {
-                revert FailedIntent(index, execIndex, "AA60 invalid execution context");
+                revert FailedIntent(intentindex, segmentIndex, "AA60 invalid execution context");
             }
             contextData = Exec.getReturnDataMax(0x40, CONTEXT_DATA_MAX_LEN);
         } else {
             bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
             if (reason.length > 0) {
-                revert FailedIntent(index, execIndex, string.concat("AA61 execution failed: ", string(reason)));
+                revert FailedIntent(
+                    intentindex,
+                    segmentIndex,
+                    string.concat("AA61 execution failed: ", string(reason.revertReasonWithoutPadding()))
+                );
             } else {
-                revert FailedIntent(index, execIndex, "AA61 execution failed (or OOG)");
+                revert FailedIntent(intentindex, segmentIndex, "AA61 execution failed (or OOG)");
             }
         }
         return contextData;

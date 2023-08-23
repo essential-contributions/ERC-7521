@@ -6,7 +6,7 @@ pragma solidity ^0.8.13;
 import "forge-std/Test.sol";
 import "../../src/core/EntryPoint.sol";
 import "../../src/standards/assetbased/AssetBasedIntentCurve.sol";
-import "../../src/standards/assetbased/AssetBasedIntentData.sol";
+import "../../src/standards/assetbased/AssetBasedIntentSegment.sol";
 import "../../src/interfaces/UserIntent.sol";
 import "../../src/wallet/AbstractAccount.sol";
 import "./AssetBasedIntentBuilder.sol";

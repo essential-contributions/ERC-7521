@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import "openzeppelin/utils/cryptography/ECDSA.sol";
 import "../../src/interfaces/UserIntent.sol";
 import "../../src/standards/assetbased/AssetBasedIntentStandard.sol";
-import "../../src/standards/assetbased/AssetBasedIntentData.sol";
+import "../../src/standards/assetbased/AssetBasedIntentSegment.sol";
 import "../../src/standards/assetbased/AssetBasedIntentCurve.sol";
 
 /**
