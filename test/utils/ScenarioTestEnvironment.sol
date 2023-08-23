@@ -52,10 +52,6 @@ abstract contract ScenarioTestEnvironment is Test {
         //register intent standard to entry point
         _entryPoint.registerIntentStandard(_intentStandard);
 
-        // add intent standard to account's trusted standards
-        vm.prank(_account.owner());
-        _account.addTrustedIntentStandard(_intentStandard);
-
         _testERC20 = new TestERC20();
         _testERC721 = new TestERC721();
         _testERC1155 = new TestERC1155();

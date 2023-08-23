@@ -175,8 +175,6 @@ contract ValidateAccountValidationDataTest is ScenarioTestEnvironment {
         address _testPublicAddress = _getPublicAddress(_testPrivateKey);
 
         TestAbstractAccount _testAccount = new TestAbstractAccount(_entryPoint, _testPublicAddress);
-        vm.prank(_testAccount.owner());
-        _testAccount.addTrustedIntentStandard(_intentStandard);
 
         UserIntent memory intent =
             AssetBasedIntentBuilder.create(_intentStandard.standardId(), address(_testAccount), 0, 0);

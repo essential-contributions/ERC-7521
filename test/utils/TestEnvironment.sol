@@ -28,10 +28,6 @@ abstract contract TestEnvironment is Test {
 
         //register intent standard to entry point
         _entryPoint.registerIntentStandard(_intentStandard);
-
-        // add intent standard to account's trusted standards
-        vm.prank(_account.owner());
-        _account.addTrustedIntentStandard(_intentStandard);
     }
 
     function _curveETH(int256[] memory curveParams, EvaluationType evaluation)
