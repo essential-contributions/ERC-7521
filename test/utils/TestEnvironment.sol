@@ -46,7 +46,7 @@ abstract contract TestEnvironment is Test {
         return curve;
     }
 
-    function _data() internal pure returns (AssetBasedIntentData memory) {
+    function _data() internal pure returns (AssetBasedIntentSegment[] memory) {
         AssetBasedIntentSegment[] memory intentSegments = new AssetBasedIntentSegment[](2);
 
         AssetBasedIntentCurve memory constantETHCurve =
@@ -67,17 +67,18 @@ abstract contract TestEnvironment is Test {
         intentSegments[0].assetReleases = assetReleases;
         intentSegments[1].assetRequirements = assetRequirements;
 
-        return AssetBasedIntentData({intentSegments: intentSegments});
+        return intentSegments;
     }
 
     function _intent() internal view returns (UserIntent memory) {
+        bytes[] memory data;
         UserIntent memory intent = UserIntent({
             standard: _intentStandard.standardId(),
             sender: address(_account),
             nonce: 123,
             timestamp: block.timestamp,
             verificationGasLimit: 1000000,
-            intentData: "",
+            intentData: data,
             signature: ""
         });
         return AssetBasedIntentBuilder.encodeData(intent, _data());
