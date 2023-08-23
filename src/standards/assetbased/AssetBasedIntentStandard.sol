@@ -10,7 +10,7 @@ import {Exec} from "../../utils/Exec.sol";
 import {_balanceOf} from "./utils/AssetWrapper.sol";
 import {IAssetRelease} from "./IAssetRelease.sol";
 import {AssetHolderProxy} from "./AssetHolderProxy.sol";
-import {AssetBasedIntentSegment, parseAssetBasedIntentSegment} from "./AssetBasedIntentData.sol";
+import {AssetBasedIntentSegment, parseAssetBasedIntentSegment} from "./AssetBasedIntentSegment.sol";
 import {AssetBasedIntentCurve, EvaluationType, AssetBasedIntentCurveLib} from "./AssetBasedIntentCurve.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
 

@@ -53,7 +53,7 @@ contract AssetBasedIntentStandardTest is TestEnvironment {
         UserIntent memory intent = _intent();
         AssetBasedIntentSegment[] memory segments = _dataForAssetRequirementCheck(EvaluationType.ABSOLUTE);
         intent = intent.encodeData(segments);
-        
+
         _intentStandard.validateUserIntent(intent);
     }
 
