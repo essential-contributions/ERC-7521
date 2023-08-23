@@ -8,7 +8,7 @@ contract TestERC721 is ERC721, Test {
     uint256 private constant _NFT_TOKEN_SEED = uint256(keccak256("ERC721_NFT_TOKEN_SEED"));
     uint256 private constant _NFT_COST = 1 ether;
 
-    uint256 private _nftIncrimenter = 0;
+    uint256 private _nftIncrementer = 0;
     uint256 private _lastBoughtNFT = 0;
 
     constructor()
@@ -18,8 +18,8 @@ contract TestERC721 is ERC721, Test {
 
     function buyNFT(address to) external payable returns (uint256) {
         require(msg.value >= _NFT_COST, "Insufficient payment");
-        _lastBoughtNFT = uint256(keccak256(abi.encode(_NFT_TOKEN_SEED, _nftIncrimenter)));
-        _nftIncrimenter++;
+        _lastBoughtNFT = uint256(keccak256(abi.encode(_NFT_TOKEN_SEED, _nftIncrementer)));
+        _nftIncrementer++;
         _mint(to, _lastBoughtNFT);
         return _lastBoughtNFT;
     }
@@ -38,7 +38,7 @@ contract TestERC721 is ERC721, Test {
     }
 
     function nextNFTForSale() external view returns (uint256) {
-        return uint256(keccak256(abi.encode(_NFT_TOKEN_SEED, _nftIncrimenter)));
+        return uint256(keccak256(abi.encode(_NFT_TOKEN_SEED, _nftIncrementer)));
     }
 
     function nftCost() external pure returns (uint256) {

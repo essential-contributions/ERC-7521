@@ -68,7 +68,7 @@ contract NonceManagerTest is TestEnvironment {
         assertEq(updatedNonce, expectedUpdatedNonce);
     }
 
-    function test_validateAndUpdateNonce_false() public {
+    function test_validateAndUpdateNonce_wrong() public {
         uint256 outdatedNonce = nonceManager.calculateNonce(0, KEY);
         nonceManager.incrementNonce(KEY);
         bool result = nonceManager.validateAndUpdateNonce(address(this), outdatedNonce);
