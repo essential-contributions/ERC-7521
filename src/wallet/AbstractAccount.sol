@@ -2,8 +2,8 @@
 pragma solidity ^0.8.13;
 
 import {BaseAccount} from "../core/BaseAccount.sol";
-import {IntentStandardTruster} from "../core/IntentStandardTruster.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
+import {IIntentDelegate} from "../interfaces/IIntentDelegate.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {Exec, RevertReason} from "../utils/Exec.sol";
@@ -12,7 +12,7 @@ import {_balanceOf, _transfer, AssetType} from "../standards/assetbased/utils/As
 import {TokenCallbackHandler} from "./TokenCallbackHandler.sol";
 import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 
-contract AbstractAccount is BaseAccount, TokenCallbackHandler, IntentStandardTruster {
+contract AbstractAccount is BaseAccount, TokenCallbackHandler, IIntentDelegate {
     using ECDSA for bytes32;
     using RevertReason for bytes;
 
@@ -83,14 +83,6 @@ contract AbstractAccount is BaseAccount, TokenCallbackHandler, IntentStandardTru
             revert(string(reason));
         }
         return success;
-    }
-
-    /// implement template method of IntentStandardTruster
-    function addTrustedIntentStandard(IIntentStandard intentStandard) external override returns (bytes32) {
-        require(msg.sender == owner, "standard must be trusted by owner");
-        bytes32 standardId = entryPoint().getIntentStandardId(intentStandard);
-        _trustedIntentStandards[standardId] = intentStandard;
-        return standardId;
     }
 
     /// implement template method of BaseAccount

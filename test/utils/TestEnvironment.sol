@@ -26,12 +26,8 @@ abstract contract TestEnvironment is Test {
         _assetBasedIntentStandard = new AssetBasedIntentStandard(_entryPoint);
         _account = new AbstractAccount(_entryPoint, _publicAddress);
 
-        //register asset based intent standard to entry point
-        _entryPoint.registerIntentStandard(_assetBasedIntentStandard);
-
-        // add asset based intent standard to account's trusted standards
-        vm.prank(_account.owner());
-        _account.addTrustedIntentStandard(_assetBasedIntentStandard);
+        //register intent standard to entry point
+        _entryPoint.registerIntentStandard(_intentStandard);
     }
 
     function _curveETH(int256[] memory curveParams, EvaluationType evaluation)
