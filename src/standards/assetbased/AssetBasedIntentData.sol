@@ -5,14 +5,6 @@ import {UserIntent} from "../../interfaces/UserIntent.sol";
 import {AssetBasedIntentCurve, AssetBasedIntentCurveLib} from "./AssetBasedIntentCurve.sol";
 
 /**
- * Asset Based Intent Data struct
- * @param intentSegments list of different segments in an asset based intent.
- */
-struct AssetBasedIntentData {
-    AssetBasedIntentSegment[] intentSegments;
-}
-
-/**
  * Asset Based Intent Segment struct
  * @param callGasLimit max gas to be spent on the intent call data.
  * @param callData the intents desired call data.
@@ -27,44 +19,14 @@ struct AssetBasedIntentSegment {
 }
 
 /**
- * Utility functions helpful when working with AssetBasedIntentData structs.
+ * Helper function to extract AssetBasedIntentSegment from a UserIntent.
  */
-library AssetBasedIntentDataLib {
-    using AssetBasedIntentCurveLib for AssetBasedIntentCurve;
-
-    function validate(AssetBasedIntentData calldata data) public pure {
-        // check over the first segment first
-        if (data.intentSegments.length > 0) {
-            for (uint256 i = 0; i < data.intentSegments[0].assetRequirements.length; i++) {
-                require(
-                    !data.intentSegments[0].assetRequirements[i].isRelativeEvaluation(),
-                    "relative requirements not allowed at beginning of intent"
-                );
-                data.intentSegments[0].assetRequirements[i].validate();
-            }
-            for (uint256 i = 0; i < data.intentSegments[0].assetReleases.length; i++) {
-                data.intentSegments[0].assetReleases[i].validate();
-            }
-        }
-
-        // check through remaining segments
-        for (uint256 j = 1; j < data.intentSegments.length; j++) {
-            for (uint256 i = 0; i < data.intentSegments[j].assetRequirements.length; i++) {
-                data.intentSegments[j].assetRequirements[i].validate();
-            }
-            for (uint256 i = 0; i < data.intentSegments[j].assetReleases.length; i++) {
-                data.intentSegments[j].assetReleases[i].validate();
-            }
-        }
-    }
-}
-
-/**
- * Helper function to extract AssetBasedIntentData from a UserIntent.
- */
-function parseAssetBasedIntentData(UserIntent calldata intent) pure returns (AssetBasedIntentData calldata data) {
-    bytes calldata intentData = intent.intentData;
+function parseAssetBasedIntentSegment(UserIntent calldata intent, uint256 index)
+    pure
+    returns (AssetBasedIntentSegment calldata segment)
+{
+    bytes calldata intentData = intent.intentData[index];
     assembly {
-        data := intentData.offset
+        segment := intentData.offset
     }
 }
