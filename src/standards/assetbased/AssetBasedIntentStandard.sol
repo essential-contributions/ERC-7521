@@ -11,7 +11,7 @@ import {UserIntent, UserIntentLib} from "../../interfaces/UserIntent.sol";
 import {Exec, RevertReason} from "../../utils/Exec.sol";
 import {AssetType, _balanceOf, _transfer} from "./utils/AssetWrapper.sol";
 import {AssetHolderProxy} from "./AssetHolderProxy.sol";
-import {AssetBasedIntentSegment, parseAssetBasedIntentSegment} from "./AssetBasedIntentData.sol";
+import {AssetBasedIntentSegment, parseAssetBasedIntentSegment} from "./AssetBasedIntentSegment.sol";
 import {AssetBasedIntentCurve, EvaluationType, AssetBasedIntentCurveLib} from "./AssetBasedIntentCurve.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
 
