@@ -44,7 +44,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     function _executeSolution(IntentSolution calldata solution, uint256 timestamp) private {
         IIntentStandard intentStandard = _registeredStandards[solution.intents[0].standard];
         bytes[] memory contextData = new bytes[](solution.intents.length);
-        bool[] memory executionFinished = new bool[](solution.intents.length);
+        uint256[] memory intentDataIndexes = new uint256[](solution.intents.length);
         bool solutionFinished = solution.solutionSegments.length == 0;
         bool intentsFinished = false;
         uint256 passIndex = 0;
@@ -55,14 +55,18 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
                 if (!intentsFinished) {
                     bool stillExecuting = false;
                     for (uint256 i = 0; i < solution.intents.length; i++) {
-                        if (!executionFinished[i]) {
+                        if (intentDataIndexes[i] < solution.intents[i].intentData.length) {
                             UserIntent calldata intent = solution.intents[i];
                             _executionStateContext = intent.sender;
                             bool success = Exec.call(
                                 address(intentStandard),
                                 0,
                                 abi.encodeWithSelector(
-                                    IIntentStandard.executeUserIntent.selector, intent, timestamp, contextData[i]
+                                    IIntentStandard.executeUserIntent.selector,
+                                    intent,
+                                    intentDataIndexes[i],
+                                    timestamp,
+                                    contextData[i]
                                 ),
                                 gasleft()
                             );
@@ -71,11 +75,6 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
                                     revert FailedIntent(i, passIndex, "AA60 invalid execution context");
                                 }
                                 contextData[i] = Exec.getReturnDataMax(0x40, CONTEXT_DATA_MAX_LEN);
-                                if (contextData[i].length > 0) {
-                                    stillExecuting = true;
-                                } else {
-                                    executionFinished[i] = true;
-                                }
                             } else {
                                 bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
                                 reason = reason.revertReasonWithoutPadding();
@@ -86,6 +85,11 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
                                 } else {
                                     revert FailedIntent(i, passIndex, "AA61 execution failed (or OOG)");
                                 }
+                            }
+
+                            intentDataIndexes[i] = intentDataIndexes[i] + 1;
+                            if (intentDataIndexes[i] < solution.intents[i].intentData.length) {
+                                stillExecuting = true;
                             }
                         }
                     }

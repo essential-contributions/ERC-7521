@@ -7,15 +7,14 @@ import "../src/standards/assetbased/AssetBasedIntentData.sol";
 import "./utils/TestEnvironment.sol";
 
 contract AssetBasedIntentDataTest is TestEnvironment {
-    using AssetBasedIntentDataLib for AssetBasedIntentData;
 
     function test_validate() public pure {
         _data().validate();
     }
 
     function test_validate_invalidAssets() public {
-        AssetBasedIntentData memory data = _data();
-        data.intentSegments[0].assetReleases[0].params = new int256[](0);
+        AssetBasedIntentSegment[] memory segments = _data();
+        segments[0].assetReleases[0].params = new int256[](0);
         vm.expectRevert("invalid curve params");
         data.validate();
     }
