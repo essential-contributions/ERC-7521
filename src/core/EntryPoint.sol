@@ -77,8 +77,8 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
                                 contextData[i] = Exec.getReturnDataMax(0x40, CONTEXT_DATA_MAX_LEN);
                             } else {
                                 bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
-                                reason = reason.revertReasonWithoutPadding();
                                 if (reason.length > 0) {
+                                    reason = reason.revertReasonWithoutPadding();
                                     revert FailedIntent(
                                         i, passIndex, string.concat("AA61 execution failed: ", string(reason))
                                     );

@@ -8,8 +8,35 @@ import "./utils/TestEnvironment.sol";
 
 contract AssetBasedIntentDataTest is TestEnvironment {
 
+    function _dataForAssetRequirementCheck(EvaluationType evaluationType)
+        internal
+        pure
+        returns (AssetBasedIntentData memory)
+    {
+        AssetBasedIntentSegment[] memory intentSegments = new AssetBasedIntentSegment[](2);
+
+        AssetBasedIntentCurve memory constantETHCurve =
+            _curveETH(AssetBasedIntentCurveBuilder.constantCurve(10), evaluationType);
+
+        AssetBasedIntentCurve[] memory assetRequirements = new AssetBasedIntentCurve[](1);
+        assetRequirements[0] = constantETHCurve;
+
+        AssetBasedIntentCurve[] memory assetReleases = new AssetBasedIntentCurve[](1);
+        assetReleases[0] = constantETHCurve;
+
+        intentSegments[0].assetRequirements = assetRequirements;
+        intentSegments[1].assetReleases = assetReleases;
+
+        return AssetBasedIntentData({intentSegments: intentSegments});
+    }
+
     function test_validate() public pure {
         _data().validate();
+    }
+
+    function test_validate_multipleAssetRequirement() public pure {
+        AssetBasedIntentData memory assetBasedIntentData = _dataForAssetRequirementCheck(EvaluationType.ABSOLUTE);
+        assetBasedIntentData.validate();
     }
 
     function test_validate_invalidAssets() public {
@@ -20,17 +47,8 @@ contract AssetBasedIntentDataTest is TestEnvironment {
     }
 
     function test_validate_relativeRequirementAtBeginning() public {
-        AssetBasedIntentSegment[] memory intentSegments = new AssetBasedIntentSegment[](2);
         // relative requirement
-        AssetBasedIntentCurve memory constantETHCurve =
-            _curveETH(AssetBasedIntentCurveBuilder.constantCurve(10), EvaluationType.RELATIVE);
-
-        AssetBasedIntentCurve[] memory assetRequirements = new AssetBasedIntentCurve[](2);
-        assetRequirements[0] = constantETHCurve;
-
-        intentSegments[0].assetRequirements = assetRequirements;
-
-        AssetBasedIntentData memory assetBasedIntentData = AssetBasedIntentData({intentSegments: intentSegments});
+        AssetBasedIntentData memory assetBasedIntentData = _dataForAssetRequirementCheck(EvaluationType.RELATIVE);
 
         vm.expectRevert("relative requirements not allowed at beginning of intent");
         assetBasedIntentData.validate();
