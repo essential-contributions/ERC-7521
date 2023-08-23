@@ -116,6 +116,19 @@ contract AssetBasedIntentCurveTest is TestEnvironment {
         assertEq(value, 10);
     }
 
+    function test_assetType() public {
+        assertEq(abi.encode(_testConstantCurve.assetType()), abi.encode(AssetType.ETH));
+    }
+
+    function test_curveType() public {
+        assertEq(abi.encode(_testConstantCurve.curveType()), abi.encode(CurveType.CONSTANT));
+    }
+
+    function test_evaluationType() public {
+        assertEq(abi.encode(_testConstantCurve.evaluationType()), abi.encode(EvaluationType.ABSOLUTE));
+        assertEq(abi.encode(_testConstantRelativeCurve.evaluationType()), abi.encode(EvaluationType.RELATIVE));
+    }
+
     function test_isRelativeEvaluation() public view {
         assert(!_testConstantCurve.isRelativeEvaluation());
         assert(_testConstantRelativeCurve.isRelativeEvaluation());

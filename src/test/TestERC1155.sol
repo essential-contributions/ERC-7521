@@ -9,7 +9,7 @@ contract TestERC1155 is ERC1155, Test {
     uint256 private constant _NFT_TOKEN_SEED = uint256(keccak256("ERC1155_NFT_TOKEN_SEED"));
     uint256 private constant _NFT_COST = 1 ether;
 
-    uint256 private _nftIncrimenter = 0;
+    uint256 private _nftIncrementer = 0;
     uint256 private _lastBoughtNFT = 0;
 
     constructor()
@@ -21,11 +21,11 @@ contract TestERC1155 is ERC1155, Test {
         _mint(to, _FUNGIBLE_TOKEN_ID, amount, "");
     }
 
-    function buyNFT(address to) external payable returns (uint256) {
-        require(msg.value >= _NFT_COST, "Insufficient payment");
-        _lastBoughtNFT = uint256(keccak256(abi.encode(_NFT_TOKEN_SEED, _nftIncrimenter)));
-        _nftIncrimenter++;
-        _mint(to, _lastBoughtNFT, 1, "");
+    function buyNFT(address to, uint256 amount) external payable returns (uint256) {
+        require(msg.value >= _NFT_COST * amount, "Insufficient payment");
+        _lastBoughtNFT = uint256(keccak256(abi.encode(_NFT_TOKEN_SEED, _nftIncrementer)));
+        _nftIncrementer++;
+        _mint(to, _lastBoughtNFT, amount, "");
         return _lastBoughtNFT;
     }
 
@@ -43,7 +43,7 @@ contract TestERC1155 is ERC1155, Test {
     }
 
     function nextNFTForSale() external view returns (uint256) {
-        return uint256(keccak256(abi.encode(_NFT_TOKEN_SEED, _nftIncrimenter)));
+        return uint256(keccak256(abi.encode(_NFT_TOKEN_SEED, _nftIncrementer)));
     }
 
     function nftCost() external pure returns (uint256) {
