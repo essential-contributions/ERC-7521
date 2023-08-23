@@ -68,39 +68,13 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
                     bool stillExecuting = false;
                     for (uint256 i = 0; i < solution.intents.length; i++) {
                         if (intentDataIndexes[i] < solution.intents[i].intentData.length) {
-                            UserIntent calldata intent = solution.intents[i];
-                            _executionStateContext = intent.sender;
-                            _executionIntentStandardId = intent.standard;
-                            bool success = Exec.call(
-                                address(intentStandard),
-                                0,
-                                abi.encodeWithSelector(
-                                    IIntentStandard.executeUserIntent.selector,
-                                    intent,
-                                    intentDataIndexes[i],
-                                    timestamp,
-                                    contextData[i]
-                                ),
-                                gasleft()
+                            _executionStateContext = solution.intents[i].sender;
+                            _executionIntentStandardId = solution.intents[i].standard;
+                            contextData[i] = _executeIntent(
+                                intentStandard, solution.intents[i], contextData[i], i, intentDataIndexes[i], timestamp
                             );
-                            if (success) {
-                                if (Exec.getReturnDataSize() > CONTEXT_DATA_MAX_LEN) {
-                                    revert FailedIntent(i, passIndex, "AA60 invalid execution context");
-                                }
-                                contextData[i] = Exec.getReturnDataMax(0x40, CONTEXT_DATA_MAX_LEN);
-                            } else {
-                                bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
-                                if (reason.length > 0) {
-                                    reason = reason.revertReasonWithoutPadding();
-                                    revert FailedIntent(
-                                        i, passIndex, string.concat("AA61 execution failed: ", string(reason))
-                                    );
-                                } else {
-                                    revert FailedIntent(i, passIndex, "AA61 execution failed (or OOG)");
-                                }
-                            }
 
-                            intentDataIndexes[i] = intentDataIndexes[i] + 1;
+                            //setup next segment execution                            intentDataIndexes[i] = intentDataIndexes[i] + 1;
                             if (intentDataIndexes[i] < solution.intents[i].intentData.length) {
                                 stillExecuting = true;
                             }
@@ -137,6 +111,38 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             //Intent no longer executing
             _executionStateContext = EX_STATE_NOT_ACTIVE;
         } //unchecked
+    }
+
+    function _executeIntent(
+        IIntentStandard intentStandard,
+        UserIntent calldata intent,
+        bytes memory contextData,
+        uint256 index,
+        uint256 execIndex,
+        uint256 timestamp
+    ) private returns (bytes memory) {
+        bool success = Exec.call(
+            address(intentStandard),
+            0,
+            abi.encodeWithSelector(
+                IIntentStandard.executeUserIntent.selector, intent, execIndex, timestamp, contextData
+            ),
+            gasleft()
+        );
+        if (success) {
+            if (Exec.getReturnDataSize() > CONTEXT_DATA_MAX_LEN) {
+                revert FailedIntent(index, execIndex, "AA60 invalid execution context");
+            }
+            contextData = Exec.getReturnDataMax(0x40, CONTEXT_DATA_MAX_LEN);
+        } else {
+            bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
+            if (reason.length > 0) {
+                revert FailedIntent(index, execIndex, string.concat("AA61 execution failed: ", string(reason)));
+            } else {
+                revert FailedIntent(index, execIndex, "AA61 execution failed (or OOG)");
+            }
+        }
+        return contextData;
     }
 
     /**
