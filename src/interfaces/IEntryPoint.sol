@@ -166,6 +166,12 @@ interface IEntryPoint is INonceManager {
     function executingIntentSender() external view returns (address);
 
     /**
+     * returns the standard id of the currently executing intent
+     * (or bytes(0) if validation or solution is executing, or if no intent is executing).
+     */
+    function executingIntentStandardId() external view returns (bytes32);
+
+    /**
      * returns the default intent standard id and the default intent standard contract.
      */
     function getDefaultIntentStandard() external view returns (bytes32, IIntentStandard);
