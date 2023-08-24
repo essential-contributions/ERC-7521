@@ -23,7 +23,7 @@ abstract contract EntryPointTruster {
     }
 
     /**
-     * ensure 
+     * ensure
      * 1. entrypoint is currently in the intent execution stage for this sender
      * 2. intent standard is registered
      * 3. intent standard is the one expected by this contract.
