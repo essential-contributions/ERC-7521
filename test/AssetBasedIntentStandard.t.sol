@@ -39,7 +39,7 @@ contract AssetBasedIntentStandardTest is TestEnvironment {
         _intentStandard.validateUserIntent(_intent());
     }
 
-    function test_validate_invalidAssets() public {
+    function test_failValidate_invalidAssets() public {
         UserIntent memory intent = _intent();
         AssetBasedIntentSegment[] memory segments = intent.decodeData();
         segments[0].assetReleases[0].params = new int256[](0);
@@ -57,7 +57,7 @@ contract AssetBasedIntentStandardTest is TestEnvironment {
         _intentStandard.validateUserIntent(intent);
     }
 
-    function test_validate_relativeRequirementAtBeginning() public {
+    function test_failValidate_relativeRequirementAtBeginning() public {
         // relative requirement
         UserIntent memory intent = _intent();
         AssetBasedIntentSegment[] memory segments = _dataForAssetRequirementCheck(EvaluationType.RELATIVE);
