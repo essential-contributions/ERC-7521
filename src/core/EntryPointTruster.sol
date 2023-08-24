@@ -23,9 +23,10 @@ abstract contract EntryPointTruster {
     }
 
     /**
-     * ensure the entrypoint is currently in the intent execution stage for this sender
-     * that the intent standard is registered
-     * and that the intent standard is the one expected by this contract.
+     * ensure 
+     * 1. entrypoint is currently in the intent execution stage for this sender
+     * 2. intent standard is registered
+     * 3. intent standard is the one expected by this contract.
      */
     modifier onlyFromIntentStandardExecutingForSender(IIntentStandard intentStandard) {
         bytes32 intentStandardId = entryPoint().getIntentStandardId(intentStandard);
