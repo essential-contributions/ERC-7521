@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 /* solhint-disable private-vars-leading-underscore */
 
+import {IAssetRelease, encodeReleaseAsset} from "./IAssetRelease.sol";
 import {IIntentStandard} from "../../interfaces/IIntentStandard.sol";
 import {IEntryPoint} from "../../interfaces/IEntryPoint.sol";
 import {IIntentDelegate} from "../../interfaces/IIntentDelegate.sol";
@@ -19,7 +20,7 @@ import {
 import {AssetBasedIntentCurve, EvaluationType, AssetBasedIntentCurveLib} from "./AssetBasedIntentCurve.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
 
-contract AssetBasedIntentStandard is AssetHolderProxy, IIntentStandard {
+contract AssetBasedIntentStandard is AssetHolderProxy, IAssetRelease, IIntentStandard {
     using AssetBasedIntentDataLib for AssetBasedIntentData;
     using AssetBasedIntentCurveLib for AssetBasedIntentCurve;
     using UserIntentLib for UserIntent;
@@ -212,14 +213,8 @@ contract AssetBasedIntentStandard is AssetHolderProxy, IIntentStandard {
         for (uint256 i = 0; i < intentSegment.assetReleases.length; i++) {
             int256 releaseAmount = intentSegment.assetReleases[i].evaluate(evaluateAt);
             if (releaseAmount > 0) {
-                bytes memory data = abi.encodeWithSelector(
-                    AssetBasedIntentStandard(this).releaseAsset.selector,
-                    intentSegment.assetReleases[i].assetType(),
-                    intentSegment.assetReleases[i].assetContract,
-                    intentSegment.assetReleases[i].assetId,
-                    address(this),
-                    uint256(releaseAmount)
-                );
+                bytes memory data =
+                    encodeReleaseAsset(intentSegment.assetReleases[i], address(this), uint256(releaseAmount));
                 IIntentDelegate(address(from)).generalizedIntentDelegateCall(data);
             }
         }
