@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import "openzeppelin/utils/cryptography/ECDSA.sol";
 import "../../src/interfaces/UserIntent.sol";
 import "../../src/standards/assetbased/AssetBasedIntentStandard.sol";
-import "../../src/standards/assetbased/AssetBasedIntentData.sol";
+import "../../src/standards/assetbased/AssetBasedIntentSegment.sol";
 import "../../src/standards/assetbased/AssetBasedIntentCurve.sol";
 
 /**
@@ -25,10 +25,7 @@ library AssetBasedIntentBuilder {
         pure
         returns (UserIntent memory intent)
     {
-        AssetBasedIntentSegment[] memory assetBasedIntentSegments;
-
-        AssetBasedIntentData memory assetBasedIntentData =
-            AssetBasedIntentData({intentSegments: assetBasedIntentSegments});
+        bytes[] memory data;
 
         intent = UserIntent({
             standard: standard,
@@ -36,10 +33,9 @@ library AssetBasedIntentBuilder {
             nonce: nonce,
             timestamp: timestamp,
             verificationGasLimit: 1000000,
-            intentData: "",
+            intentData: data,
             signature: ""
         });
-        intent = encodeData(intent, assetBasedIntentData);
     }
 
     /**
@@ -53,55 +49,61 @@ library AssetBasedIntentBuilder {
         pure
         returns (UserIntent memory)
     {
-        AssetBasedIntentData memory data = decodeData(intent);
+        AssetBasedIntentSegment[] memory currentSegments = decodeData(intent);
 
         //clone previous array and add new element
-        AssetBasedIntentSegment[] memory intentSegments = new AssetBasedIntentSegment[](data.intentSegments.length + 1);
-        for (uint256 i = 0; i < data.intentSegments.length; i++) {
-            intentSegments[i] = data.intentSegments[i];
+        AssetBasedIntentSegment[] memory segments = new AssetBasedIntentSegment[](currentSegments.length + 1);
+        for (uint256 i = 0; i < currentSegments.length; i++) {
+            segments[i] = currentSegments[i];
         }
-        intentSegments[data.intentSegments.length] = segment;
-        data.intentSegments = intentSegments;
+        segments[currentSegments.length] = segment;
 
-        return encodeData(intent, data);
+        return encodeData(intent, segments);
     }
 
     /**
-     * Encodes the asset based intent data onto the user intent.
+     * Encodes the asset based intent segments onto the user intent.
      * @param intent The user intent to modify.
-     * @param data The asset based intent standard data.
+     * @param segments The asset based intent standard segments.
      * @return The updated user intent.
      */
-    function encodeData(UserIntent memory intent, AssetBasedIntentData memory data)
+    function encodeData(UserIntent memory intent, AssetBasedIntentSegment[] memory segments)
         public
         pure
         returns (UserIntent memory)
     {
-        bytes memory raw = abi.encode(data);
-        bytes memory encoded = new bytes(raw.length - 32);
-        for (uint256 i = 32; i < raw.length; i++) {
-            encoded[i - 32] = raw[i];
-        }
+        intent.intentData = new bytes[](segments.length);
+        for (uint256 i = 0; i < segments.length; i++) {
+            bytes memory raw = abi.encode(segments[i]);
+            bytes memory encoded = new bytes(raw.length - 32);
+            for (uint256 j = 32; j < raw.length; j++) {
+                encoded[j - 32] = raw[j];
+            }
 
-        intent.intentData = encoded;
+            intent.intentData[i] = encoded;
+        }
         return intent;
     }
 
     /**
-     * Decodes the asset based intent data from the user intent.
+     * Decodes the asset based intent segments from the user intent.
      * @param intent The user intent to decode data from.
      * @return The asset based intent data.
      */
-    function decodeData(UserIntent memory intent) public pure returns (AssetBasedIntentData memory) {
-        bytes memory raw = new bytes(intent.intentData.length + 32);
-        assembly {
-            mstore(add(raw, 32), 0x0000000000000000000000000000000000000000000000000000000000000020)
-        }
+    function decodeData(UserIntent memory intent) public pure returns (AssetBasedIntentSegment[] memory) {
+        AssetBasedIntentSegment[] memory segments = new AssetBasedIntentSegment[](intent.intentData.length);
         for (uint256 i = 0; i < intent.intentData.length; i++) {
-            raw[i + 32] = intent.intentData[i];
+            bytes memory raw = new bytes(intent.intentData[i].length + 32);
+            assembly {
+                mstore(add(raw, 32), 0x0000000000000000000000000000000000000000000000000000000000000020)
+            }
+            for (uint256 j = 0; j < intent.intentData[i].length; j++) {
+                raw[j + 32] = intent.intentData[i][j];
+            }
+            (AssetBasedIntentSegment memory decoded) = abi.decode(raw, (AssetBasedIntentSegment));
+            segments[i] = decoded;
         }
-        (AssetBasedIntentData memory data) = abi.decode(raw, (AssetBasedIntentData));
-        return data;
+        return segments;
     }
 }
 

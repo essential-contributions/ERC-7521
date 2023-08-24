@@ -10,17 +10,11 @@ import {Exec} from "../../utils/Exec.sol";
 import {_balanceOf} from "./utils/AssetWrapper.sol";
 import {IAssetRelease} from "./IAssetRelease.sol";
 import {AssetHolderProxy} from "./AssetHolderProxy.sol";
-import {
-    AssetBasedIntentData,
-    AssetBasedIntentSegment,
-    parseAssetBasedIntentData,
-    AssetBasedIntentDataLib
-} from "./AssetBasedIntentData.sol";
+import {AssetBasedIntentSegment, parseAssetBasedIntentSegment} from "./AssetBasedIntentSegment.sol";
 import {AssetBasedIntentCurve, EvaluationType, AssetBasedIntentCurveLib} from "./AssetBasedIntentCurve.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
 
 contract AssetBasedIntentStandard is AssetHolderProxy, IIntentStandard {
-    using AssetBasedIntentDataLib for AssetBasedIntentData;
     using AssetBasedIntentCurveLib for AssetBasedIntentCurve;
     using UserIntentLib for UserIntent;
 
@@ -56,55 +50,76 @@ contract AssetBasedIntentStandard is AssetHolderProxy, IIntentStandard {
      * @param intent the intent that is about to be solved.
      */
     function validateUserIntent(UserIntent calldata intent) external pure {
-        AssetBasedIntentData calldata data = parseAssetBasedIntentData(intent);
-        data.validate();
+        // check over the first data segment first
+        if (intent.intentData.length > 0) {
+            AssetBasedIntentSegment calldata segment = parseAssetBasedIntentSegment(intent, 0);
+            for (uint256 i = 0; i < segment.assetRequirements.length; i++) {
+                require(
+                    !segment.assetRequirements[i].isRelativeEvaluation(),
+                    "relative requirements not allowed at beginning of intent"
+                );
+                segment.assetRequirements[i].validate();
+            }
+            for (uint256 i = 0; i < segment.assetReleases.length; i++) {
+                segment.assetReleases[i].validate();
+            }
+        }
+
+        // check through remaining data segments
+        for (uint256 j = 1; j < intent.intentData.length; j++) {
+            AssetBasedIntentSegment calldata segment = parseAssetBasedIntentSegment(intent, j);
+            for (uint256 i = 0; i < segment.assetRequirements.length; i++) {
+                segment.assetRequirements[i].validate();
+            }
+            for (uint256 i = 0; i < segment.assetReleases.length; i++) {
+                segment.assetReleases[i].validate();
+            }
+        }
     }
 
     /**
      * Performs part or all of the execution for an intent.
      * @param intent the intent to execute.
+     * @param dataIndex the data index to execute for.
      * @param timestamp the time at which to evaluate the intent.
      * @param context context data from the previous step in execution (no data means execution is just starting).
      * @return context to remember for further execution (no data means execution has finished).
      */
-    function executeUserIntent(UserIntent calldata intent, uint256 timestamp, bytes memory context)
+    function executeUserIntent(UserIntent calldata intent, uint256 dataIndex, uint256 timestamp, bytes memory context)
         external
         onlyFromEntryPoint
         returns (bytes memory)
     {
-        AssetBasedIntentData calldata data = parseAssetBasedIntentData(intent);
-        uint256 intentSegmentIndex = 0;
         uint256[] memory startingBalances;
         if (context.length > 0) {
-            (intentSegmentIndex, startingBalances) = abi.decode(context, (uint256, uint256[]));
+            (startingBalances) = abi.decode(context, (uint256[]));
         }
         uint256 evaluateAt = 0;
         if (timestamp > intent.timestamp) {
             evaluateAt = timestamp - intent.timestamp;
         }
-        AssetBasedIntentSegment calldata intentSegment = data.intentSegments[intentSegmentIndex];
+        AssetBasedIntentSegment calldata dataSegment = parseAssetBasedIntentSegment(intent, dataIndex);
 
         //check asset requirements
-        _checkAssetRequirements(intentSegment, intentSegmentIndex, evaluateAt, startingBalances, intent.sender);
+        _checkAssetRequirements(dataSegment, dataIndex, evaluateAt, startingBalances, intent.sender);
 
         //record balances for relative requirements later
-        if ((intentSegmentIndex + 1) < data.intentSegments.length) {
-            AssetBasedIntentSegment calldata nextIntentSegment = data.intentSegments[intentSegmentIndex + 1];
-            startingBalances = _recordStartingBalances(nextIntentSegment, intent.sender);
+        if ((dataIndex + 1) < intent.intentData.length) {
+            AssetBasedIntentSegment calldata nextDataSegment = parseAssetBasedIntentSegment(intent, dataIndex + 1);
+            startingBalances = _recordStartingBalances(nextDataSegment, intent.sender);
         }
 
         //execute calldata
-        if (intentSegment.callData.length > 0) {
-            Exec.callAndRevert(intent.sender, intentSegment.callData, intentSegment.callGasLimit, REVERT_REASON_MAX_LEN);
+        if (dataSegment.callData.length > 0) {
+            Exec.callAndRevert(intent.sender, dataSegment.callData, dataSegment.callGasLimit, REVERT_REASON_MAX_LEN);
         }
 
         //release tokens
-        _releaseAssets(intentSegment, evaluateAt, intent.sender);
+        _releaseAssets(dataSegment, evaluateAt, intent.sender);
 
         // return list of starting balances for reference later (or nothing if this was the last step)
-        if ((intentSegmentIndex + 1) < data.intentSegments.length) {
-            intentSegmentIndex = intentSegmentIndex + 1;
-            return abi.encode(intentSegmentIndex, startingBalances);
+        if ((dataIndex + 1) < intent.intentData.length) {
+            return abi.encode(startingBalances);
         }
         return "";
     }
