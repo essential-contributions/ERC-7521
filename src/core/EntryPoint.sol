@@ -37,15 +37,13 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
 
     //keeps track of registered intent standards
     mapping(bytes32 => IIntentStandard) private _registeredStandards;
-    IIntentStandard defaultIntentStandard;
 
     //flag for applications to check current context of execution
     address private _executionStateContext;
     bytes32 private _executionIntentStandardId;
 
     constructor() {
-        defaultIntentStandard = new DefaultIntentStandard(this);
-        _registeredStandards[DEFAULT_INTENT_STANDARD_ID] = defaultIntentStandard;
+        _registeredStandards[DEFAULT_INTENT_STANDARD_ID] = new DefaultIntentStandard(this);
     }
 
     /**
@@ -332,7 +330,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      * gets the intent standard ID for the given intent standard contract.
      */
     function getIntentStandardId(IIntentStandard intentStandard) external view returns (bytes32) {
-        if (address(intentStandard) == address(defaultIntentStandard)) {
+        if (address(intentStandard) == address(_registeredStandards[DEFAULT_INTENT_STANDARD_ID])) {
             return DEFAULT_INTENT_STANDARD_ID;
         }
         bytes32 standardId = _generateIntentStandardId(intentStandard);
