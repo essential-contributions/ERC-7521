@@ -39,26 +39,26 @@ contract EntryPointTest is TestEnvironment {
 
     function test_failRegisterIntentStandard_alreadyRegistered() public {
         vm.expectRevert("AA82 already registered");
-        _entryPoint.registerIntentStandard(_intentStandard);
+        _entryPoint.registerIntentStandard(_assetBasedIntentStandard);
     }
 
     function test_getIntentStandardContract() public {
-        bytes32 standardId = _intentStandard.standardId();
+        bytes32 standardId = _assetBasedIntentStandard.standardId();
         IIntentStandard registeredStandard = _entryPoint.getIntentStandardContract(standardId);
-        bytes32 expectedHash = keccak256(abi.encode(IIntentStandard(_intentStandard)));
+        bytes32 expectedHash = keccak256(abi.encode(IIntentStandard(_assetBasedIntentStandard)));
         bytes32 registeredHash = keccak256(abi.encode(registeredStandard));
         assertEq(registeredHash, expectedHash);
     }
 
     function test_failGetIntentStandardContract_unknownStandard() public {
-        bytes32 standardId = _intentStandard.standardId();
+        bytes32 standardId = _assetBasedIntentStandard.standardId();
         vm.expectRevert("AA83 unknown standard");
         _entryPoint.getIntentStandardContract(standardId << 1);
     }
 
     function test_getIntentStandardId() public {
-        bytes32 standardId = _entryPoint.getIntentStandardId(_intentStandard);
-        bytes32 expectedStandardId = _intentStandard.standardId();
+        bytes32 standardId = _entryPoint.getIntentStandardId(_assetBasedIntentStandard);
+        bytes32 expectedStandardId = _assetBasedIntentStandard.standardId();
         assertEq(standardId, expectedStandardId);
     }
 

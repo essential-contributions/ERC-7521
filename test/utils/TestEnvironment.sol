@@ -16,18 +16,18 @@ abstract contract TestEnvironment is Test {
     using ECDSA for bytes32;
 
     EntryPoint internal _entryPoint;
-    AssetBasedIntentStandard internal _intentStandard;
+    AssetBasedIntentStandard internal _assetBasedIntentStandard;
     AbstractAccount internal _account;
 
     address internal _publicAddress = _getPublicAddress(uint256(keccak256("account_private_key")));
 
     function setUp() public virtual {
         _entryPoint = new EntryPoint();
-        _intentStandard = new AssetBasedIntentStandard(_entryPoint);
+        _assetBasedIntentStandard = new AssetBasedIntentStandard(_entryPoint);
         _account = new AbstractAccount(_entryPoint, _publicAddress);
 
-        //register intent standard to entry point
-        _entryPoint.registerIntentStandard(_intentStandard);
+        //register asset based intent standard to entry point
+        _entryPoint.registerIntentStandard(_assetBasedIntentStandard);
     }
 
     function _curveETH(int256[] memory curveParams, EvaluationType evaluation)
@@ -73,7 +73,7 @@ abstract contract TestEnvironment is Test {
     function _intent() internal view returns (UserIntent memory) {
         bytes[] memory data;
         UserIntent memory intent = UserIntent({
-            standard: _intentStandard.standardId(),
+            standard: _assetBasedIntentStandard.standardId(),
             sender: address(_account),
             nonce: 123,
             timestamp: block.timestamp,
