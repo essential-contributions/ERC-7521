@@ -172,7 +172,7 @@ interface IEntryPoint is INonceManager {
     function executingIntentStandardId() external view returns (bytes32);
 
     /**
-     * returns the default intent standard id and the default intent standard contract.
+     * returns the default intent standard id.
      */
-    function getDefaultIntentStandard() external view returns (bytes32, IIntentStandard);
+    function getDefaultIntentStandardId() external pure returns (bytes32);
 }

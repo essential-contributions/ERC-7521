@@ -27,7 +27,7 @@ abstract contract TestEnvironment is Test {
         _account = new AbstractAccount(_entryPoint, _publicAddress);
 
         //register intent standard to entry point
-        _entryPoint.registerIntentStandard(_intentStandard);
+        _entryPoint.registerIntentStandard(_assetBasedIntentStandard);
     }
 
     function _curveETH(int256[] memory curveParams, EvaluationType evaluation)

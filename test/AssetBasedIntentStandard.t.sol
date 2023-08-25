@@ -32,11 +32,11 @@ contract AssetBasedIntentStandardTest is TestEnvironment {
     }
 
     function test_entryPoint() public {
-        assertEq(address(_intentStandard.entryPoint()), address(_entryPoint));
+        assertEq(address(_assetBasedIntentStandard.entryPoint()), address(_entryPoint));
     }
 
     function test_validate() public view {
-        _intentStandard.validateUserIntent(_intent());
+        _assetBasedIntentStandard.validateUserIntent(_intent());
     }
 
     function test_failValidate_invalidAssets() public {
@@ -46,7 +46,7 @@ contract AssetBasedIntentStandardTest is TestEnvironment {
         intent = intent.encodeData(segments);
 
         vm.expectRevert("invalid curve params");
-        _intentStandard.validateUserIntent(intent);
+        _assetBasedIntentStandard.validateUserIntent(intent);
     }
 
     function test_validate_multipleAssetRequirement() public view {
@@ -54,7 +54,7 @@ contract AssetBasedIntentStandardTest is TestEnvironment {
         AssetBasedIntentSegment[] memory segments = _dataForAssetRequirementCheck(EvaluationType.ABSOLUTE);
         intent = intent.encodeData(segments);
 
-        _intentStandard.validateUserIntent(intent);
+        _assetBasedIntentStandard.validateUserIntent(intent);
     }
 
     function test_failValidate_relativeRequirementAtBeginning() public {
@@ -64,6 +64,6 @@ contract AssetBasedIntentStandardTest is TestEnvironment {
         intent = intent.encodeData(segments);
 
         vm.expectRevert("relative requirements not allowed at beginning of intent");
-        _intentStandard.validateUserIntent(intent);
+        _assetBasedIntentStandard.validateUserIntent(intent);
     }
 }

@@ -340,10 +340,6 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         return standardId;
     }
 
-    function getDefaultIntentStandard() external view returns (bytes32, IIntentStandard) {
-        return (DEFAULT_INTENT_STANDARD_ID, _registeredStandards[DEFAULT_INTENT_STANDARD_ID]);
-    }
-
     /**
      * returns if intent validation actions are currently being executed.
      */
@@ -378,6 +374,13 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      */
     function solutionExecuting() external view returns (bool) {
         return _executionStateContext == EX_STATE_SOLUTION_EXECUTING;
+    }
+
+    /**
+     * returns the default intent standard id.
+     */
+    function getDefaultIntentStandardId() external pure returns (bytes32) {
+        return DEFAULT_INTENT_STANDARD_ID;
     }
 
     /**

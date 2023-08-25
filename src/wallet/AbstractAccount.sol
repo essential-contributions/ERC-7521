@@ -34,9 +34,6 @@ contract AbstractAccount is BaseAccount, TokenCallbackHandler, IIntentDelegate {
     constructor(IEntryPoint entryPointAddr, address _owner) {
         _entryPoint = address(entryPointAddr);
         owner = _owner;
-        (bytes32 defaultIntentStandardId, IIntentStandard defaultIntentStandard) =
-            IEntryPoint(entryPointAddr).getDefaultIntentStandard();
-        _trustedIntentStandards[defaultIntentStandardId] = defaultIntentStandard;
         emit AccountCreated(entryPointAddr, _owner);
     }
 
