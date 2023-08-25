@@ -164,4 +164,10 @@ interface IEntryPoint is INonceManager {
      * returns the sender of the currently executing intent (or address(0) is no intent is executing).
      */
     function executingIntentSender() external view returns (address);
+
+    /**
+     * returns the standard id of the currently executing intent
+     * (or bytes(0) if validation or solution is executing, or if no intent is executing).
+     */
+    function executingIntentStandardId() external view returns (bytes32);
 }

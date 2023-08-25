@@ -47,7 +47,10 @@ abstract contract ScenarioTestEnvironment is Test {
         //deploy contracts
         _entryPoint = new EntryPoint();
         _intentStandard = new AssetBasedIntentStandard(_entryPoint);
-        _account = new AbstractAccount(_entryPoint, _intentStandard, _publicAddress);
+        _account = new AbstractAccount(_entryPoint, _publicAddress);
+
+        //register intent standard to entry point
+        _entryPoint.registerIntentStandard(_intentStandard);
 
         _testERC20 = new TestERC20();
         _testERC721 = new TestERC721();
@@ -55,9 +58,6 @@ abstract contract ScenarioTestEnvironment is Test {
         _testWrappedNativeToken = new TestWrappedNativeToken();
         _testUniswap = new TestUniswap(_testWrappedNativeToken);
         _solverUtils = new SolverUtils();
-
-        //register intent standard to entry point
-        _entryPoint.registerIntentStandard(_intentStandard);
 
         //fund exchange
         _testERC20.mint(address(_testUniswap), 1000 ether);

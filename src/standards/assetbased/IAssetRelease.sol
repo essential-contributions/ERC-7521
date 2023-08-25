@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+import {AssetBasedIntentCurve, AssetBasedIntentCurveLib} from "./AssetBasedIntentCurve.sol";
 import {AssetType} from "./utils/AssetWrapper.sol";
 
 interface IAssetRelease {
@@ -16,4 +17,18 @@ interface IAssetRelease {
      */
     function releaseAsset(AssetType assetType, address assetContract, uint256 assetId, address to, uint256 amount)
         external;
+}
+
+function encodeReleaseAsset(AssetBasedIntentCurve memory assetRelease, address to, uint256 amount)
+    pure
+    returns (bytes memory)
+{
+    return abi.encodeWithSelector(
+        IAssetRelease.releaseAsset.selector,
+        AssetBasedIntentCurveLib.assetType(assetRelease),
+        assetRelease.assetContract,
+        assetRelease.assetId,
+        to,
+        amount
+    );
 }
