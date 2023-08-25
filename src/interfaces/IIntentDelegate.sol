@@ -5,7 +5,8 @@ interface IIntentDelegate {
     /**
      * Make a call delegated through an intent standard.
      *
-     * @dev Must validate caller is the entryPoint and that it is currently in the intent executing state.
+     * @dev Must validate entrypoint is currently executing and intent for the owner
+     * and caller is the intent standard that the entry point is currently executing for.
      *      Must validate the signature, nonce, etc.
      * @param data calldata.
      * @return bool delegate call result.
