@@ -15,9 +15,6 @@ import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 
 contract AbstractAccount is BaseAccount, TokenCallbackHandler, IIntentDelegate {
     using ECDSA for bytes32;
-    using RevertReason for bytes;
-
-    uint256 private constant REVERT_REASON_MAX_LEN = 2048;
 
     uint256 private constant REVERT_REASON_MAX_LEN = 2048;
 
