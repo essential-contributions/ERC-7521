@@ -14,7 +14,7 @@ contract EntryPointTest is TestEnvironment {
 
     function test_getUserIntentHash() public {
         UserIntent memory intent = _intent();
-        bytes32 expectedHash = 0xfc3b4a69a3f878370bae80e8e1ed8258c6cfee61ff8d8cd4692c253ee7c06622;
+        bytes32 expectedHash = 0xe8dc01e9daa78bbc1314ca089b06a3b1d2c00510a8f47c2e9fed16419d74b28c;
         bytes32 intentHash = _entryPoint.getUserIntentHash(intent);
         assertEq(intentHash, expectedHash);
     }
@@ -40,26 +40,26 @@ contract EntryPointTest is TestEnvironment {
 
     function test_failRegisterIntentStandard_alreadyRegistered() public {
         vm.expectRevert("AA82 already registered");
-        _entryPoint.registerIntentStandard(_intentStandard);
+        _entryPoint.registerIntentStandard(_assetBasedIntentStandard);
     }
 
     function test_getIntentStandardContract() public {
-        bytes32 standardId = _intentStandard.standardId();
+        bytes32 standardId = _assetBasedIntentStandard.standardId();
         IIntentStandard registeredStandard = _entryPoint.getIntentStandardContract(standardId);
-        bytes32 expectedHash = keccak256(abi.encode(IIntentStandard(_intentStandard)));
+        bytes32 expectedHash = keccak256(abi.encode(IIntentStandard(_assetBasedIntentStandard)));
         bytes32 registeredHash = keccak256(abi.encode(registeredStandard));
         assertEq(registeredHash, expectedHash);
     }
 
     function test_failGetIntentStandardContract_unknownStandard() public {
-        bytes32 standardId = _intentStandard.standardId();
+        bytes32 standardId = _assetBasedIntentStandard.standardId();
         vm.expectRevert("AA83 unknown standard");
         _entryPoint.getIntentStandardContract(standardId << 1);
     }
 
     function test_getIntentStandardId() public {
-        bytes32 standardId = _entryPoint.getIntentStandardId(_intentStandard);
-        bytes32 expectedStandardId = _intentStandard.standardId();
+        bytes32 standardId = _entryPoint.getIntentStandardId(_assetBasedIntentStandard);
+        bytes32 expectedStandardId = _assetBasedIntentStandard.standardId();
         assertEq(standardId, expectedStandardId);
     }
 

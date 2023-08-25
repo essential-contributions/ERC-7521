@@ -1,38 +1,38 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+/* solhint-disable private-vars-leading-underscore */
+
 import {TokenCallbackHandler} from "./TokenCallbackHandler.sol";
 import {BaseAccount} from "../core/BaseAccount.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
+import {IIntentDelegate} from "../interfaces/IIntentDelegate.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
-import {AssetType, _balanceOf, _transfer} from "../standards/assetbased/utils/AssetWrapper.sol";
-import {IAssetRelease} from "../standards/assetbased/IAssetRelease.sol";
+import {Exec} from "../utils/Exec.sol";
 import {_packValidationData} from "../utils/Helpers.sol";
 import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 
-contract AbstractAccount is BaseAccount, TokenCallbackHandler, IAssetRelease {
+contract AbstractAccount is BaseAccount, TokenCallbackHandler, IIntentDelegate {
     using ECDSA for bytes32;
+
+    uint256 private constant REVERT_REASON_MAX_LEN = 2048;
 
     address public owner;
 
     address private immutable _entryPoint;
-    address private immutable _assetBasedIntentStandard;
 
-    event AccountCreated(
-        IEntryPoint indexed entryPoint, IIntentStandard indexed assetBasedIntentStandard, address indexed owner
-    );
+    event AccountCreated(IEntryPoint indexed entryPoint, address indexed owner);
     event Executed(IEntryPoint indexed entryPoint, address indexed target, uint256 indexed value, bytes data);
 
     function entryPoint() public view virtual override returns (IEntryPoint) {
         return IEntryPoint(_entryPoint);
     }
 
-    constructor(IEntryPoint entryPointAddr, IIntentStandard assetBasedIntentStandardAddr, address _owner) {
+    constructor(IEntryPoint entryPointAddr, address _owner) {
         _entryPoint = address(entryPointAddr);
-        _assetBasedIntentStandard = address(assetBasedIntentStandardAddr);
         owner = _owner;
-        emit AccountCreated(entryPointAddr, assetBasedIntentStandardAddr, _owner);
+        emit AccountCreated(entryPointAddr, _owner);
     }
 
     /**
@@ -40,7 +40,7 @@ contract AbstractAccount is BaseAccount, TokenCallbackHandler, IAssetRelease {
      */
     function execute(address target, uint256 value, bytes calldata data)
         external
-        onlyFromIntentStandardExecutingForSender(_assetBasedIntentStandard)
+        onlyFromIntentStandardExecutingForSender
     {
         _call(target, value, data);
         emit Executed(IEntryPoint(_entryPoint), target, value, data);
@@ -51,7 +51,7 @@ contract AbstractAccount is BaseAccount, TokenCallbackHandler, IAssetRelease {
      */
     function executeMulti(address[] calldata targets, uint256[] calldata values, bytes[] calldata datas)
         external
-        onlyFromIntentStandardExecutingForSender(_assetBasedIntentStandard)
+        onlyFromIntentStandardExecutingForSender
     {
         require(targets.length == values.length, "invalid multi call inputs");
         require(targets.length == datas.length, "invalid multi call inputs");
@@ -63,15 +63,23 @@ contract AbstractAccount is BaseAccount, TokenCallbackHandler, IAssetRelease {
     }
 
     /**
-     * Releases asset(s) to the target recipient.
+     * Make a call delegated through an intent standard.
+     *
+     * @param data calldata.
+     * @return bool delegate call result.
      */
-    function releaseAsset(AssetType assetType, address assetContract, uint256 assetId, address to, uint256 amount)
+    function generalizedIntentDelegateCall(bytes memory data)
         external
         override
-        onlyFromIntentStandardExecutingForSender(_assetBasedIntentStandard)
+        onlyFromIntentStandardExecutingForSender
+        returns (bool)
     {
-        require(_balanceOf(assetType, assetContract, assetId, address(this)) >= amount, "insufficient release balance");
-        _transfer(assetType, assetContract, assetId, address(this), to, amount);
+        bool success = Exec.delegateCall(address(IIntentStandard(msg.sender)), data, gasleft());
+        if (!success) {
+            bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
+            revert(string(reason));
+        }
+        return success;
     }
 
     /// implement template method of BaseAccount

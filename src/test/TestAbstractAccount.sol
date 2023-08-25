@@ -15,9 +15,7 @@ import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 contract TestAbstractAccount is AbstractAccount, Test {
     using ECDSA for bytes32;
 
-    constructor(IEntryPoint entryPointAddr, IIntentStandard assetBasedIntentStandardAddr, address _owner)
-        AbstractAccount(entryPointAddr, assetBasedIntentStandardAddr, _owner)
-    {}
+    constructor(IEntryPoint entryPointAddr, address _owner) AbstractAccount(entryPointAddr, _owner) {}
 
     function _validateSignature(UserIntent calldata intent, bytes32 intentHash)
         internal

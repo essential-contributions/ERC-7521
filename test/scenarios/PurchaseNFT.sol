@@ -2,6 +2,7 @@
 pragma solidity ^0.8.13;
 
 /* solhint-disable func-name-mixedcase */
+/* solhint-disable private-vars-leading-underscore */
 
 import "../utils/ScenarioTestEnvironment.sol";
 

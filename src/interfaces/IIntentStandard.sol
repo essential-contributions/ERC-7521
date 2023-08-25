@@ -14,11 +14,12 @@ interface IIntentStandard {
     /**
      * Performs part or all of the execution for an intent.
      * @param intent the intent to execute.
+     * @param dataIndex the data index to execute for.
      * @param timestamp the time at which to evaluate the intent.
      * @param context context data from the previous step in execution (no data means execution is just starting).
      * @return context to remember for further execution (no data means execution has finished).
      */
-    function executeUserIntent(UserIntent calldata intent, uint256 timestamp, bytes memory context)
+    function executeUserIntent(UserIntent calldata intent, uint256 dataIndex, uint256 timestamp, bytes memory context)
         external
         returns (bytes memory);
 

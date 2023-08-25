@@ -17,11 +17,7 @@ import {
     CurveType,
     EvaluationType
 } from "../../src/standards/assetbased/AssetBasedIntentCurve.sol";
-import {
-    AssetBasedIntentData,
-    AssetBasedIntentDataLib,
-    AssetBasedIntentSegment
-} from "../../src/standards/assetbased/AssetBasedIntentData.sol";
+import {AssetBasedIntentSegment} from "../../src/standards/assetbased/AssetBasedIntentSegment.sol";
 import {AssetBasedIntentStandard} from "../../src/standards/assetbased/AssetBasedIntentStandard.sol";
 import {AssetType} from "../../src/standards/assetbased/utils/AssetWrapper.sol";
 import {AbstractAccount} from "../../src/wallet/AbstractAccount.sol";
@@ -32,16 +28,18 @@ abstract contract TestEnvironment is Test {
     using ECDSA for bytes32;
 
     EntryPoint internal _entryPoint;
-    AssetBasedIntentStandard internal _intentStandard;
+    AssetBasedIntentStandard internal _assetBasedIntentStandard;
     AbstractAccount internal _account;
 
     address internal _publicAddress = _getPublicAddress(uint256(keccak256("account_private_key")));
 
     function setUp() public virtual {
         _entryPoint = new EntryPoint();
-        _intentStandard = new AssetBasedIntentStandard(_entryPoint);
-        _entryPoint.registerIntentStandard(_intentStandard);
-        _account = new AbstractAccount(_entryPoint, _intentStandard, _publicAddress);
+        _assetBasedIntentStandard = new AssetBasedIntentStandard(_entryPoint);
+        _account = new AbstractAccount(_entryPoint, _publicAddress);
+
+        //register asset based intent standard to entry point
+        _entryPoint.registerIntentStandard(_assetBasedIntentStandard);
     }
 
     function _curveETH(int256[] memory curveParams, EvaluationType evaluation)
@@ -60,7 +58,7 @@ abstract contract TestEnvironment is Test {
         return curve;
     }
 
-    function _data() internal pure returns (AssetBasedIntentData memory) {
+    function _data() internal pure returns (AssetBasedIntentSegment[] memory) {
         AssetBasedIntentSegment[] memory intentSegments = new AssetBasedIntentSegment[](2);
 
         AssetBasedIntentCurve memory constantETHCurve =
@@ -81,17 +79,18 @@ abstract contract TestEnvironment is Test {
         intentSegments[0].assetReleases = assetReleases;
         intentSegments[1].assetRequirements = assetRequirements;
 
-        return AssetBasedIntentData({intentSegments: intentSegments});
+        return intentSegments;
     }
 
     function _intent() internal view returns (UserIntent memory) {
+        bytes[] memory data;
         UserIntent memory intent = UserIntent({
-            standard: _intentStandard.standardId(),
+            standard: _assetBasedIntentStandard.standardId(),
             sender: address(_account),
             nonce: 123,
             timestamp: block.timestamp,
             verificationGasLimit: 1000000,
-            intentData: "",
+            intentData: data,
             signature: ""
         });
         return AssetBasedIntentBuilder.encodeData(intent, _data());

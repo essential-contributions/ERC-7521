@@ -10,6 +10,7 @@ import {IAccount} from "../interfaces/IAccount.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
+import {DefaultIntentStandard} from "../standards/default/DefaultIntentStandard.sol";
 import {Exec, RevertReason} from "../utils/Exec.sol";
 import {ValidationData, _parseValidationData} from "../utils/Helpers.sol";
 import {ReentrancyGuard} from "openzeppelin/security/ReentrancyGuard.sol";
@@ -17,6 +18,8 @@ import {ReentrancyGuard} from "openzeppelin/security/ReentrancyGuard.sol";
 contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     using UserIntentLib for UserIntent;
     using RevertReason for bytes;
+
+    bytes32 private constant DEFAULT_INTENT_STANDARD_ID = 0;
 
     uint256 private constant REVERT_REASON_MAX_LEN = 2048;
     uint256 private constant CONTEXT_DATA_MAX_LEN = 2048;
@@ -30,11 +33,18 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     address private constant EX_STATE_SOLUTION_EXECUTING =
         address(uint160(uint256(keccak256("EX_STATE_SOLUTION_EXECUTING"))));
 
+    bytes32 private constant EX_STANDARD_NOT_ACTIVE = 0;
+
     //keeps track of registered intent standards
     mapping(bytes32 => IIntentStandard) private _registeredStandards;
 
     //flag for applications to check current context of execution
     address private _executionStateContext;
+    bytes32 private _executionIntentStandardId;
+
+    constructor() {
+        _registeredStandards[DEFAULT_INTENT_STANDARD_ID] = new DefaultIntentStandard(this);
+    }
 
     /**
      * execute a user intents solution.
@@ -44,7 +54,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     function _executeSolution(IntentSolution calldata solution, uint256 timestamp) private {
         IIntentStandard intentStandard = _registeredStandards[solution.intents[0].standard];
         bytes[] memory contextData = new bytes[](solution.intents.length);
-        bool[] memory executionFinished = new bool[](solution.intents.length);
+        uint256[] memory intentDataIndexes = new uint256[](solution.intents.length);
         bool solutionFinished = solution.solutionSegments.length == 0;
         bool intentsFinished = false;
         uint256 passIndex = 0;
@@ -55,37 +65,17 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
                 if (!intentsFinished) {
                     bool stillExecuting = false;
                     for (uint256 i = 0; i < solution.intents.length; i++) {
-                        if (!executionFinished[i]) {
-                            UserIntent calldata intent = solution.intents[i];
-                            _executionStateContext = intent.sender;
-                            bool success = Exec.call(
-                                address(intentStandard),
-                                0,
-                                abi.encodeWithSelector(
-                                    IIntentStandard.executeUserIntent.selector, intent, timestamp, contextData[i]
-                                ),
-                                gasleft()
+                        if (intentDataIndexes[i] < solution.intents[i].intentData.length) {
+                            _executionStateContext = solution.intents[i].sender;
+                            _executionIntentStandardId = solution.intents[i].standard;
+                            contextData[i] = _executeIntent(
+                                intentStandard, solution.intents[i], contextData[i], i, intentDataIndexes[i], timestamp
                             );
-                            if (success) {
-                                if (Exec.getReturnDataSize() > CONTEXT_DATA_MAX_LEN) {
-                                    revert FailedIntent(i, passIndex, "AA60 invalid execution context");
-                                }
-                                contextData[i] = Exec.getReturnDataMax(0x40, CONTEXT_DATA_MAX_LEN);
-                                if (contextData[i].length > 0) {
-                                    stillExecuting = true;
-                                } else {
-                                    executionFinished[i] = true;
-                                }
-                            } else {
-                                bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
-                                if (reason.length > 0) {
-                                    reason = reason.revertReasonWithoutPadding();
-                                    revert FailedIntent(
-                                        i, passIndex, string.concat("AA61 execution failed: ", string(reason))
-                                    );
-                                } else {
-                                    revert FailedIntent(i, passIndex, "AA61 execution failed (or OOG)");
-                                }
+
+                            //setup next segment execution
+                            intentDataIndexes[i] = intentDataIndexes[i] + 1;
+                            if (intentDataIndexes[i] < solution.intents[i].intentData.length) {
+                                stillExecuting = true;
                             }
                         }
                     }
@@ -97,6 +87,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
                     SolutionSegment calldata solSeg = solution.solutionSegments[passIndex];
                     if (solSeg.callDataSteps.length > 0) {
                         _executionStateContext = EX_STATE_SOLUTION_EXECUTING;
+                        _executionIntentStandardId = EX_STANDARD_NOT_ACTIVE;
                         for (uint256 i = 0; i < solSeg.callDataSteps.length; i++) {
                             bytes calldata step = solSeg.callDataSteps[i];
                             bool success = Exec.call(address(intentStandard), 0, step, gasleft());
@@ -119,6 +110,51 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             //Intent no longer executing
             _executionStateContext = EX_STATE_NOT_ACTIVE;
         } //unchecked
+    }
+
+    /**
+     * execute a user intent.
+     * @param intentStandard the intent standard contract the intent belongs to
+     * @param intent the user intent to execute
+     * @param contextData the user intent execution context data
+     * @param intentindex the user intent index in the solution
+     * @param segmentIndex the user intent segment index to execute
+     * @param timestamp the time at which to evaluate the intent
+     */
+    function _executeIntent(
+        IIntentStandard intentStandard,
+        UserIntent calldata intent,
+        bytes memory contextData,
+        uint256 intentindex,
+        uint256 segmentIndex,
+        uint256 timestamp
+    ) private returns (bytes memory) {
+        bool success = Exec.call(
+            address(intentStandard),
+            0,
+            abi.encodeWithSelector(
+                IIntentStandard.executeUserIntent.selector, intent, segmentIndex, timestamp, contextData
+            ),
+            gasleft()
+        );
+        if (success) {
+            if (Exec.getReturnDataSize() > CONTEXT_DATA_MAX_LEN) {
+                revert FailedIntent(intentindex, segmentIndex, "AA60 invalid execution context");
+            }
+            contextData = Exec.getReturnDataMax(0x40, CONTEXT_DATA_MAX_LEN);
+        } else {
+            bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
+            if (reason.length > 0) {
+                revert FailedIntent(
+                    intentindex,
+                    segmentIndex,
+                    string.concat("AA61 execution failed: ", string(reason.revertReasonWithoutPadding()))
+                );
+            } else {
+                revert FailedIntent(intentindex, segmentIndex, "AA61 execution failed (or OOG)");
+            }
+        }
+        return contextData;
     }
 
     /**
@@ -294,6 +330,9 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      * gets the intent standard ID for the given intent standard contract.
      */
     function getIntentStandardId(IIntentStandard intentStandard) external view returns (bytes32) {
+        if (address(intentStandard) == address(_registeredStandards[DEFAULT_INTENT_STANDARD_ID])) {
+            return DEFAULT_INTENT_STANDARD_ID;
+        }
         bytes32 standardId = _generateIntentStandardId(intentStandard);
         require(_registeredStandards[standardId] != IIntentStandard(address(0)), "AA83 unknown standard");
         return standardId;
@@ -307,7 +346,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     }
 
     /**
-     * returns the sender of the currently executing intent (or address(0) is no intent is executing).
+     * returns the sender of the currently executing intent (or address(0) if no intent is executing).
      */
     function executingIntentSender() external view returns (address) {
         if (
@@ -321,10 +360,25 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     }
 
     /**
+     * returns the standard id of the currently executing intent
+     * (or bytes(0) if validation or solution is executing, or if no intent is executing).
+     */
+    function executingIntentStandardId() external view returns (bytes32) {
+        return _executionIntentStandardId;
+    }
+
+    /**
      * returns if intent solution specific actions are currently being executed.
      */
     function solutionExecuting() external view returns (bool) {
         return _executionStateContext == EX_STATE_SOLUTION_EXECUTING;
+    }
+
+    /**
+     * returns the default intent standard id.
+     */
+    function getDefaultIntentStandardId() external pure returns (bytes32) {
+        return DEFAULT_INTENT_STANDARD_ID;
     }
 
     /**
@@ -350,6 +404,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         returns (uint256 validationData)
     {
         _executionStateContext = EX_STATE_VALIDATION_EXECUTING;
+        _executionIntentStandardId = EX_STANDARD_NOT_ACTIVE;
 
         // validate intent standard is recognized
         IIntentStandard standard = _registeredStandards[intent.standard];

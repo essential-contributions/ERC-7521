@@ -2,6 +2,7 @@
 pragma solidity ^0.8.13;
 
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
+import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 
 /**
  * Foundational contract for any contract that expects communication from an entrypoint contract.
@@ -22,11 +23,16 @@ abstract contract EntryPointTruster {
     }
 
     /**
-     * ensure the entrypoint is currently in the intent execution stage for this sender.
+     * ensure
+     * 1. entrypoint is currently executing an intent that was made by this contract.
+     * 2. the caller intent standard is the one that the entrypoint is currently executing for.
      */
-    modifier onlyFromIntentStandardExecutingForSender(address intentStandard) {
-        require(msg.sender == intentStandard, "not from intent standard");
-        require(entryPoint().executingIntentSender() == address(this), "EntryPoint not executing intent");
+    modifier onlyFromIntentStandardExecutingForSender() {
+        require(entryPoint().executingIntentSender() == address(this), "EntryPoint not executing intent for sender");
+        require(
+            entryPoint().executingIntentStandardId() == entryPoint().getIntentStandardId(IIntentStandard(msg.sender)),
+            "EntryPoint not executing intent with standard"
+        );
         _;
     }
 }

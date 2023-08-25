@@ -6,7 +6,7 @@ pragma solidity ^0.8.13;
 import "../utils/ScenarioTestEnvironment.sol";
 
 /*
- * In this scenario, a user wants to buy an ERC1155 NFT but has to own a certain ERC721 NFT which 
+ * In this scenario, a user wants to buy an ERC1155 NFT but has to own a certain ERC721 NFT which
  * neither the solver or user have or want by the end.
  *
  * Solution Part1:
@@ -30,7 +30,7 @@ contract ConditionalPurchaseNFT is ScenarioTestEnvironment {
             _segment("").releaseETH(AssetBasedIntentCurveBuilder.constantCurve(int256(ETHReleaseAmount)))
         );
         intent = intent.addSegment(
-            _segment(_accountBuyERC1155AndTransferERC721(nftPrice, _reqTokenId, address(_intentStandard)))
+            _segment(_accountBuyERC1155AndTransferERC721(nftPrice, _reqTokenId, address(_assetBasedIntentStandard)))
         );
         intent = intent.addSegment(
             _segment("").requireERC721(

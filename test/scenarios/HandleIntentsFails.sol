@@ -21,7 +21,7 @@ contract HandleIntentsTest is ScenarioTestEnvironment {
     function test_failHandleIntents_mismatchedStandards() public {
         // intent with a different standard id
         UserIntent memory intentWithDifferentStandard =
-            AssetBasedIntentBuilder.create(_intentStandard.standardId() << 1, address(_account), 0, 0);
+            AssetBasedIntentBuilder.create(_assetBasedIntentStandard.standardId() << 1, address(_account), 0, 0);
 
         UserIntent[] memory intents = new UserIntent[](2);
         intents[0] = _intent();
@@ -117,7 +117,7 @@ contract ValidateUserIntentTest is ScenarioTestEnvironment {
     function test_fail_invalidNonce() public {
         // use wrong nonce while creating intent
         UserIntent memory intent =
-            AssetBasedIntentBuilder.create(_intentStandard.standardId(), address(_account), 123, 0);
+            AssetBasedIntentBuilder.create(_assetBasedIntentStandard.standardId(), address(_account), 123, 0);
         intent = _signIntent(intent);
 
         IEntryPoint.IntentSolution memory solution =
@@ -153,8 +153,9 @@ contract ValidateAccountValidationDataTest is ScenarioTestEnvironment {
     }
 
     function test_fail_expired() public {
-        UserIntent memory intent =
-            AssetBasedIntentBuilder.create(_intentStandard.standardId(), address(_account), 0, block.timestamp);
+        UserIntent memory intent = AssetBasedIntentBuilder.create(
+            _assetBasedIntentStandard.standardId(), address(_account), 0, block.timestamp
+        );
         intent = _signIntent(intent);
 
         vm.warp(block.timestamp + 1);
@@ -173,10 +174,10 @@ contract ValidateAccountValidationDataTest is ScenarioTestEnvironment {
         uint256 _testPrivateKey = uint256(keccak256("test_account_private_key"));
         address _testPublicAddress = _getPublicAddress(_testPrivateKey);
 
-        TestAbstractAccount _testAccount = new TestAbstractAccount(_entryPoint, _intentStandard, _testPublicAddress);
+        TestAbstractAccount _testAccount = new TestAbstractAccount(_entryPoint, _testPublicAddress);
 
         UserIntent memory intent =
-            AssetBasedIntentBuilder.create(_intentStandard.standardId(), address(_testAccount), 0, 0);
+            AssetBasedIntentBuilder.create(_assetBasedIntentStandard.standardId(), address(_testAccount), 0, 0);
         bytes32 intentHash = _entryPoint.getUserIntentHash(intent);
         bytes32 digest = intentHash.toEthSignedMessageHash();
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(_testPrivateKey, digest);
