@@ -42,7 +42,7 @@ contract AbstractAccount is BaseAccount, TokenCallbackHandler, IIntentDelegate {
      */
     function execute(address target, uint256 value, bytes calldata data)
         external
-        onlyFromIntentStandardExecutingForSender(IIntentStandard(msg.sender))
+        onlyFromIntentStandardExecutingForSender
     {
         _call(target, value, data);
         emit Executed(IEntryPoint(_entryPoint), target, value, data);
@@ -53,7 +53,7 @@ contract AbstractAccount is BaseAccount, TokenCallbackHandler, IIntentDelegate {
      */
     function executeMulti(address[] calldata targets, uint256[] calldata values, bytes[] calldata datas)
         external
-        onlyFromIntentStandardExecutingForSender(IIntentStandard(msg.sender))
+        onlyFromIntentStandardExecutingForSender
     {
         require(targets.length == values.length, "invalid multi call inputs");
         require(targets.length == datas.length, "invalid multi call inputs");
@@ -73,7 +73,7 @@ contract AbstractAccount is BaseAccount, TokenCallbackHandler, IIntentDelegate {
     function generalizedIntentDelegateCall(bytes memory data)
         external
         override
-        onlyFromIntentStandardExecutingForSender(IIntentStandard(msg.sender))
+        onlyFromIntentStandardExecutingForSender
         returns (bool)
     {
         bool success = Exec.delegateCall(address(IIntentStandard(msg.sender)), data, gasleft());
