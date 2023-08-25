@@ -19,7 +19,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     using UserIntentLib for UserIntent;
     using RevertReason for bytes;
 
-    bytes32 private constant DEFAULT_INTENT_STANDARD_ID = ~bytes32(0);
+    bytes32 private constant DEFAULT_INTENT_STANDARD_ID = 0;
 
     uint256 private constant REVERT_REASON_MAX_LEN = 2048;
     uint256 private constant CONTEXT_DATA_MAX_LEN = 2048;
