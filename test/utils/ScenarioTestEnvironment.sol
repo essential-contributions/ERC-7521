@@ -5,16 +5,35 @@ pragma solidity ^0.8.13;
 /* solhint-disable const-name-snakecase */
 
 import "forge-std/Test.sol";
-import "./AssetBasedIntentBuilder.sol";
-import "../../src/core/EntryPoint.sol";
-import "../../src/wallet/AbstractAccount.sol";
-import "../../src/standards/assetbased/AssetBasedIntentStandard.sol";
-import "../../src/test/TestERC20.sol";
-import "../../src/test/TestERC721.sol";
-import "../../src/test/TestERC1155.sol";
-import "../../src/test/TestUniswap.sol";
-import "../../src/test/TestWrappedNativeToken.sol";
-import "../../src/test/SolverUtils.sol";
+import {
+    AssetBasedIntentBuilder,
+    AssetBasedIntentCurveBuilder,
+    AssetBasedIntentSegmentBuilder
+} from "../utils/AssetBasedIntentBuilder.sol";
+import {EntryPoint} from "../../src/core/EntryPoint.sol";
+import {IEntryPoint} from "../../src/interfaces/IEntryPoint.sol";
+import {UserIntent, UserIntentLib} from "../../src/interfaces/UserIntent.sol";
+import {
+    AssetBasedIntentCurve,
+    AssetBasedIntentCurveLib,
+    CurveType,
+    EvaluationType
+} from "../../src/standards/assetbased/AssetBasedIntentCurve.sol";
+import {AssetBasedIntentSegment} from "../../src/standards/assetbased/AssetBasedIntentSegment.sol";
+import {AssetBasedIntentStandard} from "../../src/standards/assetbased/AssetBasedIntentStandard.sol";
+import {AssetHolderProxy} from "../../src/standards/assetbased/AssetHolderProxy.sol";
+import {AssetType, _balanceOf, _transfer} from "../../src/standards/assetbased/utils/AssetWrapper.sol";
+import {TestERC20} from "../../src/test/TestERC20.sol";
+import {TestERC721} from "../../src/test/TestERC721.sol";
+import {TestERC1155} from "../../src/test/TestERC1155.sol";
+import {TestUniswap} from "../../src/test/TestUniswap.sol";
+import {TestWrappedNativeToken} from "../../src/test/TestWrappedNativeToken.sol";
+import {SolverUtils} from "../../src/test/SolverUtils.sol";
+import {ValidationData, _packValidationData, _parseValidationData} from "../../src/utils/Helpers.sol";
+import {AbstractAccount} from "../../src/wallet/AbstractAccount.sol";
+import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
+import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
+import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
 
 abstract contract ScenarioTestEnvironment is Test {
     using UserIntentLib for UserIntent;

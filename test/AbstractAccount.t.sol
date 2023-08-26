@@ -3,8 +3,11 @@ pragma solidity ^0.8.13;
 
 /* solhint-disable func-name-mixedcase */
 
-import "../src/wallet/TokenCallbackHandler.sol";
 import "./utils/ScenarioTestEnvironment.sol";
+import {
+    IERC165, IERC721Receiver, IERC1155Receiver, TokenCallbackHandler
+} from "../src/wallet/TokenCallbackHandler.sol";
+import {IERC1155} from "openzeppelin/token/ERC1155/IERC1155.sol";
 
 contract AbstractAccountTest is ScenarioTestEnvironment, TokenCallbackHandler {
     using AssetBasedIntentBuilder for UserIntent;

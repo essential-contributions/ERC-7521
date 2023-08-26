@@ -2,8 +2,8 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import "./TestWrappedNativeToken.sol";
-import "openzeppelin/token/ERC20/IERC20.sol";
+import {TestWrappedNativeToken} from "./TestWrappedNativeToken.sol";
+import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
 /// @notice Interface code copied and modified from here:
 /// https://github.com/Uniswap/v3-periphery/blob/main/contracts/interfaces/ISwapRouter.sol
@@ -71,5 +71,5 @@ contract TestUniswap is Test {
     // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
 
-    function test_nothing() public {}
+    function testNothing() public {}
 }

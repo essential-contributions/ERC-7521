@@ -21,9 +21,9 @@ contract PurchaseNFT is ScenarioTestEnvironment {
     using AssetBasedIntentBuilder for UserIntent;
     using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
 
-    uint256 accountInitialERC20Balance = 1000 ether;
+    uint256 private _accountInitialERC20Balance = 1000 ether;
 
-    function _intentForCase(uint256 totalAmountToSolver, uint256 nftPrice) internal view returns (UserIntent memory) {
+    function _intentForCase(uint256 totalAmountToSolver, uint256 nftPrice) private view returns (UserIntent memory) {
         UserIntent memory intent = _intent();
         intent = intent.addSegment(
             _segment("").releaseERC20(
@@ -36,7 +36,7 @@ contract PurchaseNFT is ScenarioTestEnvironment {
     }
 
     function _solutionForCase(UserIntent memory intent, uint256 totalAmountToSolver, uint256 nftPrice)
-        internal
+        private
         view
         returns (IEntryPoint.IntentSolution memory)
     {
@@ -50,7 +50,7 @@ contract PurchaseNFT is ScenarioTestEnvironment {
         super.setUp();
 
         //fund account
-        _testERC20.mint(address(_account), accountInitialERC20Balance);
+        _testERC20.mint(address(_account), _accountInitialERC20Balance);
     }
 
     function testFuzz_purchaseNFT(uint64 totalAmountToSolver) public {
@@ -81,7 +81,7 @@ contract PurchaseNFT is ScenarioTestEnvironment {
         assertEq(solverBalance, (totalAmountToSolver - nftPrice) + 5, "The solver ended up with incorrect balance");
         assertEq(
             userERC20Tokens,
-            accountInitialERC20Balance - totalAmountToSolver,
+            _accountInitialERC20Balance - totalAmountToSolver,
             "The user released more ERC20 tokens than expected"
         );
         assertEq(userERC1155Tokens, 1, "The user did not get their NFT");
@@ -89,7 +89,7 @@ contract PurchaseNFT is ScenarioTestEnvironment {
 
     function test_failPurchaseNFT_insufficientReleaseBalance() public {
         uint256 nftPrice = _testERC1155.nftCost();
-        uint256 totalAmountToSolver = accountInitialERC20Balance + 1;
+        uint256 totalAmountToSolver = _accountInitialERC20Balance + 1;
 
         //create account intent
         UserIntent memory intent = _intentForCase(totalAmountToSolver, nftPrice);

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "../core/NonceManager.sol";
+import {NonceManager} from "../core/NonceManager.sol";
 
 contract NonceManagerHarness is NonceManager {
     function validateAndUpdateNonce(address sender, uint256 nonce) public returns (bool) {

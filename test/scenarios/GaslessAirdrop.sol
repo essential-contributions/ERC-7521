@@ -19,7 +19,7 @@ contract GaslessAirdrop is ScenarioTestEnvironment {
     using AssetBasedIntentBuilder for UserIntent;
     using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
 
-    function _intentForCase(uint256 claimAmount, uint256 gasPayment) internal view returns (UserIntent memory) {
+    function _intentForCase(uint256 claimAmount, uint256 gasPayment) private view returns (UserIntent memory) {
         UserIntent memory intent = _intent();
         intent = intent.addSegment(
             _segment(_accountClaimAirdropERC20(claimAmount)).releaseERC20(
@@ -30,7 +30,7 @@ contract GaslessAirdrop is ScenarioTestEnvironment {
     }
 
     function _solutionForCase(UserIntent memory intent, uint256 gasPayment)
-        internal
+        private
         view
         returns (IEntryPoint.IntentSolution memory)
     {

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import "openzeppelin/token/ERC20/ERC20.sol";
+import {ERC20} from "openzeppelin/token/ERC20/ERC20.sol";
 
 contract TestERC20 is ERC20, Test {
     constructor()
@@ -14,5 +14,5 @@ contract TestERC20 is ERC20, Test {
         _mint(to, amount);
     }
 
-    function test_nothing() public {}
+    function testNothing() public {}
 }

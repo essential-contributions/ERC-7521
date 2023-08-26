@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import {_balanceOf, _transfer, _transferFrom, _setApprovalForAll, AssetType} from "./utils/AssetWrapper.sol";
 import {EntryPointTruster} from "../../core/EntryPointTruster.sol";
 import {TokenCallbackHandler} from "../../wallet/TokenCallbackHandler.sol";
-import {IERC165} from "openzeppelin/utils/introspection/IERC165.sol";
 import {IERC721Receiver} from "openzeppelin/token/ERC721/IERC721Receiver.sol";
 import {IERC1155Receiver} from "openzeppelin/token/ERC1155/IERC1155Receiver.sol";
 

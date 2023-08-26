@@ -4,8 +4,7 @@ pragma solidity ^0.8.13;
 /* solhint-disable func-name-mixedcase */
 
 import "../utils/ScenarioTestEnvironment.sol";
-import {_packValidationData} from "../../src/utils/Helpers.sol";
-import "../../src/test/TestAbstractAccount.sol";
+import {TestAbstractAccount} from "../../src/test/TestAbstractAccount.sol";
 
 contract HandleIntentsTest is ScenarioTestEnvironment {
     function test_failHandleIntents_noIntents() public {

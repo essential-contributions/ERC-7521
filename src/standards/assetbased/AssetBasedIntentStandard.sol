@@ -3,16 +3,16 @@ pragma solidity ^0.8.13;
 
 /* solhint-disable private-vars-leading-underscore */
 
-import {IAssetRelease, encodeReleaseAsset} from "./IAssetRelease.sol";
-import {IIntentStandard} from "../../interfaces/IIntentStandard.sol";
+import {AssetBasedIntentCurve, AssetBasedIntentCurveLib} from "./AssetBasedIntentCurve.sol";
+import {AssetBasedIntentSegment, parseAssetBasedIntentSegment} from "./AssetBasedIntentSegment.sol";
+import {AssetHolderProxy} from "./AssetHolderProxy.sol";
+import {encodeReleaseAsset, IAssetRelease} from "./IAssetRelease.sol";
+import {AssetType, _balanceOf, _transfer} from "./utils/AssetWrapper.sol";
 import {IEntryPoint} from "../../interfaces/IEntryPoint.sol";
 import {IIntentDelegate} from "../../interfaces/IIntentDelegate.sol";
+import {IIntentStandard} from "../../interfaces/IIntentStandard.sol";
 import {UserIntent, UserIntentLib} from "../../interfaces/UserIntent.sol";
 import {Exec, RevertReason} from "../../utils/Exec.sol";
-import {AssetType, _balanceOf, _transfer} from "./utils/AssetWrapper.sol";
-import {AssetHolderProxy} from "./AssetHolderProxy.sol";
-import {AssetBasedIntentSegment, parseAssetBasedIntentSegment} from "./AssetBasedIntentSegment.sol";
-import {AssetBasedIntentCurve, EvaluationType, AssetBasedIntentCurveLib} from "./AssetBasedIntentCurve.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
 
 contract AssetBasedIntentStandard is AssetHolderProxy, IAssetRelease, IIntentStandard {
