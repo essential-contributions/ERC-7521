@@ -2,6 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
+import {TokenCallbackHandler} from "../wallet/TokenCallbackHandler.sol";
 import {TestERC721} from "./TestERC721.sol";
 import {ExactInputSingleParams, TestUniswap} from "./TestUniswap.sol";
 import {TestWrappedNativeToken} from "./TestWrappedNativeToken.sol";
@@ -10,7 +11,7 @@ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 /**
  * Library with util actions to streamline intent solving.
  */
-contract SolverUtils is Test {
+contract SolverUtils is Test, TokenCallbackHandler {
     /**
      * Swap all ERC20 tokens for ETH using Uniswap.
      * @param uniswap The address of the Uniswap router contract.
@@ -109,6 +110,11 @@ contract SolverUtils is Test {
         uint256 amount = address(this).balance;
         payable(to).transfer(amount);
     }
+
+    /**
+     * Default receive function.
+     */
+    receive() external payable {}
 
     function testNothing() public {}
 }

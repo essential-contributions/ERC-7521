@@ -7,11 +7,13 @@ import {EntryPointTruster} from "../../core/EntryPointTruster.sol";
 import {IIntentStandard} from "../../interfaces/IIntentStandard.sol";
 import {IEntryPoint} from "../../interfaces/IEntryPoint.sol";
 import {UserIntent, UserIntentLib} from "../../interfaces/UserIntent.sol";
+import {IntentSolution, IntentSolutionLib} from "../../interfaces/IntentSolution.sol";
 import {Exec} from "../../utils/Exec.sol";
 import {DefaultIntentSegment, parseDefaultIntentSegment} from "./DefaultIntentSegment.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
 
 contract DefaultIntentStandard is IIntentStandard, EntryPointTruster {
+    using IntentSolutionLib for IntentSolution;
     using UserIntentLib for UserIntent;
 
     /**
@@ -49,18 +51,19 @@ contract DefaultIntentStandard is IIntentStandard, EntryPointTruster {
 
     /**
      * Performs part or all of the execution for an intent.
-     * @param intent the intent to execute.
-     * @param dataIndex the data index to execute for.
-     * @param timestamp the time at which to evaluate the intent.
-     * @param context context data from the previous step in execution (no data means execution is just starting).
-     * @return context to remember for further execution (no data means execution has finished).
+     * @param solution the full solution being executed.
+     * @param executionIndex the current index of execution (used to get the UserIntent to execute for).
+     * @param segmentIndex the current segment to execute for the intent.
+     * @return context to remember for further execution.
      */
-    function executeUserIntent(UserIntent calldata intent, uint256 dataIndex, uint256 timestamp, bytes memory context)
-        external
-        onlyFromEntryPoint
-        returns (bytes memory)
-    {
-        DefaultIntentSegment calldata dataSegment = parseDefaultIntentSegment(intent, dataIndex);
+    function executeUserIntent(
+        IntentSolution calldata solution,
+        uint256 executionIndex,
+        uint256 segmentIndex,
+        bytes memory
+    ) external onlyFromEntryPoint returns (bytes memory) {
+        UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
+        DefaultIntentSegment calldata dataSegment = parseDefaultIntentSegment(intent, segmentIndex);
 
         //execute calldata
         if (dataSegment.callData.length > 0) {

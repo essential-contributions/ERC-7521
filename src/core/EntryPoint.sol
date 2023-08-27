@@ -9,6 +9,7 @@ import {NonceManager} from "./NonceManager.sol";
 import {IAccount} from "../interfaces/IAccount.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
+import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
 import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
 import {DefaultIntentStandard} from "../standards/default/DefaultIntentStandard.sol";
 import {Exec, RevertReason} from "../utils/Exec.sol";
@@ -16,6 +17,7 @@ import {ValidationData, _parseValidationData} from "../utils/Helpers.sol";
 import {ReentrancyGuard} from "openzeppelin/security/ReentrancyGuard.sol";
 
 contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
+    using IntentSolutionLib for IntentSolution;
     using UserIntentLib for UserIntent;
     using RevertReason for bytes;
 
@@ -24,16 +26,11 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     uint256 private constant REVERT_REASON_MAX_LEN = 2048;
     uint256 private constant CONTEXT_DATA_MAX_LEN = 2048;
 
-    uint256 private constant TIMESTAMP_MAX_OVER = 6;
-    uint256 private constant TIMESTAMP_NULL = 0;
-
     address private constant EX_STATE_NOT_ACTIVE = address(0);
     address private constant EX_STATE_VALIDATION_EXECUTING =
         address(uint160(uint256(keccak256("EX_STATE_VALIDATION_EXECUTING"))));
-    address private constant EX_STATE_SOLUTION_EXECUTING =
-        address(uint160(uint256(keccak256("EX_STATE_SOLUTION_EXECUTING"))));
 
-    bytes32 private constant EX_STANDARD_NOT_ACTIVE = 0;
+    bytes32 private constant EX_STANDARD_NOT_ACTIVE = bytes32(0);
 
     //keeps track of registered intent standards
     mapping(bytes32 => IIntentStandard) private _registeredStandards;
@@ -47,111 +44,89 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     }
 
     /**
-     * execute a user intents solution.
+     * Execute a user intents solution.
      * @param solution the user intent solution to execute
-     * @param timestamp the time at which to evaluate the intents
      */
-    function _executeSolution(IntentSolution calldata solution, uint256 timestamp) private {
-        IIntentStandard intentStandard = _registeredStandards[solution.intents[0].standard];
+    function _executeSolution(IntentSolution calldata solution) private {
         bytes[] memory contextData = new bytes[](solution.intents.length);
         uint256[] memory intentDataIndexes = new uint256[](solution.intents.length);
-        bool solutionFinished = solution.solutionSegments.length == 0;
-        bool intentsFinished = false;
-        uint256 passIndex = 0;
+        uint256 executionIndex = 0;
 
         unchecked {
-            while (!intentsFinished || !solutionFinished) {
-                //Execute intents
-                if (!intentsFinished) {
-                    bool stillExecuting = false;
-                    for (uint256 i = 0; i < solution.intents.length; i++) {
-                        if (intentDataIndexes[i] < solution.intents[i].intentData.length) {
-                            _executionStateContext = solution.intents[i].sender;
-                            _executionIntentStandardId = solution.intents[i].standard;
-                            contextData[i] = _executeIntent(
-                                intentStandard, solution.intents[i], contextData[i], i, intentDataIndexes[i], timestamp
-                            );
-
-                            //setup next segment execution
-                            intentDataIndexes[i] = intentDataIndexes[i] + 1;
-                            if (intentDataIndexes[i] < solution.intents[i].intentData.length) {
-                                stillExecuting = true;
-                            }
-                        }
-                    }
-                    intentsFinished = !stillExecuting;
+            //first loop through the order specified by the solution
+            for (uint256 i = 0; i < solution.order.length; i++) {
+                if (intentDataIndexes[i] < solution.intents[i].intentData.length) {
+                    _executionStateContext = solution.intents[i].sender;
+                    _executionIntentStandardId = solution.intents[i].standard;
+                    contextData[i] = _executeIntent(solution, executionIndex, i, intentDataIndexes[i], contextData[i]);
+                    intentDataIndexes[i] = intentDataIndexes[i] + 1;
+                    executionIndex = executionIndex + 1;
                 }
-
-                //Execute solution
-                if (!solutionFinished) {
-                    SolutionSegment calldata solSeg = solution.solutionSegments[passIndex];
-                    if (solSeg.callDataSteps.length > 0) {
-                        _executionStateContext = EX_STATE_SOLUTION_EXECUTING;
-                        _executionIntentStandardId = EX_STANDARD_NOT_ACTIVE;
-                        for (uint256 i = 0; i < solSeg.callDataSteps.length; i++) {
-                            bytes calldata step = solSeg.callDataSteps[i];
-                            bool success = Exec.call(address(intentStandard), 0, step, gasleft());
-                            if (!success) {
-                                bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
-                                if (reason.length > 0) {
-                                    revert FailedSolution(i, string.concat("AA72 execution failed: ", string(reason)));
-                                } else {
-                                    revert FailedSolution(i, "AA72 execution failed (or OOG)");
-                                }
-                            }
-                        }
-                    }
-                    solutionFinished = (passIndex + 1) >= solution.solutionSegments.length;
-                }
-
-                passIndex++;
             }
 
-            //Intent no longer executing
+            //continue looping until all intents have finished executing
+            while (true) {
+                bool finished = true;
+                for (uint256 i = 0; i < solution.intents.length; i++) {
+                    if (intentDataIndexes[i] < solution.intents[i].intentData.length) {
+                        finished = false;
+                        _executionStateContext = solution.intents[i].sender;
+                        _executionIntentStandardId = solution.intents[i].standard;
+                        contextData[i] =
+                            _executeIntent(solution, executionIndex, i, intentDataIndexes[i], contextData[i]);
+                        intentDataIndexes[i] = intentDataIndexes[i] + 1;
+                        executionIndex = executionIndex + 1;
+                    }
+                }
+                if (finished) break;
+            }
+
+            //Intents no longer executing
             _executionStateContext = EX_STATE_NOT_ACTIVE;
+            _executionIntentStandardId = EX_STANDARD_NOT_ACTIVE;
         } //unchecked
     }
 
     /**
-     * execute a user intent.
-     * @param intentStandard the intent standard contract the intent belongs to
-     * @param intent the user intent to execute
-     * @param contextData the user intent execution context data
-     * @param intentindex the user intent index in the solution
+     * Execute a user intent.
+     * @param solution the full solution context
+     * @param executionIndex the current intent execution index
+     * @param intentIndex the user intent index in the solution
      * @param segmentIndex the user intent segment index to execute
-     * @param timestamp the time at which to evaluate the intent
+     * @param contextData the user intent execution context data
      */
     function _executeIntent(
-        IIntentStandard intentStandard,
-        UserIntent calldata intent,
-        bytes memory contextData,
-        uint256 intentindex,
+        IntentSolution calldata solution,
+        uint256 executionIndex,
+        uint256 intentIndex,
         uint256 segmentIndex,
-        uint256 timestamp
+        bytes memory contextData
     ) private returns (bytes memory) {
+        UserIntent calldata intent = solution.intents[intentIndex];
+        IIntentStandard intentStandard = _registeredStandards[intent.standard];
         bool success = Exec.call(
             address(intentStandard),
             0,
             abi.encodeWithSelector(
-                IIntentStandard.executeUserIntent.selector, intent, segmentIndex, timestamp, contextData
+                IIntentStandard.executeUserIntent.selector, solution, executionIndex, segmentIndex, contextData
             ),
             gasleft()
         );
         if (success) {
             if (Exec.getReturnDataSize() > CONTEXT_DATA_MAX_LEN) {
-                revert FailedIntent(intentindex, segmentIndex, "AA60 invalid execution context");
+                revert FailedIntent(intentIndex, segmentIndex, "AA60 invalid execution context");
             }
             contextData = Exec.getReturnDataMax(0x40, CONTEXT_DATA_MAX_LEN);
         } else {
             bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
             if (reason.length > 0) {
                 revert FailedIntent(
-                    intentindex,
+                    intentIndex,
                     segmentIndex,
                     string.concat("AA61 execution failed: ", string(reason.revertReasonWithoutPadding()))
                 );
             } else {
-                revert FailedIntent(intentindex, segmentIndex, "AA61 execution failed (or OOG)");
+                revert FailedIntent(intentIndex, segmentIndex, "AA61 execution failed (or OOG)");
             }
         }
         return contextData;
@@ -165,19 +140,10 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         // solhint-disable-next-line not-rely-on-time
         uint256 intsLen = solution.intents.length;
         require(intsLen > 0, "AA70 no intents");
-        bytes32 standard = solution.intents[0].standard;
-        for (uint256 i = 1; i < intsLen; i++) {
-            require(solution.intents[1].standard == standard, "AA71 mismatched intent standards");
-        }
 
         // validate timestamp
-        uint256 timestamp = block.timestamp;
-        if (solution.timestamp != TIMESTAMP_NULL) {
-            timestamp = solution.timestamp;
-            if (timestamp > block.timestamp) {
-                require(timestamp - block.timestamp <= TIMESTAMP_MAX_OVER, "AA81 invalid timestamp");
-            }
-        }
+        uint256 timestamp = solution.getTimestamp();
+        require(timestamp > 0, "AA71 invalid timestamp");
 
         unchecked {
             bytes32[] memory intentHashes = new bytes32[](intsLen);
@@ -194,7 +160,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             emit BeforeExecution();
 
             // execute solution
-            _executeSolution(solution, timestamp);
+            _executeSolution(solution);
             for (uint256 i = 0; i < intsLen; i++) {
                 emit UserIntentEvent(intentHashes[i], solution.intents[i].sender, msg.sender, solution.intents[i].nonce);
             }
@@ -219,39 +185,29 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     }
 
     /**
-     * simulate full execution of a UserIntent solution (including both validation and target execution)
-     * this method will always revert with "ExecutionResult".
-     * it performs full validation of the UserIntent solution, but ignores signature error.
+     * Simulate full execution of a UserIntent solution (including both validation and target execution).
+     * This method will always revert with "ExecutionResult".
+     * A timestamp must be set on the solution in order to run.
+     * It performs full validation of the UserIntent solution, but ignores signature error.
      * an optional target address is called after the solution succeeds, and its value is returned
      * (before the entire call is reverted)
      * Note that in order to collect the the success/failure of the target call, it must be executed
      * with trace enabled to track the emitted events.
-     * @param solution the UserIntents solution to simulate.
-     * @param timestamp the timestamp at which to evaluate the intents (acts in place of block.timestamp).
+     * @param solution the UserIntent solution to simulate.
      * @param target if nonzero, a target address to call after user intent simulation. If called,
      *        the targetSuccess and targetResult are set to the return from that call.
      * @param targetCallData callData to pass to target address.
      */
-    function simulateHandleIntents(
-        IntentSolution calldata solution,
-        uint256 timestamp,
-        address target,
-        bytes calldata targetCallData
-    ) external override nonReentrant {
+    function simulateHandleIntents(IntentSolution calldata solution, address target, bytes calldata targetCallData)
+        external
+        override
+        nonReentrant
+    {
         uint256 intsLen = solution.intents.length;
         require(intsLen > 0, "AA70 no intents");
-        bytes32 standard = solution.intents[0].standard;
-        for (uint256 i = 1; i < intsLen; i++) {
-            require(solution.intents[1].standard == standard, "AA71 mismatched intent standards");
-        }
 
         // validate timestamp
-        if (solution.timestamp != TIMESTAMP_NULL) {
-            if (solution.timestamp > timestamp) {
-                require(solution.timestamp - timestamp <= TIMESTAMP_MAX_OVER, "AA81 invalid timestamp");
-            }
-            timestamp = solution.timestamp;
-        }
+        require(solution.timestamp > 0, "AA72 simulation requires timestamp");
 
         unchecked {
             // run validation
@@ -266,7 +222,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
 
             // execute solution
             numberMarker();
-            _executeSolution(solution, timestamp);
+            _executeSolution(solution);
             numberMarker();
 
             // run target call
@@ -311,7 +267,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         require(intentStandard.isIntentStandardForEntryPoint(this), "AA80 invalid standard");
 
         bytes32 standardId = _generateIntentStandardId(intentStandard);
-        require(address(_registeredStandards[standardId]) == address(0), "AA82 already registered");
+        require(address(_registeredStandards[standardId]) == address(0), "AA81 already registered");
 
         _registeredStandards[standardId] = intentStandard;
         return standardId;
@@ -322,7 +278,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      */
     function getIntentStandardContract(bytes32 standardId) external view returns (IIntentStandard) {
         IIntentStandard intentStandard = _registeredStandards[standardId];
-        require(intentStandard != IIntentStandard(address(0)), "AA83 unknown standard");
+        require(intentStandard != IIntentStandard(address(0)), "AA82 unknown standard");
         return intentStandard;
     }
 
@@ -334,7 +290,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             return DEFAULT_INTENT_STANDARD_ID;
         }
         bytes32 standardId = _generateIntentStandardId(intentStandard);
-        require(_registeredStandards[standardId] != IIntentStandard(address(0)), "AA83 unknown standard");
+        require(_registeredStandards[standardId] != IIntentStandard(address(0)), "AA82 unknown standard");
         return standardId;
     }
 
@@ -349,10 +305,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      * returns the sender of the currently executing intent (or address(0) if no intent is executing).
      */
     function executingIntentSender() external view returns (address) {
-        if (
-            _executionStateContext == EX_STATE_VALIDATION_EXECUTING
-                || _executionStateContext == EX_STATE_SOLUTION_EXECUTING
-        ) {
+        if (_executionStateContext == EX_STATE_VALIDATION_EXECUTING) {
             return EX_STATE_NOT_ACTIVE;
         }
 
@@ -365,13 +318,6 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      */
     function executingIntentStandardId() external view returns (bytes32) {
         return _executionIntentStandardId;
-    }
-
-    /**
-     * returns if intent solution specific actions are currently being executed.
-     */
-    function solutionExecuting() external view returns (bool) {
-        return _executionStateContext == EX_STATE_SOLUTION_EXECUTING;
     }
 
     /**
@@ -409,7 +355,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         // validate intent standard is recognized
         IIntentStandard standard = _registeredStandards[intent.standard];
         if (address(standard) == address(0)) {
-            revert FailedIntent(intentIndex, 0, "AA83 unknown standard");
+            revert FailedIntent(intentIndex, 0, "AA82 unknown standard");
         }
 
         // validate the intent itself
@@ -480,23 +426,15 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
                 reason := add(reason, 0x84)
             }
             emit UserIntentRevertReason(solIndex, intIndex, segIndex, string(reason));
-        } else if (selector == FailedSolution.selector) {
-            // revert was due to a FailedSolution error
-            uint256 stepIndex;
-            assembly {
-                stepIndex := mload(add(0x24, reason))
-                reason := add(reason, 0x64)
-            }
-            emit SolutionRevertReason(solIndex, stepIndex, string(reason));
         } else if (_checkErrorCode(selector)) {
             //revert was due to a certain error code
-            emit SolutionRevertReason(solIndex, 0, string(reason));
+            emit UserIntentRevertReason(solIndex, 0, 0, string(reason));
         } else if (reason.length > 0) {
             //revert was due to some unknown with a reason string
-            emit SolutionRevertReason(solIndex, 0, string.concat("AA73 reverted: ", string(reason)));
+            emit UserIntentRevertReason(solIndex, 0, 0, string.concat("AA62 reverted: ", string(reason)));
         } else {
             //revert was due to some unknown
-            emit SolutionRevertReason(solIndex, 0, "AA73 reverted (or OOG)");
+            emit UserIntentRevertReason(solIndex, 0, 0, "AA62 reverted (or OOG)");
         }
     }
 
