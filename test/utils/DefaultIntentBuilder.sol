@@ -40,14 +40,11 @@ library DefaultIntentBuilder {
     /**
      * Add an intent segment to the user intent.
      * @param intent The user intent to modify.
-     * @param segment The intent segment to add.
+     * @param callData The intent segment calldata to add.
      * @return The updated user intent.
      */
-    function addSegment(UserIntent memory intent, DefaultIntentSegment memory segment)
-        public
-        pure
-        returns (UserIntent memory)
-    {
+    function addSegment(UserIntent memory intent, bytes memory callData) public pure returns (UserIntent memory) {
+        DefaultIntentSegment memory segment = DefaultIntentSegment({callData: callData, callGasLimit: 1000000});
         DefaultIntentSegment[] memory currentSegments = decodeData(intent);
 
         //clone previous array and add new element

@@ -24,10 +24,10 @@ contract ConditionalPurchaseNFT is ScenarioTestEnvironment {
     uint256 private _reqTokenId;
     uint256 private _accountInitialETHBalance = 10 ether;
 
-    function _intentForCase(uint256 ETHReleaseAmount, uint256 nftPrice) private view returns (UserIntent memory) {
+    function _intentForCase(uint256 ethReleaseAmount, uint256 nftPrice) private view returns (UserIntent memory) {
         UserIntent memory intent = _intent();
         intent = intent.addSegment(
-            _segment("").releaseETH(AssetBasedIntentCurveBuilder.constantCurve(int256(ETHReleaseAmount)))
+            _segment("").releaseETH(AssetBasedIntentCurveBuilder.constantCurve(int256(ethReleaseAmount)))
         );
         intent = intent.addSegment(
             _segment(_accountBuyERC1155AndTransferERC721(nftPrice, _reqTokenId, address(_assetBasedIntentStandard)))
@@ -40,14 +40,13 @@ contract ConditionalPurchaseNFT is ScenarioTestEnvironment {
         return intent;
     }
 
-    function _solutionForCase(UserIntent memory intent, uint256 nftPrice)
-        private
-        view
-        returns (IEntryPoint.IntentSolution memory)
-    {
-        bytes[] memory steps1 = _solverBuyERC721AndForward(nftPrice, address(_account));
-        bytes[] memory steps2 = _solverSellERC721AndForward(_reqTokenId, address(_publicAddressSolver));
-        return _solution(_singleIntent(intent), steps1, steps2, _noSteps());
+    function _solverIntentForCase(uint256 nftPrice) private view returns (UserIntent memory) {
+        return _solverIntent(
+            _solverBuyERC721AndForward(nftPrice, address(_account)),
+            _solverSellERC721AndForward(_reqTokenId, address(_publicAddressSolver)),
+            "",
+            2
+        );
     }
 
     function setUp() public override {
@@ -62,21 +61,24 @@ contract ConditionalPurchaseNFT is ScenarioTestEnvironment {
 
     // the max value uint64 can hold is just more than 10 ether,
     // that is the account's initial balance
-    function testFuzz_conditionalPurchaseNFT(uint64 ETHReleaseAmount) public {
-        vm.assume(ETHReleaseAmount < _accountInitialETHBalance - _testERC1155.nftCost());
+    function testFuzz_conditionalPurchaseNFT(uint64 ethReleaseAmount) public {
+        vm.assume(ethReleaseAmount < _accountInitialETHBalance - _testERC1155.nftCost());
         uint256 nftPrice = _testERC1155.nftCost();
-        vm.assume(nftPrice < ETHReleaseAmount);
+        vm.assume(nftPrice < ethReleaseAmount);
 
         //create account intent
-        UserIntent memory intent = _intentForCase(ETHReleaseAmount, nftPrice);
+        UserIntent memory intent = _intentForCase(ethReleaseAmount, nftPrice);
         intent = _signIntent(intent);
 
+        //create solver intent
+        UserIntent memory solverIntent = _solverIntentForCase(nftPrice);
+
         //create solution
-        IEntryPoint.IntentSolution memory solution = _solutionForCase(intent, nftPrice);
+        IntentSolution memory solution = _solution(intent, solverIntent);
 
         //simulate execution
         vm.expectRevert(abi.encodeWithSelector(IEntryPoint.ExecutionResult.selector, true, false, ""));
-        _entryPoint.simulateHandleIntents(solution, block.timestamp, address(0), "");
+        _entryPoint.simulateHandleIntents(solution, address(0), "");
 
         //execute
         uint256 gasBefore = gasleft();
@@ -87,10 +89,10 @@ contract ConditionalPurchaseNFT is ScenarioTestEnvironment {
         uint256 solverBalance = address(_publicAddressSolver).balance;
         uint256 userBalance = address(_account).balance;
         uint256 userERC1155Tokens = _testERC1155.balanceOf(address(_account), _testERC1155.lastBoughtNFT());
-        assertEq(solverBalance, ETHReleaseAmount, "The solver ended up with incorrect balance");
+        assertEq(solverBalance, ethReleaseAmount, "The solver ended up with incorrect balance");
         assertEq(
             userBalance,
-            _accountInitialETHBalance - (ETHReleaseAmount + nftPrice),
+            _accountInitialETHBalance - (ethReleaseAmount + nftPrice),
             "The user released more native tokens than expected"
         );
         assertEq(userERC1155Tokens, 1, "The user did not get their NFT");
@@ -98,14 +100,17 @@ contract ConditionalPurchaseNFT is ScenarioTestEnvironment {
 
     function test_failConditionalPurchaseNFT_insufficientReleaseBalance() public {
         uint256 nftPrice = _testERC1155.nftCost();
-        uint256 ETHReleaseAmount = _accountInitialETHBalance + 1;
+        uint256 ethReleaseAmount = _accountInitialETHBalance + 1;
 
         //create account intent
-        UserIntent memory intent = _intentForCase(ETHReleaseAmount, nftPrice);
+        UserIntent memory intent = _intentForCase(ethReleaseAmount, nftPrice);
         intent = _signIntent(intent);
 
+        //create solver intent
+        UserIntent memory solverIntent = _solverIntentForCase(nftPrice);
+
         //create solution
-        IEntryPoint.IntentSolution memory solution = _solutionForCase(intent, nftPrice);
+        IntentSolution memory solution = _solution(intent, solverIntent);
 
         //execute
         vm.expectRevert(
@@ -121,18 +126,21 @@ contract ConditionalPurchaseNFT is ScenarioTestEnvironment {
 
     function test_failConditionalPurchaseNFT_outOfFund() public {
         uint256 nftPrice = _testERC1155.nftCost();
-        uint256 ETHReleaseAmount = 2 ether;
+        uint256 ethReleaseAmount = 2 ether;
 
         //create account intent
-        UserIntent memory intent = _intentForCase(ETHReleaseAmount, nftPrice);
+        UserIntent memory intent = _intentForCase(ethReleaseAmount, nftPrice);
         intent = _signIntent(intent);
 
-        //create solution
+        //create solver intent
         //attempt to buy nft with insufficient funds
-        IEntryPoint.IntentSolution memory solution = _solutionForCase(intent, _accountInitialETHBalance + 1);
+        UserIntent memory solverIntent = _solverIntentForCase(_accountInitialETHBalance + 1);
+
+        //create solution
+        IntentSolution memory solution = _solution(intent, solverIntent);
 
         bytes memory encoded =
-            abi.encodeWithSelector(IEntryPoint.FailedSolution.selector, 0, "AA72 execution failed (or OOG)");
+            abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA61 execution failed (or OOG)");
 
         //execute
         vm.expectRevert(encoded);
@@ -141,10 +149,10 @@ contract ConditionalPurchaseNFT is ScenarioTestEnvironment {
 
     function test_failConditionalPurchaseNFT_wrongSignature() public {
         uint256 nftPrice = _testERC1155.nftCost();
-        uint256 ETHReleaseAmount = 2 ether;
+        uint256 ethReleaseAmount = 2 ether;
 
         //create account intent
-        UserIntent memory intent = _intentForCase(ETHReleaseAmount, nftPrice);
+        UserIntent memory intent = _intentForCase(ethReleaseAmount, nftPrice);
         //sign with wrong key
         intent = _signIntentWithWrongKey(intent);
 

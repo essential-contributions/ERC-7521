@@ -9,10 +9,12 @@ import {
     AssetBasedIntentBuilder,
     AssetBasedIntentCurveBuilder,
     AssetBasedIntentSegmentBuilder
-} from "../utils/AssetBasedIntentBuilder.sol";
+} from "./AssetBasedIntentBuilder.sol";
+import {DefaultIntentBuilder} from "./DefaultIntentBuilder.sol";
 import {EntryPoint} from "../../src/core/EntryPoint.sol";
 import {IEntryPoint} from "../../src/interfaces/IEntryPoint.sol";
 import {UserIntent, UserIntentLib} from "../../src/interfaces/UserIntent.sol";
+import {IntentSolution} from "../../src/interfaces/IntentSolution.sol";
 import {
     AssetBasedIntentCurve,
     AssetBasedIntentCurveLib,
@@ -21,7 +23,6 @@ import {
 } from "../../src/standards/assetbased/AssetBasedIntentCurve.sol";
 import {AssetBasedIntentSegment} from "../../src/standards/assetbased/AssetBasedIntentSegment.sol";
 import {AssetBasedIntentStandard} from "../../src/standards/assetbased/AssetBasedIntentStandard.sol";
-import {AssetHolderProxy} from "../../src/standards/assetbased/AssetHolderProxy.sol";
 import {AssetType, _balanceOf, _transfer} from "../../src/standards/assetbased/utils/AssetWrapper.sol";
 import {TestERC20} from "../../src/test/TestERC20.sol";
 import {TestERC721} from "../../src/test/TestERC721.sol";
@@ -153,43 +154,19 @@ abstract contract ScenarioTestEnvironment is Test {
     }
 
     /**
-     * Private helper function to build solver solution steps approving token transfer for swaps.
-     * @param to The address to operator being approved.
-     * @return The array of solution steps for token approvals.
-     */
-    function _solverApproveERC20(address to) internal view returns (bytes[] memory) {
-        bytes[] memory steps = new bytes[](1);
-
-        //set token approvals for "uniswap"
-        bytes memory approveCall = abi.encodeWithSelector(IERC20.approve.selector, to, type(uint256).max);
-        steps[0] = _solutionCall(address(_testERC20), 0, approveCall);
-
-        return steps;
-    }
-
-    /**
-     * Private helper function to build solver solution steps for swapping tokens.
+     * Private helper function to build call data for the solver to swap tokens.
      * @param minETH The minimum amount of ETH to be received after the swap.
      * @param to The address to receive the swapped ETH.
      * @return The array of solution steps for swapping tokens.
      */
-    function _solverSwapAllERC20ForETH(uint256 minETH, address to) internal view returns (bytes[] memory) {
-        bytes[] memory steps = new bytes[](2);
-
-        //set token approvals for "uniswap"
-        steps[0] = _solverApproveERC20(address(_testUniswap))[0];
-
-        //swap to eth and forward part of it using the solver util library
-        bytes memory swapCall = abi.encodeWithSelector(
+    function _solverSwapAllERC20ForETH(uint256 minETH, address to) internal view returns (bytes memory) {
+        return abi.encodeWithSelector(
             SolverUtils.swapAllERC20ForETH.selector, _testUniswap, _testERC20, _testWrappedNativeToken, minETH, to
         );
-        steps[1] = _solutionDelegateCall(swapCall);
-
-        return steps;
     }
 
     /**
-     * Private helper function to build solver solution steps for swapping tokens and forwarding some ETH.
+     * Private helper function to build call data for the solver to swap tokens and forward some ETH.
      * @param minETH The minimum amount of ETH to be received after the swap.
      * @param to The address to receive the swapped ETH.
      * @param forwardAmount The amount of ETH to forward to another address.
@@ -199,15 +176,9 @@ abstract contract ScenarioTestEnvironment is Test {
     function _solverSwapAllERC20ForETHAndForward(uint256 minETH, address to, uint256 forwardAmount, address forwardTo)
         internal
         view
-        returns (bytes[] memory)
+        returns (bytes memory)
     {
-        bytes[] memory steps = new bytes[](2);
-
-        //set token approvals for "uniswap"
-        steps[0] = _solverApproveERC20(address(_testUniswap))[0];
-
-        //swap to eth and forward part of it using the solver util library
-        bytes memory swapAndForwardCall = abi.encodeWithSelector(
+        return abi.encodeWithSelector(
             SolverUtils.swapAllERC20ForETHAndForward.selector,
             _testUniswap,
             _testERC20,
@@ -217,66 +188,88 @@ abstract contract ScenarioTestEnvironment is Test {
             forwardAmount,
             forwardTo
         );
-        steps[1] = _solutionDelegateCall(swapAndForwardCall);
-
-        return steps;
     }
 
     /**
-     * Private helper function to build solver solution steps for buying and forwarding an ERC721 token.
+     * Private helper function to build call data for the solver to buying and forwarding an ERC721 token.
      * @param price The price of the ERC721 token to buy.
      * @param to The address to forward the purchased ERC721 token to.
      * @return The array of solution steps for buying and forwarding an ERC721 token.
      */
-    function _solverBuyERC721AndForward(uint256 price, address to) internal view returns (bytes[] memory) {
-        bytes[] memory steps = new bytes[](1);
-
-        //buy the ERC721 token and forward
-        bytes memory buyAndForwardCall = abi.encodeWithSelector(SolverUtils.buyERC721.selector, _testERC721, price, to);
-        steps[0] = _solutionDelegateCall(buyAndForwardCall);
-
-        return steps;
+    function _solverBuyERC721AndForward(uint256 price, address to) internal view returns (bytes memory) {
+        return abi.encodeWithSelector(SolverUtils.buyERC721.selector, _testERC721, price, to);
     }
 
     /**
-     * Private helper function to build solver solution steps for selling an ERC721 token and forwarding ETH.
+     * Private helper function to build call data for the solver to swap tokens and forward some ETH.
+     * @param minETH The minimum amount of ETH to be received after the swap.
+     * @param nftPrice The price required to buy the NFT.
+     * @param forwardETHAmount The amount of ETH to forward to another address.
+     * @param forwardTo The address to forward the ETH to.
+     * @return The array of solution steps for swapping tokens and forwarding ETH.
+     */
+    function _solverSwapAllERC20ForETHBuyNFTAndForward(
+        uint256 minETH,
+        uint256 nftPrice,
+        uint256 forwardETHAmount,
+        address forwardTo
+    ) internal view returns (bytes memory) {
+        return abi.encodeWithSelector(
+            SolverUtils.swapAllERC20ForETHBuyNFTAndForward.selector,
+            _testUniswap,
+            _testERC721,
+            _testERC20,
+            _testWrappedNativeToken,
+            minETH,
+            nftPrice,
+            forwardETHAmount,
+            forwardTo
+        );
+    }
+
+    /**
+     * Private helper function to build call data for the solver to selling an ERC721 token and forwarding ETH.
      * @param tokenId The ID of the ERC721 token to sell.
      * @param to The address to forward the received ETH to.
      * @return The array of solution steps for selling an ERC721 token and forwarding ETH.
      */
-    function _solverSellERC721AndForward(uint256 tokenId, address to) internal view returns (bytes[] memory) {
-        bytes[] memory steps = new bytes[](2);
-
-        //sell the ERC721 token
-        bytes memory sellCall =
-            abi.encodeWithSelector(TestERC721.sellNFT.selector, address(_assetBasedIntentStandard), tokenId);
-        steps[0] = _solutionCall(address(_testERC721), 0, sellCall);
-
-        //move all remaining ETH
-        bytes memory transferAllCall = abi.encodeWithSelector(SolverUtils.transferAllETH.selector, to);
-        steps[1] = _solutionDelegateCall(transferAllCall);
-
-        return steps;
+    function _solverSellERC721AndForward(uint256 tokenId, address to) internal view returns (bytes memory) {
+        return abi.encodeWithSelector(SolverUtils.sellERC721AndForwardAll.selector, _testERC721, tokenId, to);
     }
 
     /**
-     * Private helper function to wrap a call as an execute call for the intent standard contract to execute.
-     * @param target The address of the contract to execute the transaction on.
-     * @param value The amount of ether (in wei) to attach to the transaction.
-     * @param data The data containing the function selector and parameters to be executed on the target contract.
-     * @return The solution step that appropriately wraps for the asset based intent standard.
+     * Private helper function to build a default intent struct for the solver.
+     * @param callData1 Optoinal calldata for segment1.
+     * @param callData2 Optoinal calldata for segment2.
+     * @param callData3 Optoinal calldata for segment3.
+     * @param numSegments The number of segments for the intent.
+     * @return The created UserIntent struct.
      */
-    function _solutionCall(address target, uint256 value, bytes memory data) internal pure returns (bytes memory) {
-        return abi.encodeWithSelector(AssetHolderProxy.execute.selector, target, value, data);
+    function _solverIntent(bytes memory callData1, bytes memory callData2, bytes memory callData3, uint256 numSegments)
+        internal
+        view
+        returns (UserIntent memory)
+    {
+        UserIntent memory intent =
+            DefaultIntentBuilder.create(_entryPoint.getDefaultIntentStandardId(), address(_solverUtils), 0, 0);
+        if (numSegments > 0) intent = DefaultIntentBuilder.addSegment(intent, callData1);
+        if (numSegments > 1) intent = DefaultIntentBuilder.addSegment(intent, callData2);
+        if (numSegments > 2) intent = DefaultIntentBuilder.addSegment(intent, callData3);
+        for (uint256 i = 3; i < numSegments; i++) {
+            intent = DefaultIntentBuilder.addSegment(intent, "");
+        }
+
+        return intent;
     }
 
     /**
-     * Private helper function to wrap a call as a delegate call through the solver utils contract.
-     * @param data The data containing the function selector and parameters to be executed on the target contract.
-     * @return The solution step that appropriately wraps for the asset based intent standard.
+     * Private helper function to build an empty intent struct for the solver.
+     * @return The created UserIntent struct.
      */
-    function _solutionDelegateCall(bytes memory data) internal view returns (bytes memory) {
-        return abi.encodeWithSelector(AssetHolderProxy.delegate.selector, address(_solverUtils), data);
+    function _emptyIntent() internal view returns (UserIntent memory) {
+        UserIntent memory intent =
+            DefaultIntentBuilder.create(_entryPoint.getDefaultIntentStandardId(), address(_account), 0, 0);
+        return intent;
     }
 
     /**
@@ -298,40 +291,53 @@ abstract contract ScenarioTestEnvironment is Test {
 
     /**
      * Private helper function to build an intent solution struct.
-     * @param intents The array of UserIntent structs representing the user's intents.
-     * @param steps1 The array of solution steps for a first segment.
-     * @param steps2 The array of solution steps for a second segment.
-     * @param steps3 The array of solution steps for a third segment.
+     * @param intent1 First intent that's part of the solution.
+     * @param intent2 Second intent that's part of the solution.
      * @return The created IntentSolution struct.
      */
-    function _solution(UserIntent[] memory intents, bytes[] memory steps1, bytes[] memory steps2, bytes[] memory steps3)
+    function _solution(UserIntent memory intent1, UserIntent memory intent2)
         internal
-        pure
-        returns (IEntryPoint.IntentSolution memory)
+        view
+        returns (IntentSolution memory)
     {
-        uint256 numSegments = 0;
-        if (steps1.length > 0) numSegments++;
-        if (steps2.length > 0) numSegments++;
-        if (steps3.length > 0) numSegments++;
-
-        uint256 segmentsIndex = 0;
-        IEntryPoint.SolutionSegment[] memory solutionSegments = new IEntryPoint.SolutionSegment[](numSegments);
-        if (steps1.length > 0) {
-            solutionSegments[segmentsIndex] = IEntryPoint.SolutionSegment({callDataSteps: steps1});
-            segmentsIndex++;
-        }
-        if (steps2.length > 0) {
-            solutionSegments[segmentsIndex] = IEntryPoint.SolutionSegment({callDataSteps: steps2});
-            segmentsIndex++;
-        }
-        if (steps3.length > 0) {
-            solutionSegments[segmentsIndex] = IEntryPoint.SolutionSegment({callDataSteps: steps3});
-            segmentsIndex++;
-        }
-
-        return IEntryPoint.IntentSolution({timestamp: 0, intents: intents, solutionSegments: solutionSegments});
+        UserIntent[] memory intents = new UserIntent[](2);
+        intents[0] = intent1;
+        intents[1] = intent2;
+        uint256[] memory order = new uint256[](0);
+        return IntentSolution({timestamp: block.timestamp, intents: intents, order: order});
     }
 
+    /**
+     * Private helper function to build an intent solution struct.
+     * @return The created IntentSolution struct.
+     */
+    function _emptySolution() internal view returns (IntentSolution memory) {
+        UserIntent[] memory intents = new UserIntent[](0);
+        uint256[] memory order = new uint256[](0);
+        return IntentSolution({timestamp: block.timestamp, intents: intents, order: order});
+    }
+
+    /**
+     * Private helper function to build an intent solution struct.
+     * @param intent Intent to include in the solution.
+     * @return The created IntentSolution struct.
+     */
+    function _singleIntentSolution(UserIntent memory intent)
+        internal
+        view
+        returns (IntentSolution memory)
+    {
+        UserIntent[] memory intents = new UserIntent[](1);
+        intents[0] = intent;
+        uint256[] memory order = new uint256[](0);
+        return IntentSolution({timestamp: block.timestamp, intents: intents, order: order});
+    }
+
+    /**
+     * Private helper function to turn a single intent struct into an array.
+     * @param intent The intent to turn into an array.
+     * @return The created intent array.
+     */
     function _singleIntent(UserIntent memory intent) internal pure returns (UserIntent[] memory) {
         UserIntent[] memory intents = new UserIntent[](1);
         intents[0] = intent;
@@ -360,23 +366,6 @@ abstract contract ScenarioTestEnvironment is Test {
     }
 
     /**
-     * Private helper function to combine solution steps.
-     * @param a The array of solution steps for the first action.
-     * @param b The array of solution steps for the second action.
-     * @return The combined array of solution steps.
-     */
-    function _combineSolutionSteps(bytes[] memory a, bytes[] memory b) internal pure returns (bytes[] memory) {
-        bytes[] memory steps = new bytes[](a.length + b.length);
-        for (uint256 i = 0; i < a.length; i++) {
-            steps[i] = a[i];
-        }
-        for (uint256 i = 0; i < b.length; i++) {
-            steps[a.length + i] = b[i];
-        }
-        return steps;
-    }
-
-    /**
      * Private helper function to get the public address of a private key.
      * @param privateKey The private key to derive the public address from.
      * @return The derived public address.
@@ -385,15 +374,6 @@ abstract contract ScenarioTestEnvironment is Test {
         bytes32 digest = keccak256(abi.encodePacked("test data"));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
         return ecrecover(digest, v, r, s);
-    }
-
-    /**
-     * Private helper function to quick get an empty array of steps.
-     * @return An empty array of steps
-     */
-    function _noSteps() internal pure returns (bytes[] memory) {
-        bytes[] memory steps;
-        return steps;
     }
 
     function test_nothing() public {}

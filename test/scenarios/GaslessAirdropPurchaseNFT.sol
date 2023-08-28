@@ -38,15 +38,19 @@ contract GaslessAirdropPurchaseNFT is ScenarioTestEnvironment {
         return intent;
     }
 
-    function _solutionForCase(UserIntent memory intent, uint256 totalAmountToSolver, uint256 nftPrice)
+    function _solverIntentForCase(uint256 totalAmountToSolver, uint256 nftPrice)
         private
         view
-        returns (IEntryPoint.IntentSolution memory)
+        returns (UserIntent memory)
     {
-        bytes[] memory steps1 = _solverSwapAllERC20ForETHAndForward(
-            totalAmountToSolver, address(_publicAddressSolver), nftPrice, address(_account)
+        return _solverIntent(
+            _solverSwapAllERC20ForETHAndForward(
+                totalAmountToSolver, address(_publicAddressSolver), nftPrice, address(_account)
+            ),
+            "",
+            "",
+            1
         );
-        return _solution(_singleIntent(intent), steps1, _noSteps(), _noSteps());
     }
 
     function setUp() public override {
@@ -65,12 +69,15 @@ contract GaslessAirdropPurchaseNFT is ScenarioTestEnvironment {
         UserIntent memory intent = _intentForCase(claimAmount, totalAmountToSolver, nftPrice);
         intent = _signIntent(intent);
 
+        //create solver intent
+        UserIntent memory solverIntent = _solverIntentForCase(totalAmountToSolver, nftPrice);
+
         //create solution
-        IEntryPoint.IntentSolution memory solution = _solutionForCase(intent, totalAmountToSolver, nftPrice);
+        IntentSolution memory solution = _solution(intent, solverIntent);
 
         //simulate execution
         vm.expectRevert(abi.encodeWithSelector(IEntryPoint.ExecutionResult.selector, true, false, ""));
-        _entryPoint.simulateHandleIntents(solution, block.timestamp, address(0), "");
+        _entryPoint.simulateHandleIntents(solution, address(0), "");
 
         //execute
         uint256 gasBefore = gasleft();
@@ -98,8 +105,11 @@ contract GaslessAirdropPurchaseNFT is ScenarioTestEnvironment {
         UserIntent memory intent = _intentForCase(claimAmount, totalAmountToSolver, nftPrice);
         intent = _signIntent(intent);
 
+        //create solver intent
+        UserIntent memory solverIntent = _solverIntentForCase(totalAmountToSolver, nftPrice);
+
         //create solution
-        IEntryPoint.IntentSolution memory solution = _solutionForCase(intent, totalAmountToSolver, nftPrice);
+        IntentSolution memory solution = _solution(intent, solverIntent);
 
         //execute
         vm.expectRevert(
@@ -119,12 +129,15 @@ contract GaslessAirdropPurchaseNFT is ScenarioTestEnvironment {
         UserIntent memory intent = _intentForCase(claimAmount, totalAmountToSolver, nftPrice);
         intent = _signIntent(intent);
 
+        //create solver intent
+        UserIntent memory solverIntent = _solverIntentForCase(totalAmountToSolver, nftPrice);
+
         //create solution
-        IEntryPoint.IntentSolution memory solution = _solutionForCase(intent, totalAmountToSolver, nftPrice);
+        IntentSolution memory solution = _solution(intent, solverIntent);
 
         //execute
         vm.expectRevert(
-            abi.encodeWithSelector(IEntryPoint.FailedSolution.selector, 1, "AA72 execution failed (or OOG)")
+            abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 1, 0, "AA72 execution failed (or OOG)")
         );
         _entryPoint.handleIntents(solution);
     }

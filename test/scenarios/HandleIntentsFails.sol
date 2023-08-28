@@ -8,37 +8,17 @@ import {TestAbstractAccount} from "../../src/test/TestAbstractAccount.sol";
 
 contract HandleIntentsTest is ScenarioTestEnvironment {
     function test_failHandleIntents_noIntents() public {
-        UserIntent[] memory noIntents = new UserIntent[](0);
-        IEntryPoint.IntentSolution memory solution = _solution(noIntents, _noSteps(), _noSteps(), _noSteps());
+        IntentSolution memory solution = _emptySolution();
 
         vm.expectRevert("AA70 no intents");
         _entryPoint.handleIntents(solution);
 
         vm.expectRevert("AA70 no intents");
-        _entryPoint.simulateHandleIntents(solution, block.timestamp, address(0), "");
-    }
-
-    function test_failHandleIntents_mismatchedStandards() public {
-        // intent with a different standard id
-        UserIntent memory intentWithDifferentStandard =
-            AssetBasedIntentBuilder.create(_assetBasedIntentStandard.standardId() << 1, address(_account), 0, 0);
-
-        UserIntent[] memory intents = new UserIntent[](2);
-        intents[0] = _intent();
-        intents[1] = intentWithDifferentStandard;
-
-        IEntryPoint.IntentSolution memory solution = _solution(intents, _noSteps(), _noSteps(), _noSteps());
-
-        vm.expectRevert("AA71 mismatched intent standards");
-        _entryPoint.handleIntents(solution);
-
-        vm.expectRevert("AA71 mismatched intent standards");
-        _entryPoint.simulateHandleIntents(solution, block.timestamp, address(0), "");
+        _entryPoint.simulateHandleIntents(solution, address(0), "");
     }
 
     function test_failHandleIntents_invalidTimestamp() public {
-        IEntryPoint.IntentSolution memory solution =
-            _solution(_singleIntent(_intent()), _noSteps(), _noSteps(), _noSteps());
+        IntentSolution memory solution = _solution(_emptyIntent(), _emptyIntent());
         // TIMESTAMP_MAX_OVER of EntryPoint.sol is 6
         solution.timestamp = block.timestamp + 7;
 
@@ -46,7 +26,7 @@ contract HandleIntentsTest is ScenarioTestEnvironment {
         _entryPoint.handleIntents(solution);
 
         vm.expectRevert("AA81 invalid timestamp");
-        _entryPoint.simulateHandleIntents(solution, block.timestamp, address(0), "");
+        _entryPoint.simulateHandleIntents(solution, address(0), "");
     }
 }
 
@@ -55,8 +35,7 @@ contract ValidateUserIntentTest is ScenarioTestEnvironment {
     using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
 
     function test_fail_unknownStandard() public {
-        IEntryPoint.IntentSolution memory solution =
-            _solution(_singleIntent(_intent()), _noSteps(), _noSteps(), _noSteps());
+        IntentSolution memory solution = _solution(_emptyIntent(), _emptyIntent());
 
         EntryPoint newEntryPoint = new EntryPoint();
 
@@ -66,7 +45,7 @@ contract ValidateUserIntentTest is ScenarioTestEnvironment {
 
         // call simulateHandleIntents from a different entry point
         vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA83 unknown standard"));
-        newEntryPoint.simulateHandleIntents(solution, block.timestamp, address(0), "");
+        newEntryPoint.simulateHandleIntents(solution, address(0), "");
     }
 
     function test_fail_validateWithStandard() public {
@@ -77,8 +56,7 @@ contract ValidateUserIntentTest is ScenarioTestEnvironment {
         intent = intent.addSegment(segment);
         intent = _signIntent(intent);
 
-        IEntryPoint.IntentSolution memory solution =
-            _solution(_singleIntent(intent), _noSteps(), _noSteps(), _noSteps());
+        IntentSolution memory solution = _solution(intent, _emptyIntent());
 
         vm.expectRevert(
             abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA62 reverted: invalid curve params")
@@ -88,7 +66,7 @@ contract ValidateUserIntentTest is ScenarioTestEnvironment {
         vm.expectRevert(
             abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA62 reverted: invalid curve params")
         );
-        _entryPoint.simulateHandleIntents(solution, block.timestamp, address(0), "");
+        _entryPoint.simulateHandleIntents(solution, address(0), "");
     }
 
     function test_fail_validateWithAccount() public {
@@ -96,8 +74,7 @@ contract ValidateUserIntentTest is ScenarioTestEnvironment {
 
         // do not sign intent
 
-        IEntryPoint.IntentSolution memory solution =
-            _solution(_singleIntent(intent), _noSteps(), _noSteps(), _noSteps());
+        IntentSolution memory solution = _solution(intent, _emptyIntent());
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -111,7 +88,7 @@ contract ValidateUserIntentTest is ScenarioTestEnvironment {
                 IEntryPoint.FailedIntent.selector, 0, 0, "AA23 reverted: ECDSA: invalid signature length"
             )
         );
-        _entryPoint.simulateHandleIntents(solution, block.timestamp, address(0), "");
+        _entryPoint.simulateHandleIntents(solution, address(0), "");
     }
 
     function test_fail_invalidNonce() public {
@@ -120,14 +97,13 @@ contract ValidateUserIntentTest is ScenarioTestEnvironment {
             AssetBasedIntentBuilder.create(_assetBasedIntentStandard.standardId(), address(_account), 123, 0);
         intent = _signIntent(intent);
 
-        IEntryPoint.IntentSolution memory solution =
-            _solution(_singleIntent(intent), _noSteps(), _noSteps(), _noSteps());
+        IntentSolution memory solution = _solution(intent, _emptyIntent());
 
         vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA25 invalid account nonce"));
         _entryPoint.handleIntents(solution);
 
         vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA25 invalid account nonce"));
-        _entryPoint.simulateHandleIntents(solution, block.timestamp, address(0), "");
+        _entryPoint.simulateHandleIntents(solution, address(0), "");
     }
 }
 
@@ -142,14 +118,13 @@ contract ValidateAccountValidationDataTest is ScenarioTestEnvironment {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(12345, digest);
         intent.signature = abi.encodePacked(r, s, v);
 
-        IEntryPoint.IntentSolution memory solution =
-            _solution(_singleIntent(intent), _noSteps(), _noSteps(), _noSteps());
+        IntentSolution memory solution = _solution(intent, _emptyIntent());
 
         vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA24 signature error"));
         _entryPoint.handleIntents(solution);
 
         vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA24 signature error"));
-        _entryPoint.simulateHandleIntents(solution, block.timestamp, address(0), "");
+        _entryPoint.simulateHandleIntents(solution, address(0), "");
     }
 
     function test_fail_expired() public {
@@ -160,14 +135,13 @@ contract ValidateAccountValidationDataTest is ScenarioTestEnvironment {
 
         vm.warp(block.timestamp + 1);
 
-        IEntryPoint.IntentSolution memory solution =
-            _solution(_singleIntent(intent), _noSteps(), _noSteps(), _noSteps());
+        IntentSolution memory solution = _solution(intent, _emptyIntent());
 
         vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA22 expired or not due"));
         _entryPoint.handleIntents(solution);
 
         vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA22 expired or not due"));
-        _entryPoint.simulateHandleIntents(solution, block.timestamp, address(0), "");
+        _entryPoint.simulateHandleIntents(solution, address(0), "");
     }
 
     function test_fail_notDue() public {
@@ -183,14 +157,13 @@ contract ValidateAccountValidationDataTest is ScenarioTestEnvironment {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(_testPrivateKey, digest);
         intent.signature = abi.encodePacked(r, s, v);
 
-        IEntryPoint.IntentSolution memory solution =
-            _solution(_singleIntent(intent), _noSteps(), _noSteps(), _noSteps());
+        IntentSolution memory solution = _solution(intent, _emptyIntent());
 
         vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA22 expired or not due"));
         _entryPoint.handleIntents(solution);
 
         vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA22 expired or not due"));
-        _entryPoint.simulateHandleIntents(solution, block.timestamp, address(0), "");
+        _entryPoint.simulateHandleIntents(solution, address(0), "");
     }
 }
 
