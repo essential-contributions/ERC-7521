@@ -75,8 +75,8 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
                         contextData[i] =
                             _executeIntent(solution, executionIndex, i, intentDataIndexes[i], contextData[i]);
                         intentDataIndexes[i] = intentDataIndexes[i] + 1;
-                        executionIndex = executionIndex + 1;
                     }
+                    executionIndex = executionIndex + 1;
                 }
                 if (finished) break;
             }

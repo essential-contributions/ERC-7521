@@ -140,7 +140,7 @@ contract ConditionalPurchaseNFT is ScenarioTestEnvironment {
         IntentSolution memory solution = _solution(intent, solverIntent);
 
         bytes memory encoded =
-            abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA61 execution failed (or OOG)");
+            abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 1, 0, "AA61 execution failed (or OOG)");
 
         //execute
         vm.expectRevert(encoded);

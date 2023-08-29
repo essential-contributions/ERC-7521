@@ -14,6 +14,12 @@ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
  * Library with util actions to streamline intent solving.
  */
 contract SolverUtils is Test, TokenCallbackHandler, IAccount {
+    constructor(TestUniswap testUniswap, IERC20 erc20Token, IERC20 wrappedNativeToken) {
+        // set token approvals
+        IERC20(erc20Token).approve(address(testUniswap), type(uint256).max);
+        IERC20(erc20Token).approve(address(wrappedNativeToken), type(uint256).max);
+    }
+
     /**
      * Always returns successful.
      * @dev This contract is extremely unsafe as a wallet, but is useful as a temporary playground for solvers.
@@ -37,9 +43,6 @@ contract SolverUtils is Test, TokenCallbackHandler, IAccount {
         uint256 amountOutMinimum,
         address recipient
     ) external {
-        // set token approvals
-        IERC20(erc20).approve(uniswap, type(uint256).max);
-
         // swap tokens
         ExactInputSingleParams memory swapParams = ExactInputSingleParams({
             tokenIn: erc20,

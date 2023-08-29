@@ -22,10 +22,11 @@ contract HandleIntentsTest is ScenarioTestEnvironment {
         // TIMESTAMP_MAX_OVER of EntryPoint.sol is 6
         solution.timestamp = block.timestamp + 7;
 
-        vm.expectRevert("AA81 invalid timestamp");
+        vm.expectRevert("AA71 invalid timestamp");
         _entryPoint.handleIntents(solution);
 
-        vm.expectRevert("AA81 invalid timestamp");
+        vm.expectRevert("AA72 simulation requires timestamp");
+        solution.timestamp = 0;
         _entryPoint.simulateHandleIntents(solution, address(0), "");
     }
 }
@@ -35,17 +36,18 @@ contract ValidateUserIntentTest is ScenarioTestEnvironment {
     using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
 
     function test_fail_unknownStandard() public {
-        IntentSolution memory solution = _solution(_emptyIntent(), _emptyIntent());
+        UserIntent memory intent = _intent();
+        intent.standard = bytes32(uint256(123));
 
-        EntryPoint newEntryPoint = new EntryPoint();
+        IntentSolution memory solution = _solution(intent, _emptyIntent());
 
-        // call handleIntents from a different entry point
-        vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA83 unknown standard"));
-        newEntryPoint.handleIntents(solution);
+        // call handleIntents with an unknown intent standard
+        vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA82 unknown standard"));
+        _entryPoint.handleIntents(solution);
 
-        // call simulateHandleIntents from a different entry point
-        vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA83 unknown standard"));
-        newEntryPoint.simulateHandleIntents(solution, address(0), "");
+        // call simulateHandleIntents with an unknown intent standard
+        vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA82 unknown standard"));
+        _entryPoint.simulateHandleIntents(solution, address(0), "");
     }
 
     function test_fail_validateWithStandard() public {

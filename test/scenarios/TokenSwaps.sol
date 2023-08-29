@@ -92,6 +92,7 @@ contract TokenSwaps is ScenarioTestEnvironment {
         bool flipY,
         uint16 timestamp
     ) public {
+        vm.assume(0 < timestamp);
         vm.assume(0 < erc20ReleaseAmount);
         vm.assume(0 < max);
         vm.assume(0 < b);
@@ -161,6 +162,7 @@ contract TokenSwaps is ScenarioTestEnvironment {
         bool flipY,
         uint16 timestamp
     ) public {
+        vm.assume(0 < timestamp);
         vm.assume(0 < ethRequireAmount);
         vm.assume(0 < max);
         vm.assume(0 < b);

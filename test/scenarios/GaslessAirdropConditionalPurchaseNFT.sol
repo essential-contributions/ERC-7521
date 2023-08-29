@@ -149,7 +149,7 @@ contract GaslessAirdropConditionalPurchaseNFT is ScenarioTestEnvironment {
 
         //execute
         vm.expectRevert(
-            abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 1, 0, "AA72 execution failed (or OOG)")
+            abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 1, 0, "AA61 execution failed (or OOG)")
         );
         _entryPoint.handleIntents(solution);
     }

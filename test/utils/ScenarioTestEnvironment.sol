@@ -77,7 +77,7 @@ abstract contract ScenarioTestEnvironment is Test {
         _testERC1155 = new TestERC1155();
         _testWrappedNativeToken = new TestWrappedNativeToken();
         _testUniswap = new TestUniswap(_testWrappedNativeToken);
-        _solverUtils = new SolverUtils();
+        _solverUtils = new SolverUtils(_testUniswap, _testERC20, _testWrappedNativeToken);
 
         //fund exchange
         _testERC20.mint(address(_testUniswap), 1000 ether);
@@ -322,11 +322,7 @@ abstract contract ScenarioTestEnvironment is Test {
      * @param intent Intent to include in the solution.
      * @return The created IntentSolution struct.
      */
-    function _singleIntentSolution(UserIntent memory intent)
-        internal
-        view
-        returns (IntentSolution memory)
-    {
+    function _singleIntentSolution(UserIntent memory intent) internal view returns (IntentSolution memory) {
         UserIntent[] memory intents = new UserIntent[](1);
         intents[0] = intent;
         uint256[] memory order = new uint256[](0);
