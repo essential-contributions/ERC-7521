@@ -6,7 +6,7 @@ pragma solidity ^0.8.13;
 import {UserIntent} from "./UserIntent.sol";
 
 /**
- * User Intent struct
+ * Intent Solution struct
  * @param timestamp the time to evaluate the intents at.
  * @param intents list of intents to solve.
  * @param order the order to execute the intents.

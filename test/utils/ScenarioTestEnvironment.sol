@@ -318,7 +318,7 @@ abstract contract ScenarioTestEnvironment is Test {
     }
 
     /**
-     * Private helper function to build an intent solution struct.
+     * Private helper function to build an intent solution struct with a single intent.
      * @param intent Intent to include in the solution.
      * @return The created IntentSolution struct.
      */
