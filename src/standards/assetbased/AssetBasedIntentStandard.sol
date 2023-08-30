@@ -5,18 +5,20 @@ pragma solidity ^0.8.13;
 
 import {AssetBasedIntentCurve, AssetBasedIntentCurveLib} from "./AssetBasedIntentCurve.sol";
 import {AssetBasedIntentSegment, parseAssetBasedIntentSegment} from "./AssetBasedIntentSegment.sol";
-import {AssetHolderProxy} from "./AssetHolderProxy.sol";
-import {encodeReleaseAsset, IAssetRelease} from "./IAssetRelease.sol";
+import {AssetBasedIntentDelegate} from "./AssetBasedIntentDelegate.sol";
 import {AssetType, _balanceOf, _transfer} from "./utils/AssetWrapper.sol";
 import {IEntryPoint} from "../../interfaces/IEntryPoint.sol";
 import {IIntentDelegate} from "../../interfaces/IIntentDelegate.sol";
 import {IIntentStandard} from "../../interfaces/IIntentStandard.sol";
 import {UserIntent, UserIntentLib} from "../../interfaces/UserIntent.sol";
+import {IntentSolution, IntentSolutionLib} from "../../interfaces/IntentSolution.sol";
+import {EntryPointTruster} from "../../core/EntryPointTruster.sol";
 import {Exec, RevertReason} from "../../utils/Exec.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
 
-contract AssetBasedIntentStandard is AssetHolderProxy, IAssetRelease, IIntentStandard {
+contract AssetBasedIntentStandard is EntryPointTruster, AssetBasedIntentDelegate, IIntentStandard {
     using AssetBasedIntentCurveLib for AssetBasedIntentCurve;
+    using IntentSolutionLib for IntentSolution;
     using UserIntentLib for UserIntent;
     using RevertReason for bytes;
 
@@ -30,7 +32,7 @@ contract AssetBasedIntentStandard is AssetHolderProxy, IAssetRelease, IIntentSta
      * Contract constructor.
      * @param entryPointContract the address of the entrypoint contract
      */
-    constructor(IEntryPoint entryPointContract) {
+    constructor(IEntryPoint entryPointContract) AssetBasedIntentDelegate() {
         _entryPoint = entryPointContract;
     }
 
@@ -40,27 +42,6 @@ contract AssetBasedIntentStandard is AssetHolderProxy, IAssetRelease, IIntentSta
 
     function standardId() public view returns (bytes32) {
         return _entryPoint.getIntentStandardId(this);
-    }
-
-    /**
-     * Default receive function.
-     */
-    receive() external payable {}
-
-    /**
-     * Release the given token(s) (both fungible and non-fungible)
-     *
-     * @param assetType the type of asset (ETH, ERC-20, ERC721, etc).
-     * @param assetContract the contract that controls the asset.
-     * @param assetId the identifier for a specific asset.
-     * @param to the target to release tokens to.
-     * @param amount the amount to release.
-     */
-    function releaseAsset(AssetType assetType, address assetContract, uint256 assetId, address to, uint256 amount)
-        external
-    {
-        require(_balanceOf(assetType, assetContract, assetId, address(this)) >= amount, "insufficient release balance");
-        _transfer(assetType, assetContract, assetId, address(this), to, amount);
     }
 
     /**
@@ -97,17 +78,20 @@ contract AssetBasedIntentStandard is AssetHolderProxy, IAssetRelease, IIntentSta
 
     /**
      * Performs part or all of the execution for an intent.
-     * @param intent the intent to execute.
-     * @param dataIndex the data index to execute for.
-     * @param timestamp the time at which to evaluate the intent.
+     * @param solution the full solution being executed.
+     * @param executionIndex the current index of execution (used to get the UserIntent to execute for).
+     * @param segmentIndex the current segment to execute for the intent.
      * @param context context data from the previous step in execution (no data means execution is just starting).
-     * @return context to remember for further execution (no data means execution has finished).
+     * @return context to remember for further execution.
      */
-    function executeUserIntent(UserIntent calldata intent, uint256 dataIndex, uint256 timestamp, bytes memory context)
-        external
-        onlyFromEntryPoint
-        returns (bytes memory)
-    {
+    function executeUserIntent(
+        IntentSolution calldata solution,
+        uint256 executionIndex,
+        uint256 segmentIndex,
+        bytes memory context
+    ) external onlyFromEntryPoint returns (bytes memory) {
+        UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
+        uint256 timestamp = solution.getTimestamp();
         uint256[] memory startingBalances;
         if (context.length > 0) {
             (startingBalances) = abi.decode(context, (uint256[]));
@@ -116,14 +100,14 @@ contract AssetBasedIntentStandard is AssetHolderProxy, IAssetRelease, IIntentSta
         if (timestamp > intent.timestamp) {
             evaluateAt = timestamp - intent.timestamp;
         }
-        AssetBasedIntentSegment calldata dataSegment = parseAssetBasedIntentSegment(intent, dataIndex);
+        AssetBasedIntentSegment calldata dataSegment = parseAssetBasedIntentSegment(intent, segmentIndex);
 
         //check asset requirements
-        _checkAssetRequirements(dataSegment, dataIndex, evaluateAt, startingBalances, intent.sender);
+        _checkAssetRequirements(dataSegment, segmentIndex, evaluateAt, startingBalances, intent.sender);
 
         //record balances for relative requirements later
-        if ((dataIndex + 1) < intent.intentData.length) {
-            AssetBasedIntentSegment calldata nextDataSegment = parseAssetBasedIntentSegment(intent, dataIndex + 1);
+        if ((segmentIndex + 1) < intent.intentData.length) {
+            AssetBasedIntentSegment calldata nextDataSegment = parseAssetBasedIntentSegment(intent, segmentIndex + 1);
             startingBalances = _recordStartingBalances(nextDataSegment, intent.sender);
         }
 
@@ -133,10 +117,11 @@ contract AssetBasedIntentStandard is AssetHolderProxy, IAssetRelease, IIntentSta
         }
 
         //release tokens
-        _releaseAssets(dataSegment, evaluateAt, intent.sender);
+        address nextExecutingIntentSender = solution.intents[solution.getIntentIndex(executionIndex + 1)].sender;
+        _releaseAssets(dataSegment, evaluateAt, intent.sender, nextExecutingIntentSender);
 
         // return list of starting balances for reference later (or nothing if this was the last step)
-        if ((dataIndex + 1) < intent.intentData.length) {
+        if ((segmentIndex + 1) < intent.intentData.length) {
             return abi.encode(startingBalances);
         }
         return "";
@@ -223,13 +208,18 @@ contract AssetBasedIntentStandard is AssetHolderProxy, IAssetRelease, IIntentSta
      * @param intentSegment The intent segment containing the asset releases.
      * @param evaluateAt The time offset at which to evaluate the asset releases.
      * @param from The address from which to release the assets.
+     * @param to The address to release the assets.
      */
-    function _releaseAssets(AssetBasedIntentSegment calldata intentSegment, uint256 evaluateAt, address from) private {
+    function _releaseAssets(
+        AssetBasedIntentSegment calldata intentSegment,
+        uint256 evaluateAt,
+        address from,
+        address to
+    ) private {
         for (uint256 i = 0; i < intentSegment.assetReleases.length; i++) {
             int256 releaseAmount = intentSegment.assetReleases[i].evaluate(evaluateAt);
             if (releaseAmount > 0) {
-                bytes memory data =
-                    encodeReleaseAsset(intentSegment.assetReleases[i], address(this), uint256(releaseAmount));
+                bytes memory data = _encodeReleaseAsset(intentSegment.assetReleases[i], to, uint256(releaseAmount));
                 IIntentDelegate(address(from)).generalizedIntentDelegateCall(data);
             }
         }

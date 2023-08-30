@@ -23,8 +23,7 @@ contract AbstractAccountTest is ScenarioTestEnvironment, TokenCallbackHandler {
         // nonce in the beginning
         assertEq(_account.getNonce(), 0);
 
-        UserIntent[] memory intents = new UserIntent[](1);
-
+        // user's intent
         UserIntent memory intent = _intent();
         intent = intent.addSegment(
             _segment(_accountClaimAirdropERC20(2 ether)).releaseERC20(
@@ -32,12 +31,13 @@ contract AbstractAccountTest is ScenarioTestEnvironment, TokenCallbackHandler {
             )
         );
         intent = _signIntent(intent);
-        intents[0] = intent;
 
-        bytes[] memory steps1 = _solverSwapAllERC20ForETH(1 ether, address(_publicAddressSolver));
-        IEntryPoint.IntentSolution memory solution = _solution(intents, steps1, _noSteps(), _noSteps());
+        // solver's intent
+        UserIntent memory solverIntent =
+            _solverIntent(_solverSwapAllERC20ForETH(1 ether, address(_publicAddressSolver)), "", "", 1);
 
-        _entryPoint.handleIntents(solution);
+        //handle intents
+        _entryPoint.handleIntents(_solution(intent, solverIntent));
 
         // nonce after execution
         assertEq(_account.getNonce(), 1);
@@ -57,8 +57,7 @@ contract AbstractAccountTest is ScenarioTestEnvironment, TokenCallbackHandler {
         intent = intent.addSegment(intentSegment);
         intent = _signIntent(intent);
 
-        IEntryPoint.IntentSolution memory solution =
-            _solution(_singleIntent(intent), _noSteps(), _noSteps(), _noSteps());
+        IntentSolution memory solution = _solution(intent, _solverIntent("", "", "", 1));
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -82,8 +81,7 @@ contract AbstractAccountTest is ScenarioTestEnvironment, TokenCallbackHandler {
         intent = intent.addSegment(intentSegment);
         intent = _signIntent(intent);
 
-        IEntryPoint.IntentSolution memory solution =
-            _solution(_singleIntent(intent), _noSteps(), _noSteps(), _noSteps());
+        IntentSolution memory solution = _solution(intent, _solverIntent("", "", "", 1));
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -99,8 +97,7 @@ contract AbstractAccountTest is ScenarioTestEnvironment, TokenCallbackHandler {
         intent = intent.addSegment(_segment(_accountBuyERC1155(_testERC1155.nftCost())));
         intent = _signIntent(intent);
 
-        IEntryPoint.IntentSolution memory solution =
-            _solution(_singleIntent(intent), _noSteps(), _noSteps(), _noSteps());
+        IntentSolution memory solution = _solution(intent, _solverIntent("", "", "", 1));
 
         vm.expectRevert(
             abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA61 execution failed (or OOG)")

@@ -14,7 +14,7 @@ contract EntryPointTest is TestEnvironment {
 
     function test_getUserIntentHash() public {
         UserIntent memory intent = _intent();
-        bytes32 expectedHash = 0xe8dc01e9daa78bbc1314ca089b06a3b1d2c00510a8f47c2e9fed16419d74b28c;
+        bytes32 expectedHash = 0x4b236260785f4b8469f64da935aa786147576add2c196a8281b983046eb887f3;
         bytes32 intentHash = _entryPoint.getUserIntentHash(intent);
         assertEq(intentHash, expectedHash);
     }
@@ -39,7 +39,7 @@ contract EntryPointTest is TestEnvironment {
     }
 
     function test_failRegisterIntentStandard_alreadyRegistered() public {
-        vm.expectRevert("AA82 already registered");
+        vm.expectRevert("AA81 already registered");
         _entryPoint.registerIntentStandard(_assetBasedIntentStandard);
     }
 
@@ -53,7 +53,7 @@ contract EntryPointTest is TestEnvironment {
 
     function test_failGetIntentStandardContract_unknownStandard() public {
         bytes32 standardId = _assetBasedIntentStandard.standardId();
-        vm.expectRevert("AA83 unknown standard");
+        vm.expectRevert("AA82 unknown standard");
         _entryPoint.getIntentStandardContract(standardId << 1);
     }
 
@@ -66,7 +66,7 @@ contract EntryPointTest is TestEnvironment {
     function test_failGetIntentStandardId_unknownStandard() public {
         EntryPoint newEntryPoint = new EntryPoint();
         AssetBasedIntentStandard newIntentStandard = new AssetBasedIntentStandard(newEntryPoint);
-        vm.expectRevert("AA83 unknown standard");
+        vm.expectRevert("AA82 unknown standard");
         newEntryPoint.getIntentStandardId(newIntentStandard);
     }
 }

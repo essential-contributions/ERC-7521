@@ -29,13 +29,8 @@ contract GaslessAirdrop is ScenarioTestEnvironment {
         return intent;
     }
 
-    function _solutionForCase(UserIntent memory intent, uint256 gasPayment)
-        private
-        view
-        returns (IEntryPoint.IntentSolution memory)
-    {
-        bytes[] memory steps1 = _solverSwapAllERC20ForETH(gasPayment, address(_publicAddressSolver));
-        return _solution(_singleIntent(intent), steps1, _noSteps(), _noSteps());
+    function _solverIntentForCase(uint256 gasPayment) private view returns (UserIntent memory) {
+        return _solverIntent(_solverSwapAllERC20ForETH(gasPayment, address(_publicAddressSolver)), "", "", 1);
     }
 
     function setUp() public override {
@@ -52,12 +47,15 @@ contract GaslessAirdrop is ScenarioTestEnvironment {
         UserIntent memory intent = _intentForCase(claimAmount, gasPayment);
         intent = _signIntent(intent);
 
+        //create solver intent
+        UserIntent memory solverIntent = _solverIntentForCase(gasPayment);
+
         //create solution
-        IEntryPoint.IntentSolution memory solution = _solutionForCase(intent, gasPayment);
+        IntentSolution memory solution = _solution(intent, solverIntent);
 
         //simulate execution
         vm.expectRevert(abi.encodeWithSelector(IEntryPoint.ExecutionResult.selector, true, false, ""));
-        _entryPoint.simulateHandleIntents(solution, block.timestamp, address(0), "");
+        _entryPoint.simulateHandleIntents(solution, address(0), "");
 
         //execute
         uint256 gasBefore = gasleft();
@@ -80,8 +78,11 @@ contract GaslessAirdrop is ScenarioTestEnvironment {
         UserIntent memory intent = _intentForCase(claimAmount, gasPayment);
         intent = _signIntent(intent);
 
+        //create solver intent
+        UserIntent memory solverIntent = _solverIntentForCase(gasPayment);
+
         //create solution
-        IEntryPoint.IntentSolution memory solution = _solutionForCase(intent, gasPayment);
+        IntentSolution memory solution = _solution(intent, solverIntent);
 
         //execute
         vm.expectRevert(

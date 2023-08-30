@@ -19,16 +19,13 @@ contract DefaultIntentStandardTest is ScenarioTestEnvironment {
     }
 
     function test_empty() public {
-        DefaultIntentSegment memory intentSegment = DefaultIntentSegment({callData: "", callGasLimit: 1000000});
-
         // create intent
         UserIntent memory intent = DefaultIntentBuilder.create(_defaultIntentStandardId, address(_account), 0, 0);
-        intent = intent.addSegment(intentSegment);
+        intent = intent.addSegment("");
         intent = _signIntent(intent);
 
         // create solution
-        IEntryPoint.IntentSolution memory solution =
-            _solution(_singleIntent(intent), _noSteps(), _noSteps(), _noSteps());
+        IntentSolution memory solution = _singleIntentSolution(intent);
 
         // execute
         _entryPoint.handleIntents(solution);
@@ -37,17 +34,13 @@ contract DefaultIntentStandardTest is ScenarioTestEnvironment {
     function test_singleSegment() public {
         uint256 claimAmount = 1 ether;
 
-        DefaultIntentSegment memory intentSegment =
-            DefaultIntentSegment({callData: _accountClaimAirdropERC20(claimAmount), callGasLimit: 1000000});
-
         // create intent
         UserIntent memory intent = DefaultIntentBuilder.create(_defaultIntentStandardId, address(_account), 0, 0);
-        intent = intent.addSegment(intentSegment);
+        intent = intent.addSegment(_accountClaimAirdropERC20(claimAmount));
         intent = _signIntent(intent);
 
         // create solution
-        IEntryPoint.IntentSolution memory solution =
-            _solution(_singleIntent(intent), _noSteps(), _noSteps(), _noSteps());
+        IntentSolution memory solution = _singleIntentSolution(intent);
 
         // execute
         _entryPoint.handleIntents(solution);
@@ -60,23 +53,16 @@ contract DefaultIntentStandardTest is ScenarioTestEnvironment {
     function test_multipleSegments() public {
         uint256 claimAmount = 2 ether;
         uint256 nftPrice = 1 ether;
-
         vm.deal(address(_account), nftPrice);
-
-        DefaultIntentSegment memory intentSegment2 =
-            DefaultIntentSegment({callData: _accountBuyERC1155(nftPrice), callGasLimit: 1000000});
-        DefaultIntentSegment memory intentSegment1 =
-            DefaultIntentSegment({callData: _accountClaimAirdropERC20(claimAmount), callGasLimit: 1000000});
 
         // create intent
         UserIntent memory intent = DefaultIntentBuilder.create(_defaultIntentStandardId, address(_account), 0, 0);
-        intent = intent.addSegment(intentSegment1);
-        intent = intent.addSegment(intentSegment2);
+        intent = intent.addSegment(_accountClaimAirdropERC20(claimAmount));
+        intent = intent.addSegment(_accountBuyERC1155(nftPrice));
         intent = _signIntent(intent);
 
         // create solution
-        IEntryPoint.IntentSolution memory solution =
-            _solution(_singleIntent(intent), _noSteps(), _noSteps(), _noSteps());
+        IntentSolution memory solution = _singleIntentSolution(intent);
 
         // execute
         _entryPoint.handleIntents(solution);
@@ -89,17 +75,13 @@ contract DefaultIntentStandardTest is ScenarioTestEnvironment {
     }
 
     function test_fail() public {
-        DefaultIntentSegment memory intentSegment =
-            DefaultIntentSegment({callData: _accountBuyERC721(1 ether), callGasLimit: 1000000});
-
         //create intent
         UserIntent memory intent = DefaultIntentBuilder.create(_defaultIntentStandardId, address(_account), 0, 0);
-        intent = intent.addSegment(intentSegment);
+        intent = intent.addSegment(_accountBuyERC721(1 ether));
         intent = _signIntent(intent);
 
         // create solution
-        IEntryPoint.IntentSolution memory solution =
-            _solution(_singleIntent(intent), _noSteps(), _noSteps(), _noSteps());
+        IntentSolution memory solution = _singleIntentSolution(intent);
 
         // execute
         vm.expectRevert(

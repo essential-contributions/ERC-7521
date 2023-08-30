@@ -2,6 +2,7 @@
 pragma solidity ^0.8.13;
 
 import {IEntryPoint} from "./IEntryPoint.sol";
+import {IntentSolution} from "./IntentSolution.sol";
 import {UserIntent} from "./UserIntent.sol";
 
 interface IIntentStandard {
@@ -13,15 +14,18 @@ interface IIntentStandard {
 
     /**
      * Performs part or all of the execution for an intent.
-     * @param intent the intent to execute.
-     * @param dataIndex the data index to execute for.
-     * @param timestamp the time at which to evaluate the intent.
+     * @param solution the full solution being executed.
+     * @param executionIndex the current index of execution (used to get the UserIntent to execute for).
+     * @param segmentIndex the current segment to execute for the intent.
      * @param context context data from the previous step in execution (no data means execution is just starting).
-     * @return context to remember for further execution (no data means execution has finished).
+     * @return context to remember for further execution.
      */
-    function executeUserIntent(UserIntent calldata intent, uint256 dataIndex, uint256 timestamp, bytes memory context)
-        external
-        returns (bytes memory);
+    function executeUserIntent(
+        IntentSolution calldata solution,
+        uint256 executionIndex,
+        uint256 segmentIndex,
+        bytes memory context
+    ) external returns (bytes memory);
 
     /**
      * Verifies the intent standard is for a given entry point contract (required for registration on the entry point).
