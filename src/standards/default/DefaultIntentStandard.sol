@@ -63,13 +63,14 @@ contract DefaultIntentStandard is IIntentStandard, EntryPointTruster {
         bytes memory
     ) external onlyFromEntryPoint returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
-        DefaultIntentSegment calldata dataSegment = parseDefaultIntentSegment(intent, segmentIndex);
+        if (intent.intentData[segmentIndex].length > 0) {
+            DefaultIntentSegment calldata dataSegment = parseDefaultIntentSegment(intent, segmentIndex);
 
-        //execute calldata
-        if (dataSegment.callData.length > 0) {
-            Exec.callAndRevert(intent.sender, dataSegment.callData, dataSegment.callGasLimit, REVERT_REASON_MAX_LEN);
+            //execute calldata
+            if (dataSegment.callData.length > 0) {
+                Exec.callAndRevert(intent.sender, dataSegment.callData, dataSegment.callGasLimit, REVERT_REASON_MAX_LEN);
+            }
         }
-
         return "";
     }
 
