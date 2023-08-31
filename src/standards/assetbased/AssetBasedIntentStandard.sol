@@ -107,9 +107,9 @@ contract AssetBasedIntentStandard is EntryPointTruster, AssetBasedIntentDelegate
             _checkAssetRequirements(dataSegment, segmentIndex, evaluateAt, startingBalances, intent.sender);
 
             //record balances for relative requirements later
-            uint256 nextSegment = segmentIndex + 1;
-            if (nextSegment < intent.intentData.length && intent.intentData[nextSegment].length > 0) {
-                AssetBasedIntentSegment calldata nextSegmentData = parseAssetBasedIntentSegment(intent, nextSegment);
+            if (segmentIndex + 1 < intent.intentData.length && intent.intentData[segmentIndex + 1].length > 0) {
+                AssetBasedIntentSegment calldata nextSegmentData =
+                    parseAssetBasedIntentSegment(intent, segmentIndex + 1);
                 startingBalances = _recordStartingBalances(nextSegmentData, intent.sender);
             }
 
@@ -123,14 +123,14 @@ contract AssetBasedIntentStandard is EntryPointTruster, AssetBasedIntentDelegate
             _releaseAssets(dataSegment, evaluateAt, intent.sender, nextExecutingIntentSender);
 
             // return list of starting balances for reference later (or nothing if this was the last step)
-            if (nextSegment < intent.intentData.length && intent.intentData[nextSegment].length > 0) {
+            if (segmentIndex + 1 < intent.intentData.length && intent.intentData[segmentIndex + 1].length > 0) {
                 return abi.encode(startingBalances);
             }
         } else {
             // return list of starting balances for reference later (or nothing if this was the last step)
-            uint256 nextSegment = segmentIndex + 1;
-            if (nextSegment < intent.intentData.length && intent.intentData[nextSegment].length > 0) {
-                AssetBasedIntentSegment calldata nextSegmentData = parseAssetBasedIntentSegment(intent, nextSegment);
+            if (segmentIndex + 1 < intent.intentData.length && intent.intentData[segmentIndex + 1].length > 0) {
+                AssetBasedIntentSegment calldata nextSegmentData =
+                    parseAssetBasedIntentSegment(intent, segmentIndex + 1);
                 return abi.encode(_recordStartingBalances(nextSegmentData, intent.sender));
             }
         }
