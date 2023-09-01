@@ -54,13 +54,15 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
 
         unchecked {
             //first loop through the order specified by the solution
-            for (uint256 i = 0; i < solution.order.length; i++) {
-                if (intentDataIndexes[i] < solution.intents[i].intentData.length) {
-                    _executionStateContext = solution.intents[i].sender;
-                    _executionIntentStandardId = solution.intents[i].standard;
-                    contextData[i] = _executeIntent(solution, executionIndex, i, intentDataIndexes[i], contextData[i]);
-                    intentDataIndexes[i] = intentDataIndexes[i] + 1;
-                    executionIndex = executionIndex + 1;
+            for (; executionIndex < solution.order.length; executionIndex++) {
+                uint256 intentIndex = solution.order[executionIndex];
+                if (intentDataIndexes[intentIndex] < solution.intents[intentIndex].intentData.length) {
+                    _executionStateContext = solution.intents[intentIndex].sender;
+                    _executionIntentStandardId = solution.intents[intentIndex].standard;
+                    contextData[intentIndex] = _executeIntent(
+                        solution, executionIndex, intentIndex, intentDataIndexes[intentIndex], contextData[intentIndex]
+                    );
+                    intentDataIndexes[intentIndex] = intentDataIndexes[intentIndex] + 1;
                 }
             }
 
