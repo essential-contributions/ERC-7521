@@ -1,10 +1,6 @@
-[package]
-name = "galactus-test"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-ethers = { version = "2.0", features = ["rustls"] }
-tokio = { version = "1.28.1", features = ["macros", "rt-multi-thread"] }
-eyre = "0.6"
-serde_json = "1.0.99"
+[workspace]
+resolver = "2"
+members = [
+    "./test-harness",
+    "./test-utils",
+]
