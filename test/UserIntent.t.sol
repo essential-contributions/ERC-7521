@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 /* solhint-disable func-name-mixedcase */
 
-import "../src/interfaces/UserIntent.sol";
+import "../contracts/interfaces/UserIntent.sol";
 import "./utils/TestEnvironment.sol";
 
 contract UserIntentTest is TestEnvironment {

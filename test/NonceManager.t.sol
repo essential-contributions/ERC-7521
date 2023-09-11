@@ -5,8 +5,8 @@ pragma solidity ^0.8.13;
 /* solhint-disable private-vars-leading-underscore */
 
 import "./utils/TestEnvironment.sol";
-import "../src/test/NonceManagerHarness.sol";
-import "../src/core/NonceManager.sol";
+import "../contracts/test/NonceManagerHarness.sol";
+import "../contracts/core/NonceManager.sol";
 
 contract NonceManagerTest is TestEnvironment {
     NonceManagerHarness nonceManager;

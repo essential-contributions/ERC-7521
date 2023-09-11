@@ -2,9 +2,9 @@
 pragma solidity ^0.8.13;
 
 import "openzeppelin/utils/cryptography/ECDSA.sol";
-import "../../src/interfaces/UserIntent.sol";
-import "../../src/standards/default/DefaultIntentStandard.sol";
-import "../../src/standards/default/DefaultIntentSegment.sol";
+import "../../contracts/interfaces/UserIntent.sol";
+import "../../contracts/standards/default/DefaultIntentStandard.sol";
+import "../../contracts/standards/default/DefaultIntentSegment.sol";
 
 /**
  * @title DefaultIntentBuilder
