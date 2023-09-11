@@ -1,4 +1,5 @@
-use super::{abigen::TestERC20, client::WrappedClient};
+use super::client::WrappedClient;
+use crate::abigen::TestERC20;
 use ethers::prelude::*;
 use k256::ecdsa::SigningKey;
 
@@ -17,10 +18,8 @@ impl TestERC20Contract {
         }
     }
 
-    // self.contract.address()
-    // U256::from(1000_000000000000000000_u128)
     pub async fn mint(&self, to: Address, amount: U256) {
         let tx = self.contract.mint(to, amount);
-        tx.send().await.unwrap();
+        tx.send().await.unwrap().await.unwrap().unwrap();
     }
 }

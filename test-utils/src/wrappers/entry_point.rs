@@ -1,8 +1,6 @@
-use super::{
-    abigen::{EntryPoint, IntentSolutionLib, RevertReason, UserIntentLib, ENTRYPOINT_ABI},
-    client::WrappedClient,
-    libs::IntentSolutionLibContract,
-};
+use super::asset_based_intent_standard::AssetBasedIntentStandardContract;
+use super::{client::WrappedClient, libs::IntentSolutionLibContract};
+use crate::abigen::{EntryPoint, IntentSolutionLib, RevertReason, UserIntentLib, ENTRYPOINT_ABI};
 use crate::unlinked_contract_factory;
 use ethers::prelude::*;
 use k256::ecdsa::SigningKey;

@@ -1,6 +1,8 @@
-use super::{abigen::AbstractAccount, client::WrappedClient, entry_point::EntryPointContract};
+use super::{client::WrappedClient, entry_point::EntryPointContract};
+use crate::abigen::AbstractAccount;
 use ethers::{
     prelude::*,
+    types::spoof::State,
     utils::{keccak256, secret_key_to_address},
 };
 use k256::{ecdsa::SigningKey, elliptic_curve::generic_array::GenericArray, SecretKey};
@@ -33,5 +35,22 @@ impl AbstractAccountContract {
             .await
             .unwrap(),
         }
+    }
+
+    pub async fn funded_state(&self, amount: U256) -> State {
+        // let tx = TransactionRequest::default().into();
+        // let result = provider
+        //     .call_raw(&tx)
+        //     .block(1000.into())
+        //     .state(&state)
+        //     .await
+        //     .unwrap();
+
+        let mut state = spoof::State::default();
+
+        state.account(self.contract.address()).balance(amount);
+        state.account(self.contract.address()).nonce(U64::zero());
+
+        state
     }
 }

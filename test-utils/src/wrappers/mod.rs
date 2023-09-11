@@ -1,4 +1,3 @@
-pub mod abigen;
 pub mod abstract_account;
 pub mod asset_based_intent_standard;
 pub mod client;

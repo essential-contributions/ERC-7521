@@ -1,9 +1,6 @@
-use super::{
-    abigen::{
-        AssetBasedIntentCurve_NoClash, AssetBasedIntentStandard, ASSETBASEDINTENTSTANDARD_ABI,
-    },
-    client::WrappedClient,
-    entry_point::EntryPointContract,
+use super::{client::WrappedClient, entry_point::EntryPointContract};
+use crate::abigen::{
+    AssetBasedIntentCurveLib, AssetBasedIntentStandard, ASSETBASEDINTENTSTANDARD_ABI,
 };
 use crate::unlinked_contract_factory;
 use ethers::prelude::*;
@@ -22,7 +19,7 @@ impl AssetBasedIntentStandardContract {
         entry_point_contract_instance: &EntryPointContract,
     ) -> Self {
         let asset_based_intent_curve_lib =
-            AssetBasedIntentCurve_NoClash::deploy(wrapped_client.client.clone(), ())
+            AssetBasedIntentCurveLib::deploy(wrapped_client.client.clone(), ())
                 .unwrap()
                 .send()
                 .await

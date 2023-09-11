@@ -1,4 +1,5 @@
-use super::{abigen::TestUniswap, client::WrappedClient};
+use super::client::WrappedClient;
+use crate::abigen::TestUniswap;
 use ethers::prelude::*;
 use k256::ecdsa::SigningKey;
 

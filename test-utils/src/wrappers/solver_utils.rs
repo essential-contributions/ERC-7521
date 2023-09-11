@@ -1,4 +1,5 @@
-use super::{abigen::SolverUtils, client::WrappedClient};
+use super::client::WrappedClient;
+use crate::abigen::SolverUtils;
 use ethers::{abi::Token, prelude::*};
 use k256::ecdsa::SigningKey;
 

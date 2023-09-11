@@ -1,4 +1,5 @@
-use super::{abigen::TestERC721, client::WrappedClient};
+use super::client::WrappedClient;
+use crate::abigen::TestERC721;
 use ethers::prelude::*;
 use k256::ecdsa::SigningKey;
 

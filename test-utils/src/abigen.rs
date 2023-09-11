@@ -9,12 +9,16 @@ abigen!(RevertReason, "out/Exec.sol/RevertReason.json");
 abigen!(EntryPoint, "out/EntryPoint.sol/EntryPoint.json");
 
 abigen!(
-    AssetBasedIntentCurve_NoClash,
-    "out/AssetBasedIntentCurve.sol/AssetBasedIntentCurveLib.json"
-);
-abigen!(
     AssetBasedIntentStandard,
     "out/AssetBasedIntentStandard.sol/AssetBasedIntentStandard.json"
+);
+abigen!(
+    AssetBasedIntentSegment,
+    "out/AssetBasedIntentSegment.sol/AssetBasedIntentSegment.json"
+);
+abigen!(
+    AssetBasedIntentCurveLib,
+    "out/AssetBasedIntentCurve.sol/AssetBasedIntentCurveLib.json"
 );
 
 abigen!(

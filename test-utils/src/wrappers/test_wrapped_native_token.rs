@@ -1,4 +1,5 @@
-use super::{abigen::TestWrappedNativeToken, client::WrappedClient};
+use super::client::WrappedClient;
+use crate::abigen::TestWrappedNativeToken;
 use ethers::prelude::*;
 use k256::ecdsa::SigningKey;
 
@@ -17,14 +18,13 @@ impl TestWrappedNativeTokenContract {
         }
     }
 
-    // 1000 * 10 ^ 18
     pub async fn deposit(&self, value: u128) {
         let tx = self.contract.deposit().value(value);
-        tx.send().await.unwrap();
+        tx.send().await.unwrap().await.unwrap().unwrap();
     }
 
     pub async fn transfer(&self, to: Address, amount: U256) {
         let tx = self.contract.transfer(to, amount);
-        tx.send().await.unwrap();
+        tx.send().await.unwrap().await.unwrap().unwrap();
     }
 }

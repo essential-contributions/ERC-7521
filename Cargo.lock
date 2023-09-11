@@ -2955,6 +2955,7 @@ dependencies = [
 name = "test-harness"
 version = "0.1.0"
 dependencies = [
+ "ethers",
  "test-utils",
  "tokio",
 ]
