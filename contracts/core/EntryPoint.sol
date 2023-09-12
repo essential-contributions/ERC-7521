@@ -26,18 +26,17 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     uint256 private constant REVERT_REASON_MAX_LEN = 2048;
     uint256 private constant CONTEXT_DATA_MAX_LEN = 2048;
 
+    address private constant EX_STANDARD_NOT_ACTIVE = address(0);
     address private constant EX_STATE_NOT_ACTIVE = address(0);
     address private constant EX_STATE_VALIDATION_EXECUTING =
         address(uint160(uint256(keccak256("EX_STATE_VALIDATION_EXECUTING"))));
-
-    bytes32 private constant EX_STANDARD_NOT_ACTIVE = bytes32(0);
 
     //keeps track of registered intent standards
     mapping(bytes32 => IIntentStandard) private _registeredStandards;
 
     //flag for applications to check current context of execution
     address private _executionStateContext;
-    bytes32 private _executionIntentStandardId;
+    address private _executionIntentStandard;
 
     constructor() {
         _registeredStandards[DEFAULT_INTENT_STANDARD_ID] = new DefaultIntentStandard(this);
@@ -57,8 +56,6 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             for (; executionIndex < solution.order.length; executionIndex++) {
                 uint256 intentIndex = solution.order[executionIndex];
                 if (intentDataIndexes[intentIndex] < solution.intents[intentIndex].intentData.length) {
-                    _executionStateContext = solution.intents[intentIndex].sender;
-                    _executionIntentStandardId = solution.intents[intentIndex].standard;
                     contextData[intentIndex] = _executeIntent(
                         solution, executionIndex, intentIndex, intentDataIndexes[intentIndex], contextData[intentIndex]
                     );
@@ -72,8 +69,6 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
                 for (uint256 i = 0; i < solution.intents.length; i++) {
                     if (intentDataIndexes[i] < solution.intents[i].intentData.length) {
                         finished = false;
-                        _executionStateContext = solution.intents[i].sender;
-                        _executionIntentStandardId = solution.intents[i].standard;
                         contextData[i] =
                             _executeIntent(solution, executionIndex, i, intentDataIndexes[i], contextData[i]);
                         intentDataIndexes[i] = intentDataIndexes[i] + 1;
@@ -85,7 +80,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
 
             //Intents no longer executing
             _executionStateContext = EX_STATE_NOT_ACTIVE;
-            _executionIntentStandardId = EX_STANDARD_NOT_ACTIVE;
+            _executionIntentStandard = EX_STANDARD_NOT_ACTIVE;
         } //unchecked
     }
 
@@ -106,6 +101,8 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     ) private returns (bytes memory) {
         UserIntent calldata intent = solution.intents[intentIndex];
         IIntentStandard intentStandard = _registeredStandards[intent.standard];
+        _executionStateContext = intent.sender;
+        _executionIntentStandard = address(intentStandard);
         bool success = Exec.call(
             address(intentStandard),
             0,
@@ -304,22 +301,10 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     }
 
     /**
-     * returns the sender of the currently executing intent (or address(0) if no intent is executing).
+     * returns true if the given standard is currently executing an intent for the msg.sender.
      */
-    function executingIntentSender() external view returns (address) {
-        if (_executionStateContext == EX_STATE_VALIDATION_EXECUTING) {
-            return EX_STATE_NOT_ACTIVE;
-        }
-
-        return _executionStateContext;
-    }
-
-    /**
-     * returns the standard id of the currently executing intent
-     * (or bytes(0) if validation or solution is executing, or if no intent is executing).
-     */
-    function executingIntentStandardId() external view returns (bytes32) {
-        return _executionIntentStandardId;
+    function verifyExecutingIntentForStandard(IIntentStandard intentStandard) external view returns (bool) {
+        return _executionStateContext == msg.sender && _executionIntentStandard == address(intentStandard);
     }
 
     /**
@@ -352,7 +337,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         returns (uint256 validationData)
     {
         _executionStateContext = EX_STATE_VALIDATION_EXECUTING;
-        _executionIntentStandardId = EX_STANDARD_NOT_ACTIVE;
+        _executionIntentStandard = EX_STANDARD_NOT_ACTIVE;
 
         // validate intent standard is recognized
         IIntentStandard standard = _registeredStandards[intent.standard];

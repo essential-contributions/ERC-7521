@@ -50,7 +50,7 @@ contract AssetBasedIntentStandard is EntryPointTruster, AssetBasedIntentDelegate
      */
     function validateUserIntent(UserIntent calldata intent) external pure {
         // check over the first data segment first
-        if (intent.intentData.length > 0) {
+        if (intent.intentData.length > 0 && intent.intentData[0].length > 0) {
             AssetBasedIntentSegment calldata segment = parseAssetBasedIntentSegment(intent, 0);
             for (uint256 i = 0; i < segment.assetRequirements.length; i++) {
                 require(
@@ -65,13 +65,15 @@ contract AssetBasedIntentStandard is EntryPointTruster, AssetBasedIntentDelegate
         }
 
         // check through remaining data segments
-        for (uint256 j = 1; j < intent.intentData.length; j++) {
-            AssetBasedIntentSegment calldata segment = parseAssetBasedIntentSegment(intent, j);
-            for (uint256 i = 0; i < segment.assetRequirements.length; i++) {
-                segment.assetRequirements[i].validate();
-            }
-            for (uint256 i = 0; i < segment.assetReleases.length; i++) {
-                segment.assetReleases[i].validate();
+        for (uint256 i = 1; i < intent.intentData.length; i++) {
+            if (intent.intentData[i].length > 0) {
+                AssetBasedIntentSegment calldata segment = parseAssetBasedIntentSegment(intent, i);
+                for (uint256 j = 0; j < segment.assetRequirements.length; j++) {
+                    segment.assetRequirements[j].validate();
+                }
+                for (uint256 j = 0; j < segment.assetReleases.length; j++) {
+                    segment.assetReleases[j].validate();
+                }
             }
         }
     }
