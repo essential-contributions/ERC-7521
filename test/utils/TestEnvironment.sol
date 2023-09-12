@@ -89,7 +89,6 @@ abstract contract TestEnvironment is Test {
             sender: address(_account),
             nonce: 123,
             timestamp: block.timestamp,
-            verificationGasLimit: 1000000,
             intentData: data,
             signature: ""
         });
