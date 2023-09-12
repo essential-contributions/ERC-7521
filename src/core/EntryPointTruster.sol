@@ -28,10 +28,9 @@ abstract contract EntryPointTruster {
      * 2. the caller intent standard is the one that the entrypoint is currently executing for.
      */
     modifier onlyFromIntentStandardExecutingForSender() {
-        require(entryPoint().executingIntentSender() == address(this), "EntryPoint not executing intent for sender");
         require(
-            entryPoint().executingIntentStandardId() == entryPoint().getIntentStandardId(IIntentStandard(msg.sender)),
-            "EntryPoint not executing intent with standard"
+            entryPoint().verifyExecutingIntentForStandard(IIntentStandard(msg.sender)),
+            "EntryPoint not executing intent standard for sender"
         );
         _;
     }

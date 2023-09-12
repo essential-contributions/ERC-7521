@@ -123,15 +123,9 @@ interface IEntryPoint is INonceManager {
     function validationExecuting() external view returns (bool);
 
     /**
-     * returns the sender of the currently executing intent (or address(0) is no intent is executing).
+     * returns true if the given standard is currently executing an intent for the msg.sender.
      */
-    function executingIntentSender() external view returns (address);
-
-    /**
-     * returns the standard id of the currently executing intent
-     * (or bytes(0) if validation or solution is executing, or if no intent is executing).
-     */
-    function executingIntentStandardId() external view returns (bytes32);
+    function verifyExecutingIntentForStandard(IIntentStandard intentStandard) external returns (bool);
 
     /**
      * returns the default intent standard id.
