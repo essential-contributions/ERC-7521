@@ -1,6 +1,5 @@
-use super::asset_based_intent_standard::AssetBasedIntentStandardContract;
 use super::{client::WrappedClient, libs::IntentSolutionLibContract};
-use crate::abigen::{EntryPoint, IntentSolutionLib, RevertReason, UserIntentLib, ENTRYPOINT_ABI};
+use crate::abigen::{EntryPoint, IntentSolutionLib, ENTRYPOINT_ABI};
 use crate::unlinked_contract_factory;
 use ethers::prelude::*;
 use k256::ecdsa::SigningKey;
@@ -20,34 +19,12 @@ impl EntryPointContract {
             .await
             .unwrap();
 
-        let user_intent_lib = UserIntentLib::deploy(wrapped_client.client.clone(), ())
-            .unwrap()
-            .send()
-            .await
-            .unwrap();
-
-        let revert_reason = RevertReason::deploy(wrapped_client.client.clone(), ())
-            .unwrap()
-            .send()
-            .await
-            .unwrap();
-
         let entry_point_factory = unlinked_contract_factory::create(
             ENTRYPOINT_ARTIFACT,
-            [
-                (
-                    "contracts/interfaces/IntentSolution.sol:IntentSolutionLib",
-                    intent_solution_lib.address(),
-                ),
-                (
-                    "contracts/interfaces/UserIntent.sol:UserIntentLib",
-                    user_intent_lib.address(),
-                ),
-                (
-                    "contracts/utils/Exec.sol:RevertReason",
-                    revert_reason.address(),
-                ),
-            ],
+            [(
+                "contracts/interfaces/IntentSolution.sol:IntentSolutionLib",
+                intent_solution_lib.address(),
+            )],
             ENTRYPOINT_ABI.clone(),
             wrapped_client.client.clone(),
         )
@@ -60,16 +37,18 @@ impl EntryPointContract {
             .await
             .unwrap();
 
-        let entry_point_contract = EntryPoint::new(
+        let contract = EntryPoint::new(
             entry_point_contract_instance.address(),
             wrapped_client.client.clone(),
         );
 
+        let intent_solution_lib = IntentSolutionLibContract {
+            contract: intent_solution_lib,
+        };
+
         Self {
-            contract: entry_point_contract,
-            intent_solution_lib: IntentSolutionLibContract {
-                contract: intent_solution_lib,
-            },
+            contract,
+            intent_solution_lib,
         }
     }
 }

@@ -14,7 +14,7 @@ contract EntryPointTest is TestEnvironment {
 
     function test_getUserIntentHash() public {
         UserIntent memory intent = _intent();
-        bytes32 expectedHash = 0x4b236260785f4b8469f64da935aa786147576add2c196a8281b983046eb887f3;
+        bytes32 expectedHash = 0xe22be1eb6103dde4c858bc47812dbedc31b6dee395fb40280782df84606c7fdf;
         bytes32 intentHash = _entryPoint.getUserIntentHash(intent);
         assertEq(intentHash, expectedHash);
     }

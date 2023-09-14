@@ -25,7 +25,7 @@ struct UserIntent {
  * Utility functions helpful when working with UserIntent structs.
  */
 library UserIntentLib {
-    function hash(UserIntent calldata intent) public pure returns (bytes32) {
+    function hash(UserIntent calldata intent) internal pure returns (bytes32) {
         return keccak256(_pack(intent));
     }
 
