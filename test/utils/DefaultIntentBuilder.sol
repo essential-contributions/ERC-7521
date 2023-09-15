@@ -31,7 +31,6 @@ library DefaultIntentBuilder {
             sender: sender,
             nonce: nonce,
             timestamp: timestamp,
-            verificationGasLimit: 1000000,
             intentData: data,
             signature: ""
         });

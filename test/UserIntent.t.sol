@@ -11,7 +11,7 @@ contract UserIntentTest is TestEnvironment {
 
     function test_hash() public {
         bytes32 hash = _intent().hash();
-        bytes32 expectedHash = 0xe1cd98550ecfbeb284feadf63b27f561ea6a07c36fb4e9d10a9260174609d5f3;
+        bytes32 expectedHash = 0xaa4872a80202f9372c4d648876648b6ccfeae521363f2942832b21dfac92833f;
         assertEq(hash, expectedHash);
     }
 }
