@@ -16,10 +16,10 @@ import {
     AssetBasedIntentCurveLib,
     CurveType,
     EvaluationType
-} from "../../src/standards/assetbased/AssetBasedIntentCurve.sol";
-import {AssetBasedIntentSegment} from "../../src/standards/assetbased/AssetBasedIntentSegment.sol";
-import {AssetBasedIntentStandard} from "../../src/standards/assetbased/AssetBasedIntentStandard.sol";
-import {AssetType} from "../../src/standards/assetbased/utils/AssetWrapper.sol";
+} from "../../src/types/assetbased/AssetBasedIntentCurve.sol";
+import {AssetBasedIntentSegment} from "../../src/types/assetbased/AssetBasedIntentSegment.sol";
+import {AssetBasedIntentType} from "../../src/types/assetbased/AssetBasedIntentType.sol";
+import {AssetType} from "../../src/types/assetbased/utils/AssetWrapper.sol";
 import {AbstractAccount} from "../../src/wallet/AbstractAccount.sol";
 import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 
@@ -28,18 +28,18 @@ abstract contract TestEnvironment is Test {
     using ECDSA for bytes32;
 
     EntryPoint internal _entryPoint;
-    AssetBasedIntentStandard internal _assetBasedIntentStandard;
+    AssetBasedIntentType internal _assetBasedIntentType;
     AbstractAccount internal _account;
 
     address internal _publicAddress = _getPublicAddress(uint256(keccak256("account_private_key")));
 
     function setUp() public virtual {
         _entryPoint = new EntryPoint();
-        _assetBasedIntentStandard = new AssetBasedIntentStandard(_entryPoint);
+        _assetBasedIntentType = new AssetBasedIntentType(_entryPoint);
         _account = new AbstractAccount(_entryPoint, _publicAddress);
 
-        //register asset based intent standard to entry point
-        _entryPoint.registerIntentStandard(_assetBasedIntentStandard);
+        //register asset based intent type to entry point
+        _entryPoint.registerIntentType(_assetBasedIntentType);
     }
 
     function _curveETH(int256[] memory curveParams, EvaluationType evaluation)
@@ -85,7 +85,7 @@ abstract contract TestEnvironment is Test {
     function _intent() internal view returns (UserIntent memory) {
         bytes[] memory data;
         UserIntent memory intent = UserIntent({
-            standard: _assetBasedIntentStandard.standardId(),
+            intentType: _assetBasedIntentType.typeId(),
             sender: address(_account),
             nonce: 123,
             timestamp: block.timestamp,

@@ -3,8 +3,8 @@ pragma solidity ^0.8.13;
 
 import "openzeppelin/utils/cryptography/ECDSA.sol";
 import "../../src/interfaces/UserIntent.sol";
-import "../../src/standards/default/DefaultIntentStandard.sol";
-import "../../src/standards/default/DefaultIntentSegment.sol";
+import "../../src/types/default/DefaultIntentType.sol";
+import "../../src/types/default/DefaultIntentSegment.sol";
 
 /**
  * @title DefaultIntentBuilder
@@ -13,13 +13,13 @@ import "../../src/standards/default/DefaultIntentSegment.sol";
 library DefaultIntentBuilder {
     /**
      * Create a new user intent with the specified parameters.
-     * @param standard The standard ID for the intent.
+     * @param intentType The type ID for the intent.
      * @param sender The address of the intent sender.
      * @param nonce The nonce to prevent replay attacks.
      * @param timestamp The unix time stamp (in seconds) from when this intent was signed.
      * @return intent The created user intent.
      */
-    function create(bytes32 standard, address sender, uint256 nonce, uint256 timestamp)
+    function create(bytes32 intentType, address sender, uint256 nonce, uint256 timestamp)
         public
         pure
         returns (UserIntent memory intent)
@@ -27,7 +27,7 @@ library DefaultIntentBuilder {
         bytes[] memory data;
 
         intent = UserIntent({
-            standard: standard,
+            intentType: intentType,
             sender: sender,
             nonce: nonce,
             timestamp: timestamp,
@@ -59,7 +59,7 @@ library DefaultIntentBuilder {
     /**
      * Encodes the default intent segments onto the user intent.
      * @param intent The user intent to modify.
-     * @param segments The default intent standard segments.
+     * @param segments The default intent type segments.
      * @return The updated user intent.
      */
     function encodeData(UserIntent memory intent, DefaultIntentSegment[] memory segments)

@@ -39,7 +39,7 @@ contract GaslessAirdropConditionalPurchaseNFT is ScenarioTestEnvironment {
             )
         );
         intent = intent.addSegment(
-            _segment(_accountBuyERC1155AndTransferERC721(nftPrice, _reqTokenId, address(_assetBasedIntentStandard)))
+            _segment(_accountBuyERC1155AndTransferERC721(nftPrice, _reqTokenId, address(_assetBasedIntentType)))
         );
         intent = intent.addSegment(
             _segment("").requireETH(AssetBasedIntentCurveBuilder.constantCurve(0), false).requireERC721(

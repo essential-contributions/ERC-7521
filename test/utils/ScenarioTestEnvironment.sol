@@ -20,10 +20,10 @@ import {
     AssetBasedIntentCurveLib,
     CurveType,
     EvaluationType
-} from "../../src/standards/assetbased/AssetBasedIntentCurve.sol";
-import {AssetBasedIntentSegment} from "../../src/standards/assetbased/AssetBasedIntentSegment.sol";
-import {AssetBasedIntentStandard} from "../../src/standards/assetbased/AssetBasedIntentStandard.sol";
-import {AssetType, _balanceOf, _transfer} from "../../src/standards/assetbased/utils/AssetWrapper.sol";
+} from "../../src/types/assetbased/AssetBasedIntentCurve.sol";
+import {AssetBasedIntentSegment} from "../../src/types/assetbased/AssetBasedIntentSegment.sol";
+import {AssetBasedIntentType} from "../../src/types/assetbased/AssetBasedIntentType.sol";
+import {AssetType, _balanceOf, _transfer} from "../../src/types/assetbased/utils/AssetWrapper.sol";
 import {TestERC20} from "../../src/test/TestERC20.sol";
 import {TestERC721} from "../../src/test/TestERC721.sol";
 import {TestERC1155} from "../../src/test/TestERC1155.sol";
@@ -41,7 +41,7 @@ abstract contract ScenarioTestEnvironment is Test {
     using ECDSA for bytes32;
 
     EntryPoint internal _entryPoint;
-    AssetBasedIntentStandard internal _assetBasedIntentStandard;
+    AssetBasedIntentType internal _assetBasedIntentType;
     AbstractAccount internal _account;
 
     TestERC20 internal _testERC20;
@@ -66,11 +66,11 @@ abstract contract ScenarioTestEnvironment is Test {
     function setUp() public virtual {
         //deploy contracts
         _entryPoint = new EntryPoint();
-        _assetBasedIntentStandard = new AssetBasedIntentStandard(_entryPoint);
+        _assetBasedIntentType = new AssetBasedIntentType(_entryPoint);
         _account = new AbstractAccount(_entryPoint, _publicAddress);
 
-        //register asset based intent standard to entry point
-        _entryPoint.registerIntentStandard(_assetBasedIntentStandard);
+        //register asset based intent type to entry point
+        _entryPoint.registerIntentType(_assetBasedIntentType);
 
         _testERC20 = new TestERC20();
         _testERC721 = new TestERC721();
@@ -251,7 +251,7 @@ abstract contract ScenarioTestEnvironment is Test {
         returns (UserIntent memory)
     {
         UserIntent memory intent =
-            DefaultIntentBuilder.create(_entryPoint.getDefaultIntentStandardId(), address(_solverUtils), 0, 0);
+            DefaultIntentBuilder.create(_entryPoint.getDefaultIntentTypeId(), address(_solverUtils), 0, 0);
         if (numSegments > 0) intent = DefaultIntentBuilder.addSegment(intent, callData1);
         if (numSegments > 1) intent = DefaultIntentBuilder.addSegment(intent, callData2);
         if (numSegments > 2) intent = DefaultIntentBuilder.addSegment(intent, callData3);
@@ -268,7 +268,7 @@ abstract contract ScenarioTestEnvironment is Test {
      */
     function _emptyIntent() internal view returns (UserIntent memory) {
         UserIntent memory intent =
-            DefaultIntentBuilder.create(_entryPoint.getDefaultIntentStandardId(), address(_account), 0, 0);
+            DefaultIntentBuilder.create(_entryPoint.getDefaultIntentTypeId(), address(_account), 0, 0);
         return intent;
     }
 
@@ -277,7 +277,7 @@ abstract contract ScenarioTestEnvironment is Test {
      * @return The created UserIntent struct.
      */
     function _intent() internal view returns (UserIntent memory) {
-        return AssetBasedIntentBuilder.create(_assetBasedIntentStandard.standardId(), address(_account), 0, 0);
+        return AssetBasedIntentBuilder.create(_assetBasedIntentType.typeId(), address(_account), 0, 0);
     }
 
     /**

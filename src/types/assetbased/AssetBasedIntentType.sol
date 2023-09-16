@@ -9,14 +9,14 @@ import {AssetBasedIntentDelegate} from "./AssetBasedIntentDelegate.sol";
 import {AssetType, _balanceOf, _transfer} from "./utils/AssetWrapper.sol";
 import {IEntryPoint} from "../../interfaces/IEntryPoint.sol";
 import {IIntentDelegate} from "../../interfaces/IIntentDelegate.sol";
-import {IIntentStandard} from "../../interfaces/IIntentStandard.sol";
+import {IIntentType} from "../../interfaces/IIntentType.sol";
 import {UserIntent, UserIntentLib} from "../../interfaces/UserIntent.sol";
 import {IntentSolution, IntentSolutionLib} from "../../interfaces/IntentSolution.sol";
 import {EntryPointTruster} from "../../core/EntryPointTruster.sol";
 import {Exec, RevertReason} from "../../utils/Exec.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
 
-contract AssetBasedIntentStandard is EntryPointTruster, AssetBasedIntentDelegate, IIntentStandard {
+contract AssetBasedIntentType is EntryPointTruster, AssetBasedIntentDelegate, IIntentType {
     using AssetBasedIntentCurveLib for AssetBasedIntentCurve;
     using IntentSolutionLib for IntentSolution;
     using UserIntentLib for UserIntent;
@@ -40,8 +40,8 @@ contract AssetBasedIntentStandard is EntryPointTruster, AssetBasedIntentDelegate
         return _entryPoint;
     }
 
-    function standardId() public view returns (bytes32) {
-        return _entryPoint.getIntentStandardId(this);
+    function typeId() public view returns (bytes32) {
+        return _entryPoint.getIntentTypeId(this);
     }
 
     /**
@@ -140,11 +140,11 @@ contract AssetBasedIntentStandard is EntryPointTruster, AssetBasedIntentDelegate
     }
 
     /**
-     * Verifies the intent standard is for a given entry point contract (required for registration on the entry point).
+     * Verifies the intent type is for a given entry point contract (required for registration on the entry point).
      * @param entryPointContract the entry point contract.
-     * @return flag indicating if the intent standard is for the given entry point.
+     * @return flag indicating if the intent type is for the given entry point.
      */
-    function isIntentStandardForEntryPoint(IEntryPoint entryPointContract) external view returns (bool) {
+    function isIntentTypeForEntryPoint(IEntryPoint entryPointContract) external view returns (bool) {
         return entryPointContract == _entryPoint;
     }
 

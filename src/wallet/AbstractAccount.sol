@@ -7,7 +7,7 @@ import {TokenCallbackHandler} from "./TokenCallbackHandler.sol";
 import {BaseAccount} from "../core/BaseAccount.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {IIntentDelegate} from "../interfaces/IIntentDelegate.sol";
-import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
+import {IIntentType} from "../interfaces/IIntentType.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {Exec} from "../utils/Exec.sol";
 import {_packValidationData} from "../utils/Helpers.sol";
@@ -40,7 +40,7 @@ contract AbstractAccount is BaseAccount, TokenCallbackHandler, IIntentDelegate {
      */
     function execute(address target, uint256 value, bytes calldata data)
         external
-        onlyFromIntentStandardExecutingForSender
+        onlyFromIntentTypeExecutingForSender
     {
         _call(target, value, data);
         emit Executed(IEntryPoint(_entryPoint), target, value, data);
@@ -51,7 +51,7 @@ contract AbstractAccount is BaseAccount, TokenCallbackHandler, IIntentDelegate {
      */
     function executeMulti(address[] calldata targets, uint256[] calldata values, bytes[] calldata datas)
         external
-        onlyFromIntentStandardExecutingForSender
+        onlyFromIntentTypeExecutingForSender
     {
         require(targets.length == values.length, "invalid multi call inputs");
         require(targets.length == datas.length, "invalid multi call inputs");
@@ -63,7 +63,7 @@ contract AbstractAccount is BaseAccount, TokenCallbackHandler, IIntentDelegate {
     }
 
     /**
-     * Make a call delegated through an intent standard.
+     * Make a call delegated through an intent type.
      *
      * @param data calldata.
      * @return bool delegate call result.
@@ -71,10 +71,10 @@ contract AbstractAccount is BaseAccount, TokenCallbackHandler, IIntentDelegate {
     function generalizedIntentDelegateCall(bytes memory data)
         external
         override
-        onlyFromIntentStandardExecutingForSender
+        onlyFromIntentTypeExecutingForSender
         returns (bool)
     {
-        bool success = Exec.delegateCall(address(IIntentStandard(msg.sender)), data, gasleft());
+        bool success = Exec.delegateCall(address(IIntentType(msg.sender)), data, gasleft());
         if (!success) {
             bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
             revert(string(reason));

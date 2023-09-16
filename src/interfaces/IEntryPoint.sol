@@ -5,7 +5,7 @@ pragma solidity ^0.8.13;
 /* solhint-disable no-inline-assembly */
 /* solhint-disable reason-string */
 
-import {IIntentStandard} from "./IIntentStandard.sol";
+import {IIntentType} from "./IIntentType.sol";
 import {INonceManager} from "./INonceManager.sol";
 import {IntentSolution} from "./IntentSolution.sol";
 import {UserIntent} from "./UserIntent.sol";
@@ -103,19 +103,19 @@ interface IEntryPoint is INonceManager {
     function getUserIntentHash(UserIntent calldata intent) external view returns (bytes32);
 
     /**
-     * registers a new intent standard.
+     * registers a new intent type.
      */
-    function registerIntentStandard(IIntentStandard intentStandard) external returns (bytes32);
+    function registerIntentType(IIntentType intentType) external returns (bytes32);
 
     /**
-     * gets the intent standard contract for the given intent standard ID.
+     * gets the intent type contract for the given intent type ID.
      */
-    function getIntentStandardContract(bytes32 standardId) external view returns (IIntentStandard);
+    function getIntentTypeContract(bytes32 typeId) external view returns (IIntentType);
 
     /**
-     * gets the intent standard ID for the given intent standard contract.
+     * gets the intent type ID for the given intent type contract.
      */
-    function getIntentStandardId(IIntentStandard intentStandard) external view returns (bytes32);
+    function getIntentTypeId(IIntentType intentType) external view returns (bytes32);
 
     /**
      * returns if intent validation actions are currently being executed.
@@ -123,12 +123,12 @@ interface IEntryPoint is INonceManager {
     function validationExecuting() external view returns (bool);
 
     /**
-     * returns true if the given standard is currently executing an intent for the msg.sender.
+     * returns true if the given type is currently executing an intent for the msg.sender.
      */
-    function verifyExecutingIntentForStandard(IIntentStandard intentStandard) external returns (bool);
+    function verifyExecutingIntentForType(IIntentType intentType) external returns (bool);
 
     /**
-     * returns the default intent standard id.
+     * returns the default intent type id.
      */
-    function getDefaultIntentStandardId() external pure returns (bytes32);
+    function getDefaultIntentTypeId() external pure returns (bytes32);
 }

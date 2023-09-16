@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 /* solhint-disable func-name-mixedcase */
 
 import "./utils/TestEnvironment.sol";
-import "../src/interfaces/IIntentStandard.sol";
+import "../src/interfaces/IIntentType.sol";
 
 contract EntryPointTest is TestEnvironment {
     using AssetBasedIntentBuilder for UserIntent;
@@ -19,54 +19,54 @@ contract EntryPointTest is TestEnvironment {
         assertEq(intentHash, expectedHash);
     }
 
-    function test_registerIntentStandard() public {
+    function test_registerIntentType() public {
         EntryPoint newEntryPoint = new EntryPoint();
-        AssetBasedIntentStandard newIntentStandard = new AssetBasedIntentStandard(newEntryPoint);
-        newEntryPoint.registerIntentStandard(newIntentStandard);
-        bytes32 registeredStandardId =
-            keccak256(abi.encodePacked(newIntentStandard, address(newEntryPoint), block.chainid));
-        IIntentStandard registeredStandard = newEntryPoint.getIntentStandardContract(registeredStandardId);
-        bytes32 expectedHash = keccak256(abi.encode(IIntentStandard(newIntentStandard)));
-        bytes32 registeredHash = keccak256(abi.encode(registeredStandard));
+        AssetBasedIntentType newIntentType = new AssetBasedIntentType(newEntryPoint);
+        newEntryPoint.registerIntentType(newIntentType);
+        bytes32 registeredTypeId =
+            keccak256(abi.encodePacked(newIntentType, address(newEntryPoint), block.chainid));
+        IIntentType registeredType = newEntryPoint.getIntentTypeContract(registeredTypeId);
+        bytes32 expectedHash = keccak256(abi.encode(IIntentType(newIntentType)));
+        bytes32 registeredHash = keccak256(abi.encode(registeredType));
         assertEq(registeredHash, expectedHash);
     }
 
-    function test_failRegisterIntentStandard_invalidStandard() public {
+    function test_failRegisterIntentType_invalidType() public {
         EntryPoint newEntryPoint = new EntryPoint();
-        AssetBasedIntentStandard newIntentStandard = new AssetBasedIntentStandard(newEntryPoint);
-        vm.expectRevert("AA80 invalid standard");
-        _entryPoint.registerIntentStandard(newIntentStandard);
+        AssetBasedIntentType newIntentType = new AssetBasedIntentType(newEntryPoint);
+        vm.expectRevert("AA80 invalid type");
+        _entryPoint.registerIntentType(newIntentType);
     }
 
-    function test_failRegisterIntentStandard_alreadyRegistered() public {
+    function test_failRegisterIntentType_alreadyRegistered() public {
         vm.expectRevert("AA81 already registered");
-        _entryPoint.registerIntentStandard(_assetBasedIntentStandard);
+        _entryPoint.registerIntentType(_assetBasedIntentType);
     }
 
-    function test_getIntentStandardContract() public {
-        bytes32 standardId = _assetBasedIntentStandard.standardId();
-        IIntentStandard registeredStandard = _entryPoint.getIntentStandardContract(standardId);
-        bytes32 expectedHash = keccak256(abi.encode(IIntentStandard(_assetBasedIntentStandard)));
-        bytes32 registeredHash = keccak256(abi.encode(registeredStandard));
+    function test_getIntentTypeContract() public {
+        bytes32 typeId = _assetBasedIntentType.typeId();
+        IIntentType registeredType = _entryPoint.getIntentTypeContract(typeId);
+        bytes32 expectedHash = keccak256(abi.encode(IIntentType(_assetBasedIntentType)));
+        bytes32 registeredHash = keccak256(abi.encode(registeredType));
         assertEq(registeredHash, expectedHash);
     }
 
-    function test_failGetIntentStandardContract_unknownStandard() public {
-        bytes32 standardId = _assetBasedIntentStandard.standardId();
-        vm.expectRevert("AA82 unknown standard");
-        _entryPoint.getIntentStandardContract(standardId << 1);
+    function test_failGetIntentTypeContract_unknownType() public {
+        bytes32 typeId = _assetBasedIntentType.typeId();
+        vm.expectRevert("AA82 unknown type");
+        _entryPoint.getIntentTypeContract(typeId << 1);
     }
 
-    function test_getIntentStandardId() public {
-        bytes32 standardId = _entryPoint.getIntentStandardId(_assetBasedIntentStandard);
-        bytes32 expectedStandardId = _assetBasedIntentStandard.standardId();
-        assertEq(standardId, expectedStandardId);
+    function test_getIntentTypeId() public {
+        bytes32 typeId = _entryPoint.getIntentTypeId(_assetBasedIntentType);
+        bytes32 expectedTypeId = _assetBasedIntentType.typeId();
+        assertEq(typeId, expectedTypeId);
     }
 
-    function test_failGetIntentStandardId_unknownStandard() public {
+    function test_failGetIntentTypeId_unknownType() public {
         EntryPoint newEntryPoint = new EntryPoint();
-        AssetBasedIntentStandard newIntentStandard = new AssetBasedIntentStandard(newEntryPoint);
-        vm.expectRevert("AA82 unknown standard");
-        newEntryPoint.getIntentStandardId(newIntentStandard);
+        AssetBasedIntentType newIntentType = new AssetBasedIntentType(newEntryPoint);
+        vm.expectRevert("AA82 unknown standtypeard");
+        newEntryPoint.getIntentTypeId(newIntentType);
     }
 }

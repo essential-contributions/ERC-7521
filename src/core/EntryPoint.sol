@@ -8,10 +8,10 @@ pragma solidity ^0.8.13;
 import {NonceManager} from "./NonceManager.sol";
 import {IAccount} from "../interfaces/IAccount.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
-import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
+import {IIntentType} from "../interfaces/IIntentType.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
 import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
-import {DefaultIntentStandard} from "../standards/default/DefaultIntentStandard.sol";
+import {DefaultIntentType} from "../types/default/DefaultIntentType.sol";
 import {Exec, RevertReason} from "../utils/Exec.sol";
 import {ValidationData, _parseValidationData} from "../utils/Helpers.sol";
 import {ReentrancyGuard} from "openzeppelin/security/ReentrancyGuard.sol";
@@ -21,25 +21,25 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     using UserIntentLib for UserIntent;
     using RevertReason for bytes;
 
-    bytes32 private constant DEFAULT_INTENT_STANDARD_ID = 0;
+    bytes32 private constant DEFAULT_INTENT_TYPE_ID = 0;
 
     uint256 private constant REVERT_REASON_MAX_LEN = 2048;
     uint256 private constant CONTEXT_DATA_MAX_LEN = 2048;
 
-    address private constant EX_STANDARD_NOT_ACTIVE = address(0);
+    address private constant EX_TYPE_NOT_ACTIVE = address(0);
     address private constant EX_STATE_NOT_ACTIVE = address(0);
     address private constant EX_STATE_VALIDATION_EXECUTING =
         address(uint160(uint256(keccak256("EX_STATE_VALIDATION_EXECUTING"))));
 
-    //keeps track of registered intent standards
-    mapping(bytes32 => IIntentStandard) private _registeredStandards;
+    //keeps track of registered intent types
+    mapping(bytes32 => IIntentType) private _registeredTypes;
 
     //flag for applications to check current context of execution
     address private _executionStateContext;
-    address private _executionIntentStandard;
+    address private _executionIntentType;
 
     constructor() {
-        _registeredStandards[DEFAULT_INTENT_STANDARD_ID] = new DefaultIntentStandard(this);
+        _registeredTypes[DEFAULT_INTENT_TYPE_ID] = new DefaultIntentType(this);
     }
 
     /**
@@ -80,7 +80,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
 
             //Intents no longer executing
             _executionStateContext = EX_STATE_NOT_ACTIVE;
-            _executionIntentStandard = EX_STANDARD_NOT_ACTIVE;
+            _executionIntentType = EX_TYPE_NOT_ACTIVE;
         } //unchecked
     }
 
@@ -100,14 +100,14 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         bytes memory contextData
     ) private returns (bytes memory) {
         UserIntent calldata intent = solution.intents[intentIndex];
-        IIntentStandard intentStandard = _registeredStandards[intent.standard];
+        IIntentType intentType = _registeredTypes[intent.intentType];
         _executionStateContext = intent.sender;
-        _executionIntentStandard = address(intentStandard);
+        _executionIntentType = address(intentType);
         bool success = Exec.call(
-            address(intentStandard),
+            address(intentType),
             0,
             abi.encodeWithSelector(
-                IIntentStandard.executeUserIntent.selector, solution, executionIndex, segmentIndex, contextData
+                IIntentType.executeUserIntent.selector, solution, executionIndex, segmentIndex, contextData
             ),
             gasleft()
         );
@@ -260,37 +260,37 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     }
 
     /**
-     * registers a new intent standard.
+     * registers a new intent type.
      */
-    function registerIntentStandard(IIntentStandard intentStandard) external returns (bytes32) {
-        require(intentStandard.isIntentStandardForEntryPoint(this), "AA80 invalid standard");
+    function registerIntentType(IIntentType intentType) external returns (bytes32) {
+        require(intentType.isIntentTypeForEntryPoint(this), "AA80 invalid type");
 
-        bytes32 standardId = _generateIntentStandardId(intentStandard);
-        require(address(_registeredStandards[standardId]) == address(0), "AA81 already registered");
+        bytes32 typeId = _generateIntentTypeId(intentType);
+        require(address(_registeredTypes[typeId]) == address(0), "AA81 already registered");
 
-        _registeredStandards[standardId] = intentStandard;
-        return standardId;
+        _registeredTypes[typeId] = intentType;
+        return typeId;
     }
 
     /**
-     * gets the intent standard contract for the given intent standard ID.
+     * gets the intent type contract for the given intent type ID.
      */
-    function getIntentStandardContract(bytes32 standardId) external view returns (IIntentStandard) {
-        IIntentStandard intentStandard = _registeredStandards[standardId];
-        require(intentStandard != IIntentStandard(address(0)), "AA82 unknown standard");
-        return intentStandard;
+    function getIntentTypeContract(bytes32 typeId) external view returns (IIntentType) {
+        IIntentType intentType = _registeredTypes[typeId];
+        require(intentType != IIntentType(address(0)), "AA82 unknown type");
+        return intentType;
     }
 
     /**
-     * gets the intent standard ID for the given intent standard contract.
+     * gets the intent type ID for the given intent type contract.
      */
-    function getIntentStandardId(IIntentStandard intentStandard) external view returns (bytes32) {
-        if (address(intentStandard) == address(_registeredStandards[DEFAULT_INTENT_STANDARD_ID])) {
-            return DEFAULT_INTENT_STANDARD_ID;
+    function getIntentTypeId(IIntentType intentType) external view returns (bytes32) {
+        if (address(intentType) == address(_registeredTypes[DEFAULT_INTENT_TYPE_ID])) {
+            return DEFAULT_INTENT_TYPE_ID;
         }
-        bytes32 standardId = _generateIntentStandardId(intentStandard);
-        require(_registeredStandards[standardId] != IIntentStandard(address(0)), "AA82 unknown standard");
-        return standardId;
+        bytes32 typeId = _generateIntentTypeId(intentType);
+        require(_registeredTypes[typeId] != IIntentType(address(0)), "AA82 unknown type");
+        return typeId;
     }
 
     /**
@@ -301,17 +301,17 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     }
 
     /**
-     * returns true if the given standard is currently executing an intent for the msg.sender.
+     * returns true if the given type is currently executing an intent for the msg.sender.
      */
-    function verifyExecutingIntentForStandard(IIntentStandard intentStandard) external view returns (bool) {
-        return _executionStateContext == msg.sender && _executionIntentStandard == address(intentStandard);
+    function verifyExecutingIntentForType(IIntentType intentType) external view returns (bool) {
+        return _executionStateContext == msg.sender && _executionIntentType == address(intentType);
     }
 
     /**
-     * returns the default intent standard id.
+     * returns the default intent type id.
      */
-    function getDefaultIntentStandardId() external pure returns (bytes32) {
-        return DEFAULT_INTENT_STANDARD_ID;
+    function getDefaultIntentTypeId() external pure returns (bytes32) {
+        return DEFAULT_INTENT_TYPE_ID;
     }
 
     /**
@@ -336,16 +336,16 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         returns (uint256 validationData)
     {
         _executionStateContext = EX_STATE_VALIDATION_EXECUTING;
-        _executionIntentStandard = EX_STANDARD_NOT_ACTIVE;
+        _executionIntentType = EX_TYPE_NOT_ACTIVE;
 
-        // validate intent standard is recognized
-        IIntentStandard standard = _registeredStandards[intent.standard];
-        if (address(standard) == address(0)) {
-            revert FailedIntent(intentIndex, 0, "AA82 unknown standard");
+        // validate intent type is recognized
+        IIntentType intentType = _registeredTypes[intent.intentType];
+        if (address(intentType) == address(0)) {
+            revert FailedIntent(intentIndex, 0, "AA82 unknown type");
         }
 
         // validate the intent itself
-        try standard.validateUserIntent(intent) {}
+        try intentType.validateUserIntent(intent) {}
         catch Error(string memory revertReason) {
             revert FailedIntent(intentIndex, 0, string.concat("AA62 reverted: ", revertReason));
         } catch {
@@ -432,10 +432,10 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     }
 
     /**
-     * generates an intent standard ID for an intent standard contract.
+     * generates an intent type ID for an intent type contract.
      */
-    function _generateIntentStandardId(IIntentStandard intentStandard) private view returns (bytes32) {
-        return keccak256(abi.encodePacked(intentStandard, address(this), block.chainid));
+    function _generateIntentTypeId(IIntentType intentType) private view returns (bytes32) {
+        return keccak256(abi.encodePacked(intentType, address(this), block.chainid));
     }
 
     //place the NUMBER opcode in the code.

@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
-import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
+import {IIntentType} from "../interfaces/IIntentType.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {_packValidationData} from "../utils/Helpers.sol";
 import {AbstractAccount} from "../wallet/AbstractAccount.sol";

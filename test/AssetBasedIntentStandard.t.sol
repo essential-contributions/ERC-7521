@@ -5,7 +5,7 @@ pragma solidity ^0.8.13;
 
 import "./utils/TestEnvironment.sol";
 
-contract AssetBasedIntentStandardTest is TestEnvironment {
+contract AssetBasedIntentTypeTest is TestEnvironment {
     using AssetBasedIntentBuilder for UserIntent;
     using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
 
@@ -32,11 +32,11 @@ contract AssetBasedIntentStandardTest is TestEnvironment {
     }
 
     function test_entryPoint() public {
-        assertEq(address(_assetBasedIntentStandard.entryPoint()), address(_entryPoint));
+        assertEq(address(_assetBasedIntentType.entryPoint()), address(_entryPoint));
     }
 
     function test_validate() public view {
-        _assetBasedIntentStandard.validateUserIntent(_intent());
+        _assetBasedIntentType.validateUserIntent(_intent());
     }
 
     function test_failValidate_invalidAssets() public {
@@ -46,7 +46,7 @@ contract AssetBasedIntentStandardTest is TestEnvironment {
         intent = intent.encodeData(segments);
 
         vm.expectRevert("invalid curve params");
-        _assetBasedIntentStandard.validateUserIntent(intent);
+        _assetBasedIntentType.validateUserIntent(intent);
     }
 
     function test_validate_multipleAssetRequirement() public view {
@@ -54,7 +54,7 @@ contract AssetBasedIntentStandardTest is TestEnvironment {
         AssetBasedIntentSegment[] memory segments = _dataForAssetRequirementCheck(EvaluationType.ABSOLUTE);
         intent = intent.encodeData(segments);
 
-        _assetBasedIntentStandard.validateUserIntent(intent);
+        _assetBasedIntentType.validateUserIntent(intent);
     }
 
     function test_failValidate_relativeRequirementAtBeginning() public {
@@ -64,6 +64,6 @@ contract AssetBasedIntentStandardTest is TestEnvironment {
         intent = intent.encodeData(segments);
 
         vm.expectRevert("relative requirements not allowed at beginning of intent");
-        _assetBasedIntentStandard.validateUserIntent(intent);
+        _assetBasedIntentType.validateUserIntent(intent);
     }
 }

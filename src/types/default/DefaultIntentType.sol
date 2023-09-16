@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 /* solhint-disable private-vars-leading-underscore */
 
 import {EntryPointTruster} from "../../core/EntryPointTruster.sol";
-import {IIntentStandard} from "../../interfaces/IIntentStandard.sol";
+import {IIntentType} from "../../interfaces/IIntentType.sol";
 import {IEntryPoint} from "../../interfaces/IEntryPoint.sol";
 import {UserIntent, UserIntentLib} from "../../interfaces/UserIntent.sol";
 import {IntentSolution, IntentSolutionLib} from "../../interfaces/IntentSolution.sol";
@@ -12,7 +12,7 @@ import {Exec} from "../../utils/Exec.sol";
 import {DefaultIntentSegment, parseDefaultIntentSegment} from "./DefaultIntentSegment.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
 
-contract DefaultIntentStandard is IIntentStandard, EntryPointTruster {
+contract DefaultIntentType is IIntentType, EntryPointTruster {
     using IntentSolutionLib for IntentSolution;
     using UserIntentLib for UserIntent;
 
@@ -34,8 +34,8 @@ contract DefaultIntentStandard is IIntentStandard, EntryPointTruster {
         return _entryPoint;
     }
 
-    function standardId() public view returns (bytes32) {
-        return _entryPoint.getIntentStandardId(this);
+    function typeId() public view returns (bytes32) {
+        return _entryPoint.getIntentTypeId(this);
     }
 
     /**
@@ -75,11 +75,11 @@ contract DefaultIntentStandard is IIntentStandard, EntryPointTruster {
     }
 
     /**
-     * Verifies the intent standard is for a given entry point contract (required for registration on the entry point).
+     * Verifies the intent type is for a given entry point contract (required for registration on the entry point).
      * @param entryPointContract the entry point contract.
-     * @return flag indicating if the intent standard is for the given entry point.
+     * @return flag indicating if the intent type is for the given entry point.
      */
-    function isIntentStandardForEntryPoint(IEntryPoint entryPointContract) external view returns (bool) {
+    function isIntentTypeForEntryPoint(IEntryPoint entryPointContract) external view returns (bool) {
         return entryPointContract == _entryPoint;
     }
 }

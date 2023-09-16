@@ -35,22 +35,22 @@ contract ValidateUserIntentTest is ScenarioTestEnvironment {
     using AssetBasedIntentBuilder for UserIntent;
     using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
 
-    function test_fail_unknownStandard() public {
+    function test_fail_unknownType() public {
         UserIntent memory intent = _intent();
-        intent.standard = bytes32(uint256(123));
+        intent.intentType = bytes32(uint256(123));
 
         IntentSolution memory solution = _solution(intent, _emptyIntent());
 
-        // call handleIntents with an unknown intent standard
-        vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA82 unknown standard"));
+        // call handleIntents with an unknown intent type
+        vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA82 unknown type"));
         _entryPoint.handleIntents(solution);
 
-        // call simulateHandleIntents with an unknown intent standard
-        vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA82 unknown standard"));
+        // call simulateHandleIntents with an unknown intent type
+        vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA82 unknown type"));
         _entryPoint.simulateHandleIntents(solution, address(0), "");
     }
 
-    function test_fail_validateWithStandard() public {
+    function test_fail_validateWithType() public {
         UserIntent memory intent = _intent();
         AssetBasedIntentSegment memory segment = _segment("").releaseETH(AssetBasedIntentCurveBuilder.constantCurve(10));
         // invalidate curve params
@@ -96,7 +96,7 @@ contract ValidateUserIntentTest is ScenarioTestEnvironment {
     function test_fail_invalidNonce() public {
         // use wrong nonce while creating intent
         UserIntent memory intent =
-            AssetBasedIntentBuilder.create(_assetBasedIntentStandard.standardId(), address(_account), 123, 0);
+            AssetBasedIntentBuilder.create(_assetBasedIntentType.typeId(), address(_account), 123, 0);
         intent = _signIntent(intent);
 
         IntentSolution memory solution = _solution(intent, _emptyIntent());
@@ -131,7 +131,7 @@ contract ValidateAccountValidationDataTest is ScenarioTestEnvironment {
 
     function test_fail_expired() public {
         UserIntent memory intent = AssetBasedIntentBuilder.create(
-            _assetBasedIntentStandard.standardId(), address(_account), 0, block.timestamp
+            _assetBasedIntentType.typeId(), address(_account), 0, block.timestamp
         );
         intent = _signIntent(intent);
 
@@ -153,7 +153,7 @@ contract ValidateAccountValidationDataTest is ScenarioTestEnvironment {
         TestAbstractAccount _testAccount = new TestAbstractAccount(_entryPoint, _testPublicAddress);
 
         UserIntent memory intent =
-            AssetBasedIntentBuilder.create(_assetBasedIntentStandard.standardId(), address(_testAccount), 0, 0);
+            AssetBasedIntentBuilder.create(_assetBasedIntentType.typeId(), address(_testAccount), 0, 0);
         bytes32 intentHash = _entryPoint.getUserIntentHash(intent);
         bytes32 digest = intentHash.toEthSignedMessageHash();
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(_testPrivateKey, digest);

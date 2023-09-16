@@ -7,10 +7,10 @@ import {
     AssetBasedIntentCurveLib,
     CurveType,
     EvaluationType
-} from "../../src/standards/assetbased/AssetBasedIntentCurve.sol";
-import {AssetBasedIntentSegment} from "../../src/standards/assetbased/AssetBasedIntentSegment.sol";
-import {AssetBasedIntentStandard} from "../../src/standards/assetbased/AssetBasedIntentStandard.sol";
-import {AssetType} from "../../src/standards/assetbased/utils/AssetWrapper.sol";
+} from "../../src/types/assetbased/AssetBasedIntentCurve.sol";
+import {AssetBasedIntentSegment} from "../../src/types/assetbased/AssetBasedIntentSegment.sol";
+import {AssetBasedIntentType} from "../../src/types/assetbased/AssetBasedIntentType.sol";
+import {AssetType} from "../../src/types/assetbased/utils/AssetWrapper.sol";
 import "openzeppelin/utils/cryptography/ECDSA.sol";
 
 /**
@@ -20,13 +20,13 @@ import "openzeppelin/utils/cryptography/ECDSA.sol";
 library AssetBasedIntentBuilder {
     /**
      * Create a new user intent with the specified parameters.
-     * @param standard The standard ID for the intent.
+     * @param intentType The type ID for the intent.
      * @param sender The address of the intent sender.
      * @param nonce The nonce to prevent replay attacks.
      * @param timestamp The unix time stamp (in seconds) from when this intent was signed.
      * @return intent The created user intent.
      */
-    function create(bytes32 standard, address sender, uint256 nonce, uint256 timestamp)
+    function create(bytes32 intentType, address sender, uint256 nonce, uint256 timestamp)
         public
         pure
         returns (UserIntent memory intent)
@@ -34,7 +34,7 @@ library AssetBasedIntentBuilder {
         bytes[] memory data;
 
         intent = UserIntent({
-            standard: standard,
+            intentType: intentType,
             sender: sender,
             nonce: nonce,
             timestamp: timestamp,
@@ -69,7 +69,7 @@ library AssetBasedIntentBuilder {
     /**
      * Encodes the asset based intent segments onto the user intent.
      * @param intent The user intent to modify.
-     * @param segments The asset based intent standard segments.
+     * @param segments The asset based intent type segments.
      * @return The updated user intent.
      */
     function encodeData(UserIntent memory intent, AssetBasedIntentSegment[] memory segments)

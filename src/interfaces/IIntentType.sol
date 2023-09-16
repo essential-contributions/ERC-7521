@@ -5,7 +5,7 @@ import {IEntryPoint} from "./IEntryPoint.sol";
 import {IntentSolution} from "./IntentSolution.sol";
 import {UserIntent} from "./UserIntent.sol";
 
-interface IIntentStandard {
+interface IIntentType {
     /**
      * Validate intent structure (typically just formatting).
      * @param intent the intent that is about to be solved.
@@ -28,9 +28,9 @@ interface IIntentStandard {
     ) external returns (bytes memory);
 
     /**
-     * Verifies the intent standard is for a given entry point contract (required for registration on the entry point).
+     * Verifies the intent type is for a given entry point contract (required for registration on the entry point).
      * @param entryPoint the entry point contract.
-     * @return flag indicating if the intent standard is for the given entry point.
+     * @return flag indicating if the intent type is for the given entry point.
      */
-    function isIntentStandardForEntryPoint(IEntryPoint entryPoint) external returns (bool);
+    function isIntentTypeForEntryPoint(IEntryPoint entryPoint) external returns (bool);
 }
