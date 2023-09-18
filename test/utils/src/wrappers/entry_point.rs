@@ -1,13 +1,14 @@
 use super::{client::WrappedClient, libs::IntentSolutionLibContract};
+use crate::abigen::entry_point::IntentSolution;
 use crate::abigen::{EntryPoint, IntentSolutionLib, ENTRYPOINT_ABI};
-use crate::builders::solution_builder::SolutionBuilder;
 use crate::unlinked_contract_factory;
-use ethers::abi::{AbiEncode, FixedBytes};
+use ethers::abi::AbiDecode;
 use ethers::prelude::*;
 use eyre::Result;
 use k256::ecdsa::SigningKey;
 
-pub const ENTRYPOINT_ARTIFACT: &str = include_str!("../../../../out/EntryPoint.sol/EntryPoint.json");
+pub const ENTRYPOINT_ARTIFACT: &str =
+    include_str!("../../../../out/EntryPoint.sol/EntryPoint.json");
 
 pub struct EntryPointContract {
     pub contract: EntryPoint<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>,
@@ -93,20 +94,39 @@ impl EntryPointContract {
         }
     }
 
-    pub async fn handle_intents(&self, solution: SolutionBuilder) -> Result<()> {
+    pub async fn handle_intents(&self, solution: IntentSolution) -> Result<()> {
+        let handle_intents_call = crate::abigen::HandleIntentsCall { solution };
+
         let tx = self
             .contract
-            .method::<(
-                U256,
-                Vec<(Bytes, Address, U256, U256, Vec<Bytes>, Bytes)>,
-                Vec<U256>,
-            ), ()>("handleIntents", solution.parametrize())
+            .method::<_, ()>("handleIntents", handle_intents_call)
             .unwrap();
-        let to_return = tx.clone().call().await.unwrap();
+
+        let to_return_unwrapped = tx.clone().call().await;
+        let value;
+        match to_return_unwrapped {
+            Ok(t) => {
+                value = t;
+            }
+            Err(e) => match e.as_revert() {
+                Some(revert) => {
+                    if let Ok(decoded_error) =
+                        <crate::abigen::EntryPointErrors as AbiDecode>::decode(revert.as_ref())
+                    {
+                        panic!("{}", decoded_error);
+                    } else {
+                        panic!("{}", revert);
+                    }
+                }
+                None => {
+                    panic!("{}", e);
+                }
+            },
+        };
 
         match tx.clone().send().await {
             Ok(pending_tx) => match pending_tx.await {
-                Ok(_) => Ok(to_return.into()),
+                Ok(_) => Ok(value.into()),
                 Err(e) => {
                     panic!("{}", e);
                 }

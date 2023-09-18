@@ -1,14 +1,7 @@
-use std::{ops::Add, sync::Arc};
-
 use super::client::WrappedClient;
 use crate::{abigen::SolverUtils, deploy::TestContracts};
-use ethers::{
-    abi::{AbiEncode, Function, Token},
-    prelude::*,
-    utils::parse_ether,
-};
-use eyre::Result;
-use k256::{ecdsa::SigningKey, Secp256k1};
+use ethers::{abi::Token, prelude::*, utils::parse_ether};
+use k256::ecdsa::SigningKey;
 
 pub struct SolverUtilsContract {
     pub contract: SolverUtils<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>,

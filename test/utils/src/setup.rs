@@ -1,18 +1,16 @@
 use crate::{
-    builders::{
-        asset_based_intent_standard::{
-            curve_builder::{
-                ConstantCurveParameters, CurveParameters, EvaluationType, LinearCurveParameters,
-            },
-            intent_builder::IntentBuilder,
-            segment_builder::SegmentBuilder,
+    abigen::{entry_point::IntentSolution, entry_point::UserIntent},
+    builders::asset_based_intent_standard::{
+        curve_builder::{
+            ConstantCurveParameters, CurveParameters, EvaluationType, LinearCurveParameters,
         },
-        solution_builder::SolutionBuilder,
+        segment_builder::AssetBasedIntentSegment,
     },
     deploy::{deploy_all, TestContracts},
     wrappers::client::WrappedClient,
 };
 use ethers::{
+    abi::FixedBytes,
     prelude::*,
     utils::{parse_ether, Anvil},
 };
@@ -22,6 +20,8 @@ use std::{convert::TryFrom, sync::Arc, time::Duration};
 pub async fn setup() -> Result<TestContracts> {
     let anvil = Anvil::new().spawn();
     let deployer_wallet: LocalWallet = anvil.keys()[0].clone().into();
+    let user_wallet: LocalWallet = anvil.keys()[1].clone().into();
+    let solver_wallet: LocalWallet = anvil.keys()[2].clone().into();
 
     let provider = Provider::<Http>::try_from(anvil.endpoint())
         .unwrap()
@@ -37,7 +37,9 @@ pub async fn setup() -> Result<TestContracts> {
 
     fund_exchange(&test_contracts, fund_amount).await.unwrap();
 
-    token_swap(&test_contracts).await.unwrap();
+    token_swap(&test_contracts, user_wallet, solver_wallet)
+        .await
+        .unwrap();
 
     Ok(test_contracts)
 }
@@ -61,26 +63,31 @@ async fn fund_exchange(test_contracts: &TestContracts, fund_amount: U256) -> Res
     Ok(())
 }
 
-async fn token_swap(test_contracts: &TestContracts) -> Result<()> {
-    let intent = constant_release_intent(test_contracts);
-    let solver_intent = constant_release_solver_intent(test_contracts);
-    let solution = SolutionBuilder::new(solver_intent, intent);
+async fn token_swap(
+    test_contracts: &TestContracts,
+    user_wallet: LocalWallet,
+    solver_wallet: LocalWallet,
+) -> Result<()> {
+    let mut intent = constant_release_intent(test_contracts, user_wallet.address());
+    intent = sign_intent(test_contracts, intent, user_wallet).await;
+
+    let mut solver_intent = constant_release_solver_intent(test_contracts, solver_wallet.address());
+    solver_intent = sign_intent(test_contracts, solver_intent, solver_wallet).await;
+
+    let solution = IntentSolution::new(solver_intent, intent);
 
     let _ = test_contracts.entry_point.handle_intents(solution).await;
 
     Ok(())
 }
 
-fn constant_release_intent(test_contracts: &TestContracts) -> IntentBuilder {
-    let mut constant_release_intent = IntentBuilder::create(
-        test_contracts
-            .asset_based_intent_standard
-            .contract
-            .address(),
+fn constant_release_intent(test_contracts: &TestContracts, sender: Address) -> UserIntent {
+    let mut constant_release_intent = UserIntent::create(
         test_contracts
             .asset_based_intent_standard
             .standard_id
             .clone(),
+        sender,
         0,
         0,
     );
@@ -95,11 +102,11 @@ fn constant_release_intent(test_contracts: &TestContracts) -> IntentBuilder {
         I256::from(3000),
     ));
 
-    let release_erc20_segment = SegmentBuilder::new(0.into(), vec![])
+    let release_erc20_segment = AssetBasedIntentSegment::new(0.into(), vec![])
         .release_erc20(test_contracts.test_erc20.contract.address(), release_params)
         .clone();
 
-    let require_eth_segment = SegmentBuilder::new(0.into(), vec![])
+    let require_eth_segment = AssetBasedIntentSegment::new(0.into(), vec![])
         .require_eth(require_params, EvaluationType::RELATIVE)
         .clone();
 
@@ -109,16 +116,13 @@ fn constant_release_intent(test_contracts: &TestContracts) -> IntentBuilder {
     constant_release_intent
 }
 
-fn constant_release_solver_intent(test_contracts: &TestContracts) -> IntentBuilder {
-    let mut solution = IntentBuilder::create(
-        test_contracts
-            .asset_based_intent_standard
-            .contract
-            .address(),
+fn constant_release_solver_intent(test_contracts: &TestContracts, sender: Address) -> UserIntent {
+    let mut solution = UserIntent::create(
         test_contracts
             .asset_based_intent_standard
             .standard_id
             .clone(),
+        sender,
         0,
         0,
     );
@@ -127,8 +131,29 @@ fn constant_release_solver_intent(test_contracts: &TestContracts) -> IntentBuild
         .solver_utils
         .swap_all_erc20_for_eth_and_forward(&test_contracts);
 
-    let solver_segment = SegmentBuilder::new(0.into(), solver_calldata.to_vec()).clone();
+    let solver_segment = AssetBasedIntentSegment::new(0.into(), vec![solver_calldata]).clone();
     solution.add_segment(solver_segment);
 
     solution
+}
+
+async fn sign_intent(
+    test_contracts: &TestContracts,
+    mut intent: UserIntent,
+    signer: LocalWallet,
+) -> UserIntent {
+    let intent_hash: FixedBytes = test_contracts
+        .entry_point
+        .contract
+        .get_user_intent_hash(intent.clone())
+        .call()
+        .await
+        .unwrap()
+        .to_vec();
+
+    let signature = signer.sign_message(intent_hash).await.unwrap();
+
+    intent.signature = signature.to_vec().into();
+
+    intent
 }
