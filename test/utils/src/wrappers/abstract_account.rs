@@ -38,14 +38,6 @@ impl AbstractAccountContract {
     }
 
     pub async fn funded_state(&self, amount: U256) -> State {
-        // let tx = TransactionRequest::default().into();
-        // let result = provider
-        //     .call_raw(&tx)
-        //     .block(1000.into())
-        //     .state(&state)
-        //     .await
-        //     .unwrap();
-
         let mut state = spoof::State::default();
 
         state.account(self.contract.address()).balance(amount);

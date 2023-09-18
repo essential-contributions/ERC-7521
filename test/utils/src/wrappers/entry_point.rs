@@ -1,0 +1,123 @@
+use super::{client::WrappedClient, libs::IntentSolutionLibContract};
+use crate::abigen::{EntryPoint, IntentSolutionLib, ENTRYPOINT_ABI};
+use crate::builders::solution_builder::SolutionBuilder;
+use crate::unlinked_contract_factory;
+use ethers::abi::{AbiEncode, FixedBytes};
+use ethers::prelude::*;
+use eyre::Result;
+use k256::ecdsa::SigningKey;
+
+pub const ENTRYPOINT_ARTIFACT: &str = include_str!("../../../../out/EntryPoint.sol/EntryPoint.json");
+
+pub struct EntryPointContract {
+    pub contract: EntryPoint<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>,
+    pub intent_solution_lib: IntentSolutionLibContract,
+}
+
+impl EntryPointContract {
+    pub async fn deploy(wrapped_client: &WrappedClient) -> Self {
+        let intent_solution_lib = IntentSolutionLib::deploy(wrapped_client.client.clone(), ())
+            .unwrap()
+            .send()
+            .await
+            .unwrap();
+
+        let entry_point_factory = unlinked_contract_factory::create(
+            ENTRYPOINT_ARTIFACT,
+            [(
+                "src/interfaces/IntentSolution.sol:IntentSolutionLib",
+                intent_solution_lib.address(),
+            )],
+            ENTRYPOINT_ABI.clone(),
+            wrapped_client.client.clone(),
+        )
+        .unwrap();
+
+        let entry_point_contract_instance = entry_point_factory
+            .deploy(())
+            .unwrap()
+            .send()
+            .await
+            .unwrap();
+
+        let contract = EntryPoint::new(
+            entry_point_contract_instance.address(),
+            wrapped_client.client.clone(),
+        );
+
+        let intent_solution_lib = IntentSolutionLibContract {
+            contract: intent_solution_lib,
+        };
+
+        Self {
+            contract,
+            intent_solution_lib,
+        }
+    }
+
+    pub async fn register_intent_standard(&self, standard_address: Address) -> Result<Bytes> {
+        let tx = self
+            .contract
+            .method::<Address, [u8; 32]>("registerIntentStandard", standard_address)
+            .unwrap();
+        let to_return = tx.clone().call().await.unwrap();
+
+        match tx.clone().send().await {
+            Ok(pending_tx) => match pending_tx.await {
+                Ok(_) => Ok(to_return.into()),
+                Err(e) => {
+                    panic!("{}", e);
+                }
+            },
+            Err(e) => {
+                if let Some(decoded_error) = e.decode_revert::<String>() {
+                    panic!("{}", decoded_error);
+                } else {
+                    panic!("{}", e);
+                }
+            }
+        }
+    }
+
+    pub async fn get_intent_standard_id(&self, standard_address: Address) -> Result<Bytes> {
+        let tx = self.contract.get_intent_standard_id(standard_address);
+        match tx.call().await {
+            Ok(t) => Result::Ok(Bytes::from(t)),
+            Err(e) => {
+                if let Some(decoded_error) = e.decode_revert::<String>() {
+                    panic!("{}", decoded_error);
+                } else {
+                    panic!("{}", e);
+                }
+            }
+        }
+    }
+
+    pub async fn handle_intents(&self, solution: SolutionBuilder) -> Result<()> {
+        let tx = self
+            .contract
+            .method::<(
+                U256,
+                Vec<(Bytes, Address, U256, U256, Vec<Bytes>, Bytes)>,
+                Vec<U256>,
+            ), ()>("handleIntents", solution.parametrize())
+            .unwrap();
+        let to_return = tx.clone().call().await.unwrap();
+
+        match tx.clone().send().await {
+            Ok(pending_tx) => match pending_tx.await {
+                Ok(_) => Ok(to_return.into()),
+                Err(e) => {
+                    panic!("{}", e);
+                }
+            },
+            Err(e) => {
+                if let Some(decoded_error) = e.decode_revert::<String>() {
+                    panic!("{}", decoded_error);
+                } else {
+                    panic!("{}", e);
+                }
+            }
+        }
+    }
+}

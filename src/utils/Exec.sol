@@ -90,14 +90,14 @@ library Exec {
 library RevertReason {
     // remove the trailing paddings from a revert reason
     function revertReasonWithoutPadding(bytes memory data) internal pure returns (bytes memory) {
-        uint paddingStartIndex = data.length - 1;
+        uint256 paddingStartIndex = data.length - 1;
         while (data[paddingStartIndex] == 0) {
             paddingStartIndex = paddingStartIndex - 1;
         }
 
         bytes memory reason = new bytes(paddingStartIndex + 1);
 
-        for (uint i = 0; i <= paddingStartIndex; i++) {
+        for (uint256 i = 0; i <= paddingStartIndex; i++) {
             reason[i] = data[i];
         }
         return reason;

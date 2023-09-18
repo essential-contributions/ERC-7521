@@ -11,27 +11,27 @@ import {
     AssetBasedIntentSegmentBuilder
 } from "./AssetBasedIntentBuilder.sol";
 import {DefaultIntentBuilder} from "./DefaultIntentBuilder.sol";
-import {EntryPoint} from "../../contracts/core/EntryPoint.sol";
-import {IEntryPoint} from "../../contracts/interfaces/IEntryPoint.sol";
-import {UserIntent, UserIntentLib} from "../../contracts/interfaces/UserIntent.sol";
-import {IntentSolution} from "../../contracts/interfaces/IntentSolution.sol";
+import {EntryPoint} from "../../src/core/EntryPoint.sol";
+import {IEntryPoint} from "../../src/interfaces/IEntryPoint.sol";
+import {UserIntent, UserIntentLib} from "../../src/interfaces/UserIntent.sol";
+import {IntentSolution} from "../../src/interfaces/IntentSolution.sol";
 import {
     AssetBasedIntentCurve,
     AssetBasedIntentCurveLib,
     CurveType,
     EvaluationType
-} from "../../contracts/standards/assetbased/AssetBasedIntentCurve.sol";
-import {AssetBasedIntentSegment} from "../../contracts/standards/assetbased/AssetBasedIntentSegment.sol";
-import {AssetBasedIntentStandard} from "../../contracts/standards/assetbased/AssetBasedIntentStandard.sol";
-import {AssetType, _balanceOf, _transfer} from "../../contracts/standards/assetbased/utils/AssetWrapper.sol";
-import {TestERC20} from "../../contracts/test/TestERC20.sol";
-import {TestERC721} from "../../contracts/test/TestERC721.sol";
-import {TestERC1155} from "../../contracts/test/TestERC1155.sol";
-import {TestUniswap} from "../../contracts/test/TestUniswap.sol";
-import {TestWrappedNativeToken} from "../../contracts/test/TestWrappedNativeToken.sol";
-import {SolverUtils} from "../../contracts/test/SolverUtils.sol";
-import {ValidationData, _packValidationData, _parseValidationData} from "../../contracts/utils/Helpers.sol";
-import {AbstractAccount} from "../../contracts/wallet/AbstractAccount.sol";
+} from "../../src/standards/assetbased/AssetBasedIntentCurve.sol";
+import {AssetBasedIntentSegment} from "../../src/standards/assetbased/AssetBasedIntentSegment.sol";
+import {AssetBasedIntentStandard} from "../../src/standards/assetbased/AssetBasedIntentStandard.sol";
+import {AssetType, _balanceOf, _transfer} from "../../src/standards/assetbased/utils/AssetWrapper.sol";
+import {TestERC20} from "../../src/test/TestERC20.sol";
+import {TestERC721} from "../../src/test/TestERC721.sol";
+import {TestERC1155} from "../../src/test/TestERC1155.sol";
+import {TestUniswap} from "../../src/test/TestUniswap.sol";
+import {TestWrappedNativeToken} from "../../src/test/TestWrappedNativeToken.sol";
+import {SolverUtils} from "../../src/test/SolverUtils.sol";
+import {ValidationData, _packValidationData, _parseValidationData} from "../../src/utils/Helpers.sol";
+import {AbstractAccount} from "../../src/wallet/AbstractAccount.sol";
 import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";

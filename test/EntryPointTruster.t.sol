@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 /* solhint-disable func-name-mixedcase */
 
-import "../contracts/wallet/TokenCallbackHandler.sol";
+import "../src/wallet/TokenCallbackHandler.sol";
 import "./utils/ScenarioTestEnvironment.sol";
 
 contract EntryPointTrusterTest is ScenarioTestEnvironment {

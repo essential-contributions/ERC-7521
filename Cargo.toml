@@ -1,3 +1,17 @@
-[workspace]
-resolver = "2"
-members = ["./test-harness", "./test-utils"]
+[package]
+name = "test"
+version = "0.1.0"
+edition = "2021"
+
+[dev-dependencies]
+ethers = { version = "2.0.10", default-features = true, features = [
+  "abigen",
+  "rustls",
+] }
+tokio = { version = "1.32.0", features = ["macros", "rt-multi-thread"] }
+utils = { path = "./test/utils" }
+
+[[test]]
+harness = true
+name = "test"
+path = "./test/harness.rs"

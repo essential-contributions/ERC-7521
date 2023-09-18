@@ -3,8 +3,8 @@ pragma solidity ^0.8.13;
 
 /* solhint-disable func-name-mixedcase */
 
-import {DefaultIntentSegment} from "../contracts/standards/default/DefaultIntentSegment.sol";
-import {DefaultIntentStandard} from "../contracts/standards/default/DefaultIntentStandard.sol";
+import {DefaultIntentSegment} from "../src/standards/default/DefaultIntentSegment.sol";
+import {DefaultIntentStandard} from "../src/standards/default/DefaultIntentStandard.sol";
 import "./utils/DefaultIntentBuilder.sol";
 import "./utils/ScenarioTestEnvironment.sol";
 

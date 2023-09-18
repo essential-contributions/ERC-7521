@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 /* solhint-disable func-name-mixedcase */
 
 import "./utils/TestEnvironment.sol";
-import "../contracts/interfaces/IIntentStandard.sol";
+import "../src/interfaces/IIntentStandard.sol";
 
 contract EntryPointTest is TestEnvironment {
     using AssetBasedIntentBuilder for UserIntent;
@@ -14,7 +14,7 @@ contract EntryPointTest is TestEnvironment {
 
     function test_getUserIntentHash() public {
         UserIntent memory intent = _intent();
-        bytes32 expectedHash = 0xe22be1eb6103dde4c858bc47812dbedc31b6dee395fb40280782df84606c7fdf;
+        bytes32 expectedHash = 0xfb09f723705efd4c0e6202842277012a5842035d3a4b279c3655b01bd8e1b874;
         bytes32 intentHash = _entryPoint.getUserIntentHash(intent);
         assertEq(intentHash, expectedHash);
     }

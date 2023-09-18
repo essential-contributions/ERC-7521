@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import {UserIntent} from "../../contracts/interfaces/UserIntent.sol";
+import {UserIntent} from "../../src/interfaces/UserIntent.sol";
 import {
     AssetBasedIntentCurve,
     AssetBasedIntentCurveLib,
     CurveType,
     EvaluationType
-} from "../../contracts/standards/assetbased/AssetBasedIntentCurve.sol";
-import {AssetBasedIntentSegment} from "../../contracts/standards/assetbased/AssetBasedIntentSegment.sol";
-import {AssetBasedIntentStandard} from "../../contracts/standards/assetbased/AssetBasedIntentStandard.sol";
-import {AssetType} from "../../contracts/standards/assetbased/utils/AssetWrapper.sol";
+} from "../../src/standards/assetbased/AssetBasedIntentCurve.sol";
+import {AssetBasedIntentSegment} from "../../src/standards/assetbased/AssetBasedIntentSegment.sol";
+import {AssetBasedIntentStandard} from "../../src/standards/assetbased/AssetBasedIntentStandard.sol";
+import {AssetType} from "../../src/standards/assetbased/utils/AssetWrapper.sol";
 import "openzeppelin/utils/cryptography/ECDSA.sol";
 
 /**
@@ -57,7 +57,9 @@ library AssetBasedIntentBuilder {
         AssetBasedIntentSegment[] memory currentSegments = decodeData(intent);
 
         //clone previous array and add new element
-        AssetBasedIntentSegment[] memory segments = new AssetBasedIntentSegment[](currentSegments.length + 1);
+        AssetBasedIntentSegment[] memory segments = new AssetBasedIntentSegment[](
+                currentSegments.length + 1
+            );
         for (uint256 i = 0; i < currentSegments.length; i++) {
             segments[i] = currentSegments[i];
         }
@@ -96,7 +98,9 @@ library AssetBasedIntentBuilder {
      * @return The asset based intent data.
      */
     function decodeData(UserIntent memory intent) public pure returns (AssetBasedIntentSegment[] memory) {
-        AssetBasedIntentSegment[] memory segments = new AssetBasedIntentSegment[](intent.intentData.length);
+        AssetBasedIntentSegment[] memory segments = new AssetBasedIntentSegment[](
+                intent.intentData.length
+            );
         for (uint256 i = 0; i < intent.intentData.length; i++) {
             bytes memory raw = new bytes(intent.intentData[i].length + 32);
             assembly {
@@ -105,7 +109,7 @@ library AssetBasedIntentBuilder {
             for (uint256 j = 0; j < intent.intentData[i].length; j++) {
                 raw[j + 32] = intent.intentData[i][j];
             }
-            (AssetBasedIntentSegment memory decoded) = abi.decode(raw, (AssetBasedIntentSegment));
+            AssetBasedIntentSegment memory decoded = abi.decode(raw, (AssetBasedIntentSegment));
             segments[i] = decoded;
         }
         return segments;
@@ -296,8 +300,9 @@ library AssetBasedIntentSegmentBuilder {
         });
 
         //clone previous array and add new element
-        AssetBasedIntentCurve[] memory assetRequirements =
-            new AssetBasedIntentCurve[](segment.assetRequirements.length + 1);
+        AssetBasedIntentCurve[] memory assetRequirements = new AssetBasedIntentCurve[](
+                segment.assetRequirements.length + 1
+            );
         for (uint256 i = 0; i < segment.assetRequirements.length; i++) {
             assetRequirements[i] = segment.assetRequirements[i];
         }
@@ -326,7 +331,9 @@ library AssetBasedIntentSegmentBuilder {
         });
 
         //clone previous array and add new element
-        AssetBasedIntentCurve[] memory assetReleases = new AssetBasedIntentCurve[](segment.assetReleases.length + 1);
+        AssetBasedIntentCurve[] memory assetReleases = new AssetBasedIntentCurve[](
+                segment.assetReleases.length + 1
+            );
         for (uint256 i = 0; i < segment.assetReleases.length; i++) {
             assetReleases[i] = segment.assetReleases[i];
         }
