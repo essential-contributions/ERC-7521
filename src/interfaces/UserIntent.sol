@@ -7,7 +7,6 @@ pragma solidity ^0.8.13;
  * @param sender the sender account of this request.
  * @param nonce unique value the sender uses to verify it is not a replay.
  * @param timestamp the time when the intent was created.
- * @param verificationGasLimit max gas to be spent on intent verification.
  * @param intentData the intent data specific to the intents standard.
  * @param signature sender-verified signature over the entire request, the EntryPoint address and the chain ID.
  */
@@ -16,7 +15,6 @@ struct UserIntent {
     address sender;
     uint256 nonce;
     uint256 timestamp;
-    uint256 verificationGasLimit;
     bytes[] intentData;
     bytes signature;
 }
@@ -34,9 +32,8 @@ library UserIntentLib {
         address sender = intent.sender;
         uint256 nonce = intent.nonce;
         uint256 timestamp = intent.timestamp;
-        uint256 verificationGasLimit = intent.verificationGasLimit;
         bytes32 intentDataHash = keccak256(abi.encode(intent.intentData));
 
-        return abi.encode(standard, sender, nonce, timestamp, verificationGasLimit, intentDataHash);
+        return abi.encode(standard, sender, nonce, timestamp, intentDataHash);
     }
 }
