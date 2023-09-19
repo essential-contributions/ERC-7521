@@ -326,7 +326,6 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
 
     /**
      * validate user intent.
-     * also make sure total validation doesn't exceed verificationGasLimit
      * this method is called off-chain (simulateValidation()) and on-chain (from handleIntents)
      * @param intent the user intent to validate.
      * @param intentHash hash of the user's intent data.
@@ -354,9 +353,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         }
 
         // validate intent with account
-        try IAccount(intent.sender).validateUserIntent{gas: intent.verificationGasLimit}(intent, intentHash) returns (
-            uint256 _validationData
-        ) {
+        try IAccount(intent.sender).validateUserIntent(intent, intentHash) returns (uint256 _validationData) {
             validationData = _validationData;
         } catch Error(string memory revertReason) {
             revert FailedIntent(intentIndex, 0, string.concat("AA23 reverted: ", revertReason));
