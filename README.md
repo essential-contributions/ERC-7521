@@ -1,9 +1,13 @@
-# Galactus [Intent Based Account Abstraction]
+# Generalized Intents for Smart Contract Wallets
 
 <!-- Disable markdownlint for long lines. -->
 <!-- markdownlint-disable-file MD013 -->
 
-The Essential Solidity smart contract architecture.
+A generalized intent specification for smart contract wallets, allowing authorization of current and future intent standards at sign time.
+
+## Specification
+
+The full spec here: [ERC](./proposal/EIPS/eip-xxxx.md).
 
 ## Build From Source
 

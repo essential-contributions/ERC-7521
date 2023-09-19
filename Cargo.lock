@@ -1224,7 +1224,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "galactus-test"
+name = "generalized_intents"
 version = "0.1.0"
 dependencies = [
  "ethers",
