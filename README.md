@@ -7,7 +7,7 @@ A generalized intent specification for smart contract wallets, allowing authoriz
 
 ## Specification
 
-The full spec here: [ERC](./proposal/EIPS/eip-xxxx.md).
+View the spec here: [ERC-7739](https://github.com/essential-contributions/EIPs/blob/master/EIPS/eip-7739.md).
 
 ## Build From Source
 
