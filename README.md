@@ -1,9 +1,9 @@
-# Generalized Intent Specification for Account Abstraction
+# Generalized Intents for Smart Contract Wallets
 
 <!-- Disable markdownlint for long lines. -->
 <!-- markdownlint-disable-file MD013 -->
 
-A generalized intent specification entry point contract which enables support for a multitude of intent standards as they evolve over time.
+A generalized intent specification for smart contract wallets, allowing authorization of current and future intent standards at sign time.
 
 ## Specification
 
