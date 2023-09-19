@@ -7,7 +7,7 @@ A generalized intent specification for smart contract wallets, allowing authoriz
 
 ## Specification
 
-The full spec and EIP/ERC can be viewed [here](./proposal/EIPS/eip-8337.md).
+The full spec here: [ERC](./proposal/EIPS/eip-xxxx.md).
 
 ## Build From Source
 
