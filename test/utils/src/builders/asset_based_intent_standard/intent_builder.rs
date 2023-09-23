@@ -1,15 +1,13 @@
 use super::segment_builder::AssetBasedIntentSegment;
 use crate::abigen::entry_point::UserIntent;
-use ethers::{
-    abi::{AbiDecode, AbiEncode},
-    prelude::*,
-};
+use ethers::abi::{AbiDecode, AbiEncode};
+use ethers::{prelude::*, utils::keccak256};
 
 impl UserIntent {
     pub fn create(standard_id: Bytes, sender: Address, nonce: u128, timestamp: u128) -> Self {
         Self {
             standard: standard_id.to_vec().try_into().unwrap(),
-            sender: sender,
+            sender,
             nonce: U256::from(nonce),
             timestamp: U256::from(timestamp),
             intent_data: vec![],
@@ -26,11 +24,11 @@ impl UserIntent {
     }
 
     pub fn encode_data(&mut self, segments: Vec<AssetBasedIntentSegment>) -> &mut Self {
+        let selector = keccak256("AssetBasedIntentSegment(uint256,bytes,(uint256,address,uint96,int256[])[],(uint256,address,uint96,int256[])[])")[..4].to_vec();
         let data: Vec<Bytes> = segments
             .into_iter()
-            .map(|segment| Bytes::from(AbiEncode::encode(segment)))
+            .map(|segment| Bytes::from([selector.clone(), segment.clone().encode()].concat()))
             .collect();
-
         self.intent_data = data;
 
         self
@@ -40,7 +38,7 @@ impl UserIntent {
         self.intent_data
             .clone()
             .into_iter()
-            .map(|segment: Bytes| AbiDecode::decode(segment).unwrap())
+            .map(|segment: Bytes| AssetBasedIntentSegment::decode(&segment[4..]).unwrap())
             .collect()
     }
 }

@@ -1,69 +1,14 @@
-use ethers::{
-    abi::{AbiDecode, AbiEncode},
-    prelude::*,
-};
-
-#[derive(Debug, Clone)]
-pub struct AssetBasedIntentCurve {
-    asset_id: Bytes,
-    asset_contract: Address,
-    flags: Vec<u8>, // [u8; 12]
-    parameters: Vec<I256>,
-}
+use crate::abigen::AssetBasedIntentCurve;
+use ethers::{abi::AbiEncode, prelude::*};
 
 impl AssetBasedIntentCurve {
-    pub fn new(
-        asset_id: Bytes,
-        asset_contract: Address,
-        flags: Vec<u8>,
-        parameters: Vec<I256>,
-    ) -> Self {
+    pub fn new(asset_id: U256, asset_contract: Address, flags: u128, params: Vec<I256>) -> Self {
         Self {
             asset_id,
             asset_contract,
             flags,
-            parameters,
+            params,
         }
-    }
-}
-
-impl AbiEncode for AssetBasedIntentCurve {
-    fn encode(self) -> Vec<u8> {
-        let mut encoded = vec![];
-        encoded.extend_from_slice(&self.asset_id);
-        encoded.extend_from_slice(&self.asset_contract.as_bytes());
-        encoded.extend_from_slice(&self.flags.encode());
-        for parameter in &self.parameters {
-            encoded.extend_from_slice(&parameter.encode());
-        }
-        encoded
-    }
-}
-
-impl AbiDecode for AssetBasedIntentCurve {
-    fn decode(bytes: impl AsRef<[u8]>) -> Result<Self, AbiError> {
-        let bytes = bytes.as_ref();
-        let asset_id: Bytes = bytes[..32].to_vec().into();
-        let asset_contract: Address = Address::from_slice(&bytes[32..52]);
-        let flags = bytes[52..148].to_vec();
-        let parameters = Vec::decode(bytes[64..bytes.len()].to_vec()).unwrap();
-        Ok(Self {
-            asset_id,
-            asset_contract,
-            flags,
-            parameters,
-        })
-    }
-}
-
-impl Into<Vec<Bytes>> for AssetBasedIntentCurve {
-    fn into(self) -> Vec<Bytes> {
-        vec![
-            self.asset_id,
-            Bytes::from(self.asset_contract.to_fixed_bytes()),
-            self.flags.encode().into(),
-            self.parameters.encode().into(),
-        ]
     }
 }
 
@@ -88,18 +33,17 @@ impl CurveFlags {
     }
 }
 
-const FLAGS_EVAL_TYPE_OFFSET: u32 = 0;
-const FLAGS_CURVE_TYPE_OFFSET: u32 = 2;
-const FLAGS_ASSET_TYPE_OFFSET: u32 = 8;
-
-const FLAGS_EVAL_TYPE_MASK: u16 = 0x0003;
-const FLAGS_CURVE_TYPE_MASK: u16 = 0x00fc;
-const FLAGS_ASSET_TYPE_MASK: u16 = 0xff00;
-
 impl AbiEncode for CurveFlags {
     fn encode(self) -> Vec<u8> {
-        // TODO
-        vec![]
+        let evaluation_type_offset: u32 = 0b0000;
+        let curve_type_offset: u32 = 0b0010;
+        let asset_type_offset: u32 = 0b1000;
+
+        let flag: u32 = ((self.asset_type as u32) << asset_type_offset)
+            | ((self.curve_type as u32) << curve_type_offset)
+            | ((self.evaluation_type as u32) << evaluation_type_offset);
+
+        flag.encode()
     }
 }
 

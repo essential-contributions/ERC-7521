@@ -14,7 +14,7 @@ impl IntentSolution {
         Self {
             timestamp: U256::from(0),
             intents: vec![intent1, intent2],
-            order: vec![U256::from(0), U256::from(1)],
+            order: vec![],
         }
     }
 }

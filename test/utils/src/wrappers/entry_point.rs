@@ -115,7 +115,7 @@ impl EntryPointContract {
                     {
                         panic!("{}", decoded_error);
                     } else {
-                        panic!("{}", revert);
+                        panic!("{}", e);
                     }
                 }
                 None => {

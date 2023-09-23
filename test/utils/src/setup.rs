@@ -1,5 +1,5 @@
 use crate::{
-    abigen::{entry_point::IntentSolution, entry_point::UserIntent},
+    abigen::entry_point::{IntentSolution, UserIntent},
     builders::asset_based_intent_standard::{
         curve_builder::{
             ConstantCurveParameters, CurveParameters, EvaluationType, LinearCurveParameters,
@@ -71,10 +71,9 @@ async fn token_swap(
     let mut intent = constant_release_intent(test_contracts, user_wallet.address());
     intent = sign_intent(test_contracts, intent, user_wallet).await;
 
-    let mut solver_intent = constant_release_solver_intent(test_contracts, solver_wallet.address());
-    solver_intent = sign_intent(test_contracts, solver_intent, solver_wallet).await;
+    let solver_intent = constant_release_solver_intent(test_contracts, solver_wallet.address());
 
-    let solution = IntentSolution::new(solver_intent, intent);
+    let solution = IntentSolution::new(intent, solver_intent);
 
     let _ = test_contracts.entry_point.handle_intents(solution).await;
 
@@ -102,11 +101,11 @@ fn constant_release_intent(test_contracts: &TestContracts, sender: Address) -> U
         I256::from(3000),
     ));
 
-    let release_erc20_segment = AssetBasedIntentSegment::new(0.into(), vec![])
+    let release_erc20_segment = AssetBasedIntentSegment::new(0.into(), Bytes::default())
         .release_erc20(test_contracts.test_erc20.contract.address(), release_params)
         .clone();
 
-    let require_eth_segment = AssetBasedIntentSegment::new(0.into(), vec![])
+    let require_eth_segment = AssetBasedIntentSegment::new(0.into(), Bytes::default())
         .require_eth(require_params, EvaluationType::RELATIVE)
         .clone();
 
@@ -131,7 +130,7 @@ fn constant_release_solver_intent(test_contracts: &TestContracts, sender: Addres
         .solver_utils
         .swap_all_erc20_for_eth_and_forward(&test_contracts);
 
-    let solver_segment = AssetBasedIntentSegment::new(0.into(), vec![solver_calldata]).clone();
+    let solver_segment = AssetBasedIntentSegment::new(0.into(), solver_calldata).clone();
     solution.add_segment(solver_segment);
 
     solution
