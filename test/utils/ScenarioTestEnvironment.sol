@@ -10,7 +10,7 @@ import {
     AssetBasedIntentCurveBuilder,
     AssetBasedIntentSegmentBuilder
 } from "./AssetBasedIntentBuilder.sol";
-import {DefaultIntentBuilder} from "./DefaultIntentBuilder.sol";
+import {OperationIntentBuilder} from "./OperationIntentBuilder.sol";
 import {EntryPoint} from "../../src/core/EntryPoint.sol";
 import {IEntryPoint} from "../../src/interfaces/IEntryPoint.sol";
 import {UserIntent, UserIntentLib} from "../../src/interfaces/UserIntent.sol";
@@ -238,7 +238,7 @@ abstract contract ScenarioTestEnvironment is Test {
     }
 
     /**
-     * Private helper function to build a default intent struct for the solver.
+     * Private helper function to build a operation intent struct for the solver.
      * @param callData1 Optoinal calldata for segment1.
      * @param callData2 Optoinal calldata for segment2.
      * @param callData3 Optoinal calldata for segment3.
@@ -251,12 +251,12 @@ abstract contract ScenarioTestEnvironment is Test {
         returns (UserIntent memory)
     {
         UserIntent memory intent =
-            DefaultIntentBuilder.create(_entryPoint.getDefaultIntentStandardId(), address(_solverUtils), 0, 0);
-        if (numSegments > 0) intent = DefaultIntentBuilder.addSegment(intent, callData1);
-        if (numSegments > 1) intent = DefaultIntentBuilder.addSegment(intent, callData2);
-        if (numSegments > 2) intent = DefaultIntentBuilder.addSegment(intent, callData3);
+            OperationIntentBuilder.create(_entryPoint.getOperationIntentStandardId(), address(_solverUtils), 0, 0);
+        if (numSegments > 0) intent = OperationIntentBuilder.addSegment(intent, callData1);
+        if (numSegments > 1) intent = OperationIntentBuilder.addSegment(intent, callData2);
+        if (numSegments > 2) intent = OperationIntentBuilder.addSegment(intent, callData3);
         for (uint256 i = 3; i < numSegments; i++) {
-            intent = DefaultIntentBuilder.addSegment(intent, "");
+            intent = OperationIntentBuilder.addSegment(intent, "");
         }
 
         return intent;
@@ -268,7 +268,7 @@ abstract contract ScenarioTestEnvironment is Test {
      */
     function _emptyIntent() internal view returns (UserIntent memory) {
         UserIntent memory intent =
-            DefaultIntentBuilder.create(_entryPoint.getDefaultIntentStandardId(), address(_account), 0, 0);
+            OperationIntentBuilder.create(_entryPoint.getOperationIntentStandardId(), address(_account), 0, 0);
         return intent;
     }
 

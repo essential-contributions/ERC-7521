@@ -3,14 +3,14 @@ pragma solidity ^0.8.13;
 
 import "openzeppelin/utils/cryptography/ECDSA.sol";
 import "../../src/interfaces/UserIntent.sol";
-import "../../src/standards/default/DefaultIntentStandard.sol";
-import "../../src/standards/default/DefaultIntentSegment.sol";
+import "../../src/standards/operation/OperationIntentStandard.sol";
+import "../../src/standards/operation/OperationIntentSegment.sol";
 
 /**
- * @title DefaultIntentBuilder
- * Utility functions helpful for building a default intent.
+ * @title OperationIntentBuilder
+ * Utility functions helpful for building a operation intent.
  */
-library DefaultIntentBuilder {
+library OperationIntentBuilder {
     /**
      * Create a new user intent with the specified parameters.
      * @param standard The standard ID for the intent.
@@ -43,11 +43,11 @@ library DefaultIntentBuilder {
      * @return The updated user intent.
      */
     function addSegment(UserIntent memory intent, bytes memory callData) public pure returns (UserIntent memory) {
-        DefaultIntentSegment memory segment = DefaultIntentSegment({callData: callData, callGasLimit: 1000000});
-        DefaultIntentSegment[] memory currentSegments = decodeData(intent);
+        OperationIntentSegment memory segment = OperationIntentSegment({callData: callData, callGasLimit: 1000000});
+        OperationIntentSegment[] memory currentSegments = decodeData(intent);
 
         //clone previous array and add new element
-        DefaultIntentSegment[] memory segments = new DefaultIntentSegment[](currentSegments.length + 1);
+        OperationIntentSegment[] memory segments = new OperationIntentSegment[](currentSegments.length + 1);
         for (uint256 i = 0; i < currentSegments.length; i++) {
             segments[i] = currentSegments[i];
         }
@@ -57,12 +57,12 @@ library DefaultIntentBuilder {
     }
 
     /**
-     * Encodes the default intent segments onto the user intent.
+     * Encodes the operation intent segments onto the user intent.
      * @param intent The user intent to modify.
-     * @param segments The default intent standard segments.
+     * @param segments The operation intent standard segments.
      * @return The updated user intent.
      */
-    function encodeData(UserIntent memory intent, DefaultIntentSegment[] memory segments)
+    function encodeData(UserIntent memory intent, OperationIntentSegment[] memory segments)
         public
         pure
         returns (UserIntent memory)
@@ -81,12 +81,12 @@ library DefaultIntentBuilder {
     }
 
     /**
-     * Decodes the default intent segments from the user intent.
+     * Decodes the operation intent segments from the user intent.
      * @param intent The user intent to decode data from.
-     * @return The default intent data.
+     * @return The operation intent data.
      */
-    function decodeData(UserIntent memory intent) public pure returns (DefaultIntentSegment[] memory) {
-        DefaultIntentSegment[] memory segments = new DefaultIntentSegment[](intent.intentData.length);
+    function decodeData(UserIntent memory intent) public pure returns (OperationIntentSegment[] memory) {
+        OperationIntentSegment[] memory segments = new OperationIntentSegment[](intent.intentData.length);
         for (uint256 i = 0; i < intent.intentData.length; i++) {
             bytes memory raw = new bytes(intent.intentData[i].length + 32);
             assembly {
@@ -95,7 +95,7 @@ library DefaultIntentBuilder {
             for (uint256 j = 0; j < intent.intentData[i].length; j++) {
                 raw[j + 32] = intent.intentData[i][j];
             }
-            (DefaultIntentSegment memory decoded) = abi.decode(raw, (DefaultIntentSegment));
+            (OperationIntentSegment memory decoded) = abi.decode(raw, (OperationIntentSegment));
             segments[i] = decoded;
         }
         return segments;

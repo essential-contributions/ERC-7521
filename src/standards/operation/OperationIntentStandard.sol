@@ -9,10 +9,10 @@ import {IEntryPoint} from "../../interfaces/IEntryPoint.sol";
 import {UserIntent, UserIntentLib} from "../../interfaces/UserIntent.sol";
 import {IntentSolution, IntentSolutionLib} from "../../interfaces/IntentSolution.sol";
 import {Exec} from "../../utils/Exec.sol";
-import {DefaultIntentSegment, parseDefaultIntentSegment} from "./DefaultIntentSegment.sol";
+import {OperationIntentSegment, parseOperationIntentSegment} from "./OperationIntentSegment.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
 
-contract DefaultIntentStandard is IIntentStandard, EntryPointTruster {
+contract OperationIntentStandard is IIntentStandard, EntryPointTruster {
     using IntentSolutionLib for IntentSolution;
     using UserIntentLib for UserIntent;
 
@@ -39,7 +39,7 @@ contract DefaultIntentStandard is IIntentStandard, EntryPointTruster {
     }
 
     /**
-     * Default receive function.
+     * Operation receive function.
      */
     receive() external payable {}
 
@@ -64,7 +64,7 @@ contract DefaultIntentStandard is IIntentStandard, EntryPointTruster {
     ) external onlyFromEntryPoint returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
         if (intent.intentData[segmentIndex].length > 0) {
-            DefaultIntentSegment calldata dataSegment = parseDefaultIntentSegment(intent, segmentIndex);
+            OperationIntentSegment calldata dataSegment = parseOperationIntentSegment(intent, segmentIndex);
 
             //execute calldata
             if (dataSegment.callData.length > 0) {

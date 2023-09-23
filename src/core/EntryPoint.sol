@@ -11,7 +11,7 @@ import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
 import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
-import {DefaultIntentStandard} from "../standards/default/DefaultIntentStandard.sol";
+import {OperationIntentStandard} from "../standards/operation/OperationIntentStandard.sol";
 import {Exec, RevertReason} from "../utils/Exec.sol";
 import {ValidationData, _parseValidationData} from "../utils/Helpers.sol";
 import {ReentrancyGuard} from "openzeppelin/security/ReentrancyGuard.sol";
@@ -21,7 +21,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     using UserIntentLib for UserIntent;
     using RevertReason for bytes;
 
-    bytes32 private constant DEFAULT_INTENT_STANDARD_ID = 0;
+    bytes32 private constant OPERATION_INTENT_STANDARD_ID = 0;
 
     uint256 private constant REVERT_REASON_MAX_LEN = 2048;
     uint256 private constant CONTEXT_DATA_MAX_LEN = 2048;
@@ -39,7 +39,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     address private _executionIntentStandard;
 
     constructor() {
-        _registeredStandards[DEFAULT_INTENT_STANDARD_ID] = new DefaultIntentStandard(this);
+        _registeredStandards[OPERATION_INTENT_STANDARD_ID] = new OperationIntentStandard(this);
     }
 
     /**
@@ -285,8 +285,8 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      * gets the intent standard ID for the given intent standard contract.
      */
     function getIntentStandardId(IIntentStandard intentStandard) external view returns (bytes32) {
-        if (address(intentStandard) == address(_registeredStandards[DEFAULT_INTENT_STANDARD_ID])) {
-            return DEFAULT_INTENT_STANDARD_ID;
+        if (address(intentStandard) == address(_registeredStandards[OPERATION_INTENT_STANDARD_ID])) {
+            return OPERATION_INTENT_STANDARD_ID;
         }
         bytes32 standardId = _generateIntentStandardId(intentStandard);
         require(_registeredStandards[standardId] != IIntentStandard(address(0)), "AA82 unknown standard");
@@ -308,10 +308,10 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     }
 
     /**
-     * returns the default intent standard id.
+     * returns the operation intent standard id.
      */
-    function getDefaultIntentStandardId() external pure returns (bytes32) {
-        return DEFAULT_INTENT_STANDARD_ID;
+    function getOperationIntentStandardId() external pure returns (bytes32) {
+        return OPERATION_INTENT_STANDARD_ID;
     }
 
     /**

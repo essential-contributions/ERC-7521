@@ -128,7 +128,7 @@ interface IEntryPoint is INonceManager {
     function verifyExecutingIntentForStandard(IIntentStandard intentStandard) external returns (bool);
 
     /**
-     * returns the default intent standard id.
+     * returns the operation intent standard id.
      */
-    function getDefaultIntentStandardId() external pure returns (bytes32);
+    function getOperationIntentStandardId() external pure returns (bytes32);
 }
