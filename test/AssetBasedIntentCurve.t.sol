@@ -4,9 +4,10 @@ pragma solidity ^0.8.13;
 /* solhint-disable func-name-mixedcase */
 
 import "./utils/TestEnvironment.sol";
+import "../src/test/AssetBasedIntentCurveLibHarness.sol";
 
 contract AssetBasedIntentCurveTest is TestEnvironment {
-    using AssetBasedIntentCurveLib for AssetBasedIntentCurve;
+    using AssetBasedIntentCurveLibHarness for AssetBasedIntentCurve;
 
     function _constantCurve() private pure returns (AssetBasedIntentCurve memory) {
         return _curveETH(AssetBasedIntentCurveBuilder.constantCurve(10), EvaluationType.ABSOLUTE);
