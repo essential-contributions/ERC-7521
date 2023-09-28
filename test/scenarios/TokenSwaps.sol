@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 /* solhint-disable func-name-mixedcase */
 
 import "../utils/ScenarioTestEnvironment.sol";
+import {generateFlags, evaluate} from "../../src/standards/assetbased/AssetBasedIntentCurve.sol";
 
 /*
  * In this scenario, a user is specifying different tokens to release and tokens expected by the end.
@@ -14,7 +15,6 @@ import "../utils/ScenarioTestEnvironment.sol";
 contract TokenSwaps is ScenarioTestEnvironment {
     using AssetBasedIntentBuilder for UserIntent;
     using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
-    using AssetBasedIntentCurveLib for AssetBasedIntentCurve;
 
     uint256 private _accountInitialETHBalance = 100 ether;
     uint256 private _accountInitialERC20Balance = 100 ether;
@@ -109,11 +109,11 @@ contract TokenSwaps is ScenarioTestEnvironment {
         AssetBasedIntentCurve memory ethRequireCurve = AssetBasedIntentCurve({
             assetContract: address(0),
             assetId: 0,
-            flags: AssetBasedIntentCurveLib.generateFlags(AssetType.ETH, CurveType.LINEAR, EvaluationType.RELATIVE),
+            flags: generateFlags(AssetType.ETH, CurveType.LINEAR, EvaluationType.RELATIVE),
             params: ethRequireCurveParams
         });
 
-        uint256 evaluation = uint256(ethRequireCurve.evaluate(timestamp));
+        uint256 evaluation = uint256(evaluate(ethRequireCurve, timestamp));
 
         vm.assume(evaluation < erc20ReleaseAmount);
 
@@ -177,8 +177,7 @@ contract TokenSwaps is ScenarioTestEnvironment {
         int256[] memory erc20ReleaseCurveParams =
             AssetBasedIntentCurveBuilder.exponentialCurve(m, b, int256(uint256(e)), max, flipY);
 
-        uint96 erc20ReleaseCurveFlags =
-            AssetBasedIntentCurveLib.generateFlags(AssetType.ERC20, CurveType.EXPONENTIAL, EvaluationType.RELATIVE);
+        uint96 erc20ReleaseCurveFlags = generateFlags(AssetType.ERC20, CurveType.EXPONENTIAL, EvaluationType.RELATIVE);
 
         int256[] memory ethRequireCurveParams =
             AssetBasedIntentCurveBuilder.constantCurve(int256(uint256(ethRequireAmount)));
@@ -190,7 +189,7 @@ contract TokenSwaps is ScenarioTestEnvironment {
             params: erc20ReleaseCurveParams
         });
 
-        uint256 evaluation = uint256(erc20ReleaseCurve.evaluate(timestamp));
+        uint256 evaluation = uint256(evaluate(erc20ReleaseCurve, timestamp));
         vm.assume(ethRequireAmount < evaluation);
         vm.assume(evaluation < _accountInitialERC20Balance);
 
@@ -246,7 +245,7 @@ contract TokenSwaps is ScenarioTestEnvironment {
         AssetBasedIntentCurve memory ethRequireCurve = AssetBasedIntentCurve({
             assetContract: address(0),
             assetId: 0,
-            flags: AssetBasedIntentCurveLib.generateFlags(AssetType.ETH, CurveType.LINEAR, EvaluationType.RELATIVE),
+            flags: generateFlags(AssetType.ETH, CurveType.LINEAR, EvaluationType.RELATIVE),
             params: ethRequireCurveParams
         });
 
@@ -255,7 +254,7 @@ contract TokenSwaps is ScenarioTestEnvironment {
         intent = _signIntent(intent);
 
         //create solution
-        uint256 evaluation = uint256(ethRequireCurve.evaluate(timestamp));
+        uint256 evaluation = uint256(evaluate(ethRequireCurve, timestamp));
         IntentSolution memory solution = _constantReleaseSolution(intent, erc20ReleaseAmount, evaluation);
 
         //execute

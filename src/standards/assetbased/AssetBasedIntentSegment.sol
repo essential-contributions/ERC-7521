@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import {UserIntent} from "../../interfaces/UserIntent.sol";
-import {AssetBasedIntentCurve, AssetBasedIntentCurveLib} from "./AssetBasedIntentCurve.sol";
+import {AssetBasedIntentCurve} from "./AssetBasedIntentCurve.sol";
 
 /**
  * Asset Based Intent Segment struct
