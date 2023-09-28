@@ -6,14 +6,16 @@ pragma solidity ^0.8.13;
 import "forge-std/Test.sol";
 import {
     AssetBasedIntentBuilder,
-    AssetBasedIntentCurveLib,
     AssetBasedIntentCurveBuilder,
     AssetBasedIntentSegmentBuilder
 } from "./AssetBasedIntentBuilder.sol";
 import {EntryPoint} from "../../src/core/EntryPoint.sol";
 import {UserIntent, UserIntentLib} from "../../src/interfaces/UserIntent.sol";
 import {
-    AssetBasedIntentCurve, CurveType, EvaluationType
+    AssetBasedIntentCurve,
+    AssetBasedIntentCurveLib,
+    CurveType,
+    EvaluationType
 } from "../../src/standards/assetbased/AssetBasedIntentCurve.sol";
 import {AssetBasedIntentSegment} from "../../src/standards/assetbased/AssetBasedIntentSegment.sol";
 import {AssetBasedIntentStandard} from "../../src/standards/assetbased/AssetBasedIntentStandard.sol";

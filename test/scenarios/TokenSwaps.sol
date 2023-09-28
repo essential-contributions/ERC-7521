@@ -4,7 +4,6 @@ pragma solidity ^0.8.13;
 /* solhint-disable func-name-mixedcase */
 
 import "../utils/ScenarioTestEnvironment.sol";
-import {AssetBasedIntentCurveLib} from "../../src/standards/assetbased/AssetBasedIntentCurve.sol";
 
 /*
  * In this scenario, a user is specifying different tokens to release and tokens expected by the end.
