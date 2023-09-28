@@ -6,7 +6,7 @@ pragma solidity ^0.8.13;
 import "forge-std/Test.sol";
 import {
     AssetBasedIntentBuilder,
-    generateFlags,
+    AssetBasedIntentCurveLib,
     AssetBasedIntentCurveBuilder,
     AssetBasedIntentSegmentBuilder
 } from "./AssetBasedIntentBuilder.sol";
@@ -48,7 +48,9 @@ abstract contract TestEnvironment is Test {
         AssetBasedIntentCurve memory curve = AssetBasedIntentCurve({
             assetContract: address(0),
             assetId: 0,
-            flags: generateFlags(AssetType.ETH, AssetBasedIntentSegmentBuilder.getCurveType(curveParams), evaluation),
+            flags: AssetBasedIntentCurveLib.generateFlags(
+                AssetType.ETH, AssetBasedIntentSegmentBuilder.getCurveType(curveParams), evaluation
+                ),
             params: curveParams
         });
         return curve;

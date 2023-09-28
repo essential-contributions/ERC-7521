@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import {AssetBasedIntentCurve, parseAssetType} from "./AssetBasedIntentCurve.sol";
+import {AssetBasedIntentCurve, AssetBasedIntentCurveLib} from "./AssetBasedIntentCurve.sol";
 import {AssetType, _balanceOf, _transfer} from "./utils/AssetWrapper.sol";
 
 contract AssetBasedIntentDelegate {
+    using AssetBasedIntentCurveLib for AssetBasedIntentCurve;
+
     /**
      * Basic state and constants.
      */
@@ -41,7 +43,7 @@ contract AssetBasedIntentDelegate {
     {
         return abi.encodeWithSelector(
             this.releaseAsset.selector,
-            parseAssetType(assetRelease),
+            assetRelease.assetType(),
             assetRelease.assetContract,
             assetRelease.assetId,
             to,

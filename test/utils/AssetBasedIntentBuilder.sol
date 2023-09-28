@@ -4,9 +4,9 @@ pragma solidity ^0.8.13;
 import {UserIntent} from "../../src/interfaces/UserIntent.sol";
 import {
     AssetBasedIntentCurve,
+    AssetBasedIntentCurveLib,
     CurveType,
-    EvaluationType,
-    generateFlags
+    EvaluationType
 } from "../../src/standards/assetbased/AssetBasedIntentCurve.sol";
 import {AssetBasedIntentSegment} from "../../src/standards/assetbased/AssetBasedIntentSegment.sol";
 import {AssetBasedIntentStandard} from "../../src/standards/assetbased/AssetBasedIntentStandard.sol";
@@ -295,7 +295,7 @@ library AssetBasedIntentSegmentBuilder {
         AssetBasedIntentCurve memory curve = AssetBasedIntentCurve({
             assetContract: assetContract,
             assetId: assetId,
-            flags: generateFlags(assetType, getCurveType(curveParams), evalType),
+            flags: AssetBasedIntentCurveLib.generateFlags(assetType, getCurveType(curveParams), evalType),
             params: curveParams
         });
 
@@ -326,7 +326,7 @@ library AssetBasedIntentSegmentBuilder {
         AssetBasedIntentCurve memory curve = AssetBasedIntentCurve({
             assetContract: assetContract,
             assetId: assetId,
-            flags: generateFlags(assetType, getCurveType(curveParams), EvaluationType.ABSOLUTE),
+            flags: AssetBasedIntentCurveLib.generateFlags(assetType, getCurveType(curveParams), EvaluationType.ABSOLUTE),
             params: curveParams
         });
 
