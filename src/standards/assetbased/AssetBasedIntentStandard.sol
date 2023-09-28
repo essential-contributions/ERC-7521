@@ -3,7 +3,13 @@ pragma solidity ^0.8.13;
 
 /* solhint-disable private-vars-leading-underscore */
 
-import {AssetBasedIntentCurve, AssetBasedIntentCurveLib} from "./AssetBasedIntentCurve.sol";
+import {
+    AssetBasedIntentCurve,
+    parseAssetType,
+    isRelativeEvaluation,
+    validate,
+    evaluate
+} from "./AssetBasedIntentCurve.sol";
 import {AssetBasedIntentSegment, parseAssetBasedIntentSegment} from "./AssetBasedIntentSegment.sol";
 import {AssetBasedIntentDelegate} from "./AssetBasedIntentDelegate.sol";
 import {AssetType, _balanceOf, _transfer} from "./utils/AssetWrapper.sol";
@@ -17,7 +23,6 @@ import {Exec, RevertReason} from "../../utils/Exec.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
 
 contract AssetBasedIntentStandard is EntryPointTruster, AssetBasedIntentDelegate, IIntentStandard {
-    using AssetBasedIntentCurveLib for AssetBasedIntentCurve;
     using IntentSolutionLib for IntentSolution;
     using UserIntentLib for UserIntent;
     using RevertReason for bytes;
@@ -54,13 +59,13 @@ contract AssetBasedIntentStandard is EntryPointTruster, AssetBasedIntentDelegate
             AssetBasedIntentSegment calldata segment = parseAssetBasedIntentSegment(intent, 0);
             for (uint256 i = 0; i < segment.assetRequirements.length; i++) {
                 require(
-                    !segment.assetRequirements[i].isRelativeEvaluation(),
+                    !isRelativeEvaluation(segment.assetRequirements[i]),
                     "relative requirements not allowed at beginning of intent"
                 );
-                segment.assetRequirements[i].validate();
+                validate(segment.assetRequirements[i]);
             }
             for (uint256 i = 0; i < segment.assetReleases.length; i++) {
-                segment.assetReleases[i].validate();
+                validate(segment.assetReleases[i]);
             }
         }
 
@@ -69,10 +74,10 @@ contract AssetBasedIntentStandard is EntryPointTruster, AssetBasedIntentDelegate
             if (intent.intentData[i].length > 0) {
                 AssetBasedIntentSegment calldata segment = parseAssetBasedIntentSegment(intent, i);
                 for (uint256 j = 0; j < segment.assetRequirements.length; j++) {
-                    segment.assetRequirements[j].validate();
+                    validate(segment.assetRequirements[j]);
                 }
                 for (uint256 j = 0; j < segment.assetReleases.length; j++) {
-                    segment.assetReleases[j].validate();
+                    validate(segment.assetReleases[j]);
                 }
             }
         }
@@ -164,14 +169,14 @@ contract AssetBasedIntentStandard is EntryPointTruster, AssetBasedIntentDelegate
         address owner
     ) private view {
         for (uint256 i = 0; i < intentSegment.assetRequirements.length; i++) {
-            int256 requiredBalance = intentSegment.assetRequirements[i].evaluate(evaluateAt);
-            if (intentSegment.assetRequirements[i].isRelativeEvaluation()) {
+            int256 requiredBalance = evaluate(intentSegment.assetRequirements[i], evaluateAt);
+            if (isRelativeEvaluation(intentSegment.assetRequirements[i])) {
                 require(intentSegmentIndex > 0, "relative requirements not allowed at beginning of intent");
                 requiredBalance = int256(startingBalances[i]) + requiredBalance;
                 if (requiredBalance < 0) requiredBalance = 0;
             }
             uint256 currentBalance = _balanceOf(
-                intentSegment.assetRequirements[i].assetType(),
+                parseAssetType(intentSegment.assetRequirements[i]),
                 intentSegment.assetRequirements[i].assetContract,
                 intentSegment.assetRequirements[i].assetId,
                 owner
@@ -203,9 +208,9 @@ contract AssetBasedIntentStandard is EntryPointTruster, AssetBasedIntentDelegate
         uint256 requirementsLen = nextIntentSegment.assetRequirements.length;
         uint256[] memory startingBalances = new uint256[](requirementsLen);
         for (uint256 i = 0; i < requirementsLen; i++) {
-            if (nextIntentSegment.assetRequirements[i].isRelativeEvaluation()) {
+            if (isRelativeEvaluation(nextIntentSegment.assetRequirements[i])) {
                 startingBalances[i] = _balanceOf(
-                    nextIntentSegment.assetRequirements[i].assetType(),
+                    parseAssetType(nextIntentSegment.assetRequirements[i]),
                     nextIntentSegment.assetRequirements[i].assetContract,
                     nextIntentSegment.assetRequirements[i].assetId,
                     owner
@@ -229,7 +234,7 @@ contract AssetBasedIntentStandard is EntryPointTruster, AssetBasedIntentDelegate
         address to
     ) private {
         for (uint256 i = 0; i < intentSegment.assetReleases.length; i++) {
-            int256 releaseAmount = intentSegment.assetReleases[i].evaluate(evaluateAt);
+            int256 releaseAmount = evaluate(intentSegment.assetReleases[i], evaluateAt);
             if (releaseAmount > 0) {
                 bytes memory data = _encodeReleaseAsset(intentSegment.assetReleases[i], to, uint256(releaseAmount));
                 IIntentDelegate(address(from)).generalizedIntentDelegateCall(data);

@@ -1,14 +1,8 @@
 use super::{client::WrappedClient, entry_point::EntryPointContract};
-use crate::abigen::{
-    AssetBasedIntentCurveLib, AssetBasedIntentStandard, ASSETBASEDINTENTSTANDARD_ABI,
-};
-use crate::unlinked_contract_factory;
+use crate::abigen::AssetBasedIntentStandard;
 use ethers::prelude::*;
 use eyre::Result;
 use k256::ecdsa::SigningKey;
-
-pub const ASSETBASEDINTENTSTANDARD_ARTIFACT: &str =
-    include_str!("../../../../out/AssetBasedIntentStandard.sol/AssetBasedIntentStandard.json");
 
 pub struct AssetBasedIntentStandardContract {
     pub contract: AssetBasedIntentStandard<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>,
@@ -20,39 +14,14 @@ impl AssetBasedIntentStandardContract {
         wrapped_client: &WrappedClient,
         entry_point_contract_instance: &EntryPointContract,
     ) -> Self {
-        let asset_based_intent_curve_lib =
-            AssetBasedIntentCurveLib::deploy(wrapped_client.client.clone(), ())
-                .unwrap()
-                .send()
-                .await
-                .unwrap();
-
-        let asset_based_intent_standard_factory = unlinked_contract_factory::create(
-            ASSETBASEDINTENTSTANDARD_ARTIFACT,
-            [
-                (
-                    "src/interfaces/IntentSolution.sol:IntentSolutionLib",
-                    entry_point_contract_instance
-                        .intent_solution_lib
-                        .contract
-                        .address(),
-                ),
-                (
-                    "src/standards/assetbased/AssetBasedIntentCurve.sol:AssetBasedIntentCurveLib",
-                    asset_based_intent_curve_lib.address(),
-                ),
-            ],
-            ASSETBASEDINTENTSTANDARD_ABI.clone(),
+        let asset_based_intent_standard_contract_instance = AssetBasedIntentStandard::deploy(
             wrapped_client.client.clone(),
+            entry_point_contract_instance.contract.address(),
         )
+        .unwrap()
+        .send()
+        .await
         .unwrap();
-
-        let asset_based_intent_standard_contract_instance = asset_based_intent_standard_factory
-            .deploy(entry_point_contract_instance.contract.address())
-            .unwrap()
-            .send()
-            .await
-            .unwrap();
 
         let standard_address: Address = asset_based_intent_standard_contract_instance.address();
 

@@ -29,7 +29,7 @@ library IntentSolutionLib {
      * @param solution The IntentSolution struct.
      * @return The timestamp to use for evaluating intents.
      */
-    function getTimestamp(IntentSolution calldata solution) public view returns (uint256) {
+    function getTimestamp(IntentSolution calldata solution) internal view returns (uint256) {
         if (solution.timestamp == TIMESTAMP_NULL) return block.timestamp;
         uint256 timestamp = solution.timestamp;
         if (timestamp < block.timestamp || (timestamp - block.timestamp) <= TIMESTAMP_MAX_OVER) return timestamp;
@@ -42,7 +42,7 @@ library IntentSolutionLib {
      * @param executionIndex The current index of execution.
      * @return The index of the intent to be executed.
      */
-    function getIntentIndex(IntentSolution calldata solution, uint256 executionIndex) public pure returns (uint256) {
+    function getIntentIndex(IntentSolution calldata solution, uint256 executionIndex) internal pure returns (uint256) {
         if (executionIndex < solution.order.length) return solution.order[executionIndex];
         return (executionIndex - solution.order.length) % solution.intents.length;
     }
