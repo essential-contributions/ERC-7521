@@ -16,10 +16,7 @@ import {IEntryPoint} from "../../src/interfaces/IEntryPoint.sol";
 import {UserIntent, UserIntentLib} from "../../src/interfaces/UserIntent.sol";
 import {IntentSolution} from "../../src/interfaces/IntentSolution.sol";
 import {
-    AssetBasedIntentCurve,
-    AssetBasedIntentCurveLib,
-    CurveType,
-    EvaluationType
+    AssetBasedIntentCurve, CurveType, EvaluationType
 } from "../../src/standards/assetbased/AssetBasedIntentCurve.sol";
 import {AssetBasedIntentSegment} from "../../src/standards/assetbased/AssetBasedIntentSegment.sol";
 import {AssetBasedIntentStandard} from "../../src/standards/assetbased/AssetBasedIntentStandard.sol";
