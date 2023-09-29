@@ -6,7 +6,7 @@ pragma solidity ^0.8.13;
 import {AssetType} from "./utils/AssetWrapper.sol";
 
 /**
- * Asset Curve struct
+ * Asset Based Intent Curve struct
  * @param assetId the ID of the asset.
  * @param assetContract the address of the contract that controls the asset.
  * @param flags flags for asset type, curve type and evaluation type.
@@ -35,14 +35,9 @@ enum EvaluationType {
     COUNT
 }
 
-uint256 constant FLAGS_EVAL_TYPE_OFFSET = 0;
-uint256 constant FLAGS_CURVE_TYPE_OFFSET = 2;
-uint256 constant FLAGS_ASSET_TYPE_OFFSET = 8;
-
-uint16 constant FLAGS_EVAL_TYPE_MASK = 0x0003;
-uint16 constant FLAGS_CURVE_TYPE_MASK = 0x00fc;
-uint16 constant FLAGS_ASSET_TYPE_MASK = 0xff00;
-
+/**
+ * Validate AssetBasedIntentCurve params and flags.
+ */
 function validate(AssetBasedIntentCurve calldata curve) pure {
     require(parseCurveType(curve) < CurveType.COUNT, "invalid curve type");
     require(parseAssetType(curve) < AssetType.COUNT, "invalid curve asset type");
@@ -58,6 +53,9 @@ function validate(AssetBasedIntentCurve calldata curve) pure {
     }
 }
 
+/**
+ * Evaluate curve at given point.
+ */
 function evaluate(AssetBasedIntentCurve calldata curve, uint256 x) pure returns (int256 val) {
     int256 sx = int256(x);
     if (parseCurveType(curve) == CurveType.CONSTANT) {
@@ -98,22 +96,45 @@ function evaluate(AssetBasedIntentCurve calldata curve, uint256 x) pure returns 
     }
 }
 
+uint256 constant FLAGS_EVAL_TYPE_OFFSET = 0;
+uint256 constant FLAGS_CURVE_TYPE_OFFSET = 2;
+uint256 constant FLAGS_ASSET_TYPE_OFFSET = 8;
+
+uint16 constant FLAGS_EVAL_TYPE_MASK = 0x0003;
+uint16 constant FLAGS_CURVE_TYPE_MASK = 0x00fc;
+uint16 constant FLAGS_ASSET_TYPE_MASK = 0xff00;
+
+/**
+ * Parse asset type from flag, i.e. rightmost 8 bits with offset 8
+ */
 function parseAssetType(AssetBasedIntentCurve calldata curve) pure returns (AssetType) {
     return AssetType((uint16(curve.flags) & FLAGS_ASSET_TYPE_MASK) >> FLAGS_ASSET_TYPE_OFFSET);
 }
 
+/**
+ * Parse curve type from flag, i.e. rightmost 6 bits with offset 2
+ */
 function parseCurveType(AssetBasedIntentCurve calldata curve) pure returns (CurveType) {
     return CurveType((uint16(curve.flags) & FLAGS_CURVE_TYPE_MASK) >> FLAGS_CURVE_TYPE_OFFSET);
 }
 
+/**
+ * Parse evaluation type from flag, i.e. rightmost 2 bits
+ */
 function parseEvaluationType(AssetBasedIntentCurve calldata curve) pure returns (EvaluationType) {
     return EvaluationType((uint16(curve.flags) & FLAGS_EVAL_TYPE_MASK) >> FLAGS_EVAL_TYPE_OFFSET);
 }
 
+/**
+ * Check if curve should be evaluated relatively.
+ */
 function isRelativeEvaluation(AssetBasedIntentCurve calldata curve) pure returns (bool) {
     return parseEvaluationType(curve) == EvaluationType.RELATIVE;
 }
 
+/**
+ * Generate flags from asset type, curve type and evaluation type.
+ */
 function generateFlags(AssetType asset, CurveType curve, EvaluationType eval) pure returns (uint96) {
     return uint96(
         (uint256(asset) << FLAGS_ASSET_TYPE_OFFSET) | (uint256(curve) << FLAGS_CURVE_TYPE_OFFSET)
