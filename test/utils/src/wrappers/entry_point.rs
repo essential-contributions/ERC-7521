@@ -118,6 +118,8 @@ impl EntryPointContract {
             .contract
             .simulate_handle_intents(solution, Address::zero(), Bytes::default());
 
+        dbg!(tx.estimate_gas().await.unwrap());
+
         match tx.clone().call().await {
             Ok(_) => {
                 panic!("simulation should not return successfully");

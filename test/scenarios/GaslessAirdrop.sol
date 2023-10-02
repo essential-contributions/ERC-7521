@@ -58,9 +58,7 @@ contract GaslessAirdrop is ScenarioTestEnvironment {
         _entryPoint.simulateHandleIntents(solution, address(0), "");
 
         //execute
-        uint256 gasBefore = gasleft();
         _entryPoint.handleIntents(solution);
-        console.log("Gas Consumed: %d", gasBefore - gasleft());
 
         //verify end state
         uint256 solverBalance = address(_publicAddressSolver).balance;
