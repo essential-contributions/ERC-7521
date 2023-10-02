@@ -1,4 +1,3 @@
-use ethers::types::Address;
 use crate::wrappers::{
     abstract_account::AbstractAccountContract,
     asset_based_intent_standard::AssetBasedIntentStandardContract, client::WrappedClient,
@@ -7,6 +6,7 @@ use crate::wrappers::{
     test_erc721::TestERC721Contract, test_uniswap::TestUniswapContract,
     test_wrapped_native_token::TestWrappedNativeTokenContract,
 };
+use ethers::types::Address;
 
 pub struct TestContracts {
     pub entry_point: EntryPointContract,
