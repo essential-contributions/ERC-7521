@@ -8,6 +8,7 @@ plugins:
       uri: https://github.com/trunk-io/plugins
 lint:
   enabled:
+    - trivy@0.45.1
     - clippy@1.65.0
     - osv-scanner@1.4.0
     - rustfmt@1.65.0
