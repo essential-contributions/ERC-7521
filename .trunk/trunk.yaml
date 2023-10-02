@@ -9,9 +9,9 @@ plugins:
 lint:
   enabled:
     - trivy@0.45.1
-    - clippy@1.65.0
+    - clippy@1.72.1
     - osv-scanner@1.4.0
-    - rustfmt@1.65.0
+    - rustfmt@1.72.1
     - checkov@2.4.9
     - trufflehog@3.57.0
     - actionlint@1.6.26
