@@ -1,47 +1,57 @@
 use crate::{
-    abigen::entry_point::{IntentSolution, UserIntent},
-    builders::asset_based_intent_standard::{
-        curve_builder::{
-            ConstantCurveParameters, CurveParameters, EvaluationType, LinearCurveParameters,
-        },
-        segment_builder::AssetBasedIntentSegment,
-    },
+    abigen::entry_point::UserIntent,
     deploy::{deploy_all, TestContracts},
     wrappers::client::WrappedClient,
 };
 use ethers::{
     abi::FixedBytes,
     prelude::*,
-    utils::{parse_ether, Anvil},
+    utils::{parse_ether, Anvil, AnvilInstance},
 };
 use eyre::Result;
 use std::{convert::TryFrom, sync::Arc, time::Duration};
 
-pub async fn setup() -> Result<TestContracts> {
-    let anvil = Anvil::new().spawn();
-    let deployer_wallet: LocalWallet = anvil.keys()[0].clone().into();
-    let user_wallet: LocalWallet = anvil.keys()[1].clone().into();
-    let solver_wallet: LocalWallet = anvil.keys()[2].clone().into();
+pub struct SetupArtifacts {
+    pub test_contracts: TestContracts,
+    pub user_wallet: LocalWallet,
+    pub solver_wallet: LocalWallet,
+}
 
-    let provider = Provider::<Http>::try_from(anvil.endpoint())
+pub static ANVIL: Lazy<AnvilInstance> = Lazy::new(|| Anvil::new().spawn());
+pub static PROVIDER: Lazy<Provider<Http>> = Lazy::new(|| {
+    Provider::<Http>::try_from(ANVIL.endpoint())
         .unwrap()
-        .interval(Duration::from_millis(10u64));
+        .interval(Duration::from_millis(10u64))
+});
 
-    let client = SignerMiddleware::new(provider, deployer_wallet.with_chain_id(anvil.chain_id()));
+pub async fn setup() -> SetupArtifacts {
+    let deployer_wallet: LocalWallet = ANVIL.keys()[0].clone().into();
+    let user_wallet: LocalWallet = ANVIL.keys()[1].clone().into();
+    let solver_wallet: LocalWallet = ANVIL.keys()[2].clone().into();
+
+    let client = SignerMiddleware::new(
+        PROVIDER.clone(),
+        deployer_wallet.with_chain_id(ANVIL.chain_id()),
+    );
     let client = WrappedClient {
         client: Arc::new(client),
     };
 
-    let test_contracts = deploy_all(&client).await;
-    let fund_amount = parse_ether(1000).unwrap();
+    let test_contracts = deploy_all(&client, user_wallet.address()).await;
 
-    fund_exchange(&test_contracts, fund_amount).await.unwrap();
-
-    token_swap(&test_contracts, user_wallet, solver_wallet)
+    fund_exchange(&test_contracts, parse_ether(1000).unwrap())
         .await
         .unwrap();
 
-    Ok(test_contracts)
+    fund_account_erc20(&test_contracts, parse_ether(100).unwrap())
+        .await
+        .unwrap();
+
+    SetupArtifacts {
+        test_contracts,
+        user_wallet,
+        solver_wallet,
+    }
 }
 
 async fn fund_exchange(test_contracts: &TestContracts, fund_amount: U256) -> Result<()> {
@@ -63,80 +73,22 @@ async fn fund_exchange(test_contracts: &TestContracts, fund_amount: U256) -> Res
     Ok(())
 }
 
-async fn token_swap(
+pub async fn fund_account_erc20(
     test_contracts: &TestContracts,
-    user_wallet: LocalWallet,
-    solver_wallet: LocalWallet,
+    erc20_fund_amount: U256,
 ) -> Result<()> {
-    let mut intent = constant_release_intent(test_contracts, user_wallet.address());
-    intent = sign_intent(test_contracts, intent, user_wallet).await;
-
-    let solver_intent = constant_release_solver_intent(test_contracts, solver_wallet.address());
-
-    let solution = IntentSolution::new(intent, solver_intent);
-
-    let _ = test_contracts.entry_point.handle_intents(solution).await;
+    test_contracts
+        .test_erc20
+        .mint(
+            test_contracts.user_account.contract.address(),
+            erc20_fund_amount,
+        )
+        .await;
 
     Ok(())
 }
 
-fn constant_release_intent(test_contracts: &TestContracts, sender: Address) -> UserIntent {
-    let mut constant_release_intent = UserIntent::create(
-        test_contracts
-            .asset_based_intent_standard
-            .standard_id
-            .clone(),
-        sender,
-        0,
-        0,
-    );
-
-    let release_params: CurveParameters = CurveParameters::Constant(ConstantCurveParameters::new(
-        I256::from_raw(parse_ether(1).unwrap()),
-    ));
-
-    let require_params: CurveParameters = CurveParameters::Linear(LinearCurveParameters::new(
-        I256::from_raw(parse_ether(0.001).unwrap()),
-        I256::from_raw(parse_ether(7).unwrap()),
-        I256::from(3000),
-    ));
-
-    let release_erc20_segment = AssetBasedIntentSegment::new(0.into(), Bytes::default())
-        .release_erc20(test_contracts.test_erc20.contract.address(), release_params)
-        .clone();
-
-    let require_eth_segment = AssetBasedIntentSegment::new(0.into(), Bytes::default())
-        .require_eth(require_params, EvaluationType::RELATIVE)
-        .clone();
-
-    constant_release_intent.add_segment(release_erc20_segment);
-    constant_release_intent.add_segment(require_eth_segment);
-
-    constant_release_intent
-}
-
-fn constant_release_solver_intent(test_contracts: &TestContracts, sender: Address) -> UserIntent {
-    let mut solution = UserIntent::create(
-        test_contracts
-            .asset_based_intent_standard
-            .standard_id
-            .clone(),
-        sender,
-        0,
-        0,
-    );
-
-    let solver_calldata = test_contracts
-        .solver_utils
-        .swap_all_erc20_for_eth_and_forward(&test_contracts);
-
-    let solver_segment = AssetBasedIntentSegment::new(0.into(), solver_calldata).clone();
-    solution.add_segment(solver_segment);
-
-    solution
-}
-
-async fn sign_intent(
+pub async fn sign_intent(
     test_contracts: &TestContracts,
     mut intent: UserIntent,
     signer: LocalWallet,

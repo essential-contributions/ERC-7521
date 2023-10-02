@@ -20,6 +20,11 @@ impl TestERC20Contract {
 
     pub async fn mint(&self, to: Address, amount: U256) {
         let tx = self.contract.mint(to, amount);
-        tx.send().await.unwrap().await.unwrap().unwrap();
+        tx.send().await.unwrap();
+    }
+
+    pub async fn balance_of(&self, account: Address) -> U256 {
+        let tx = self.contract.balance_of(account);
+        tx.call().await.unwrap()
     }
 }

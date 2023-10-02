@@ -1,3 +1,4 @@
+use ethers::types::Address;
 use crate::wrappers::{
     abstract_account::AbstractAccountContract,
     asset_based_intent_standard::AssetBasedIntentStandardContract, client::WrappedClient,
@@ -10,7 +11,7 @@ use crate::wrappers::{
 pub struct TestContracts {
     pub entry_point: EntryPointContract,
     pub asset_based_intent_standard: AssetBasedIntentStandardContract,
-    pub abstract_account: AbstractAccountContract,
+    pub user_account: AbstractAccountContract,
     pub test_erc20: TestERC20Contract,
     pub test_erc721: TestERC721Contract,
     pub test_erc1155: TestERC1155Contract,
@@ -19,11 +20,11 @@ pub struct TestContracts {
     pub solver_utils: SolverUtilsContract,
 }
 
-pub async fn deploy_all(client: &WrappedClient) -> TestContracts {
+pub async fn deploy_all(client: &WrappedClient, user_public_key: Address) -> TestContracts {
     let entry_point = EntryPointContract::deploy(client).await;
     let asset_based_intent_standard =
         AssetBasedIntentStandardContract::deploy(client, &entry_point).await;
-    let abstract_account = AbstractAccountContract::deploy(client, &entry_point).await;
+    let user_account = AbstractAccountContract::deploy(client, &entry_point, user_public_key).await;
     let test_erc20 = TestERC20Contract::deploy(client).await;
     let test_erc721 = TestERC721Contract::deploy(client).await;
     let test_erc1155 = TestERC1155Contract::deploy(client).await;
@@ -41,7 +42,7 @@ pub async fn deploy_all(client: &WrappedClient) -> TestContracts {
     TestContracts {
         entry_point,
         asset_based_intent_standard,
-        abstract_account,
+        user_account,
         test_erc20,
         test_erc721,
         test_erc1155,

@@ -16,10 +16,6 @@ abigen!(
     AssetBasedIntentSegment,
     "out/AssetBasedIntentSegment.sol/AssetBasedIntentSegment.json"
 );
-abigen!(
-    AssetBasedIntentCurveLib,
-    "out/AssetBasedIntentCurve.sol/AssetBasedIntentCurveLib.json"
-);
 
 abigen!(
     AbstractAccount,

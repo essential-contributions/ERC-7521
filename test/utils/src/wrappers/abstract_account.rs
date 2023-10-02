@@ -1,11 +1,7 @@
 use super::{client::WrappedClient, entry_point::EntryPointContract};
 use crate::abigen::AbstractAccount;
-use ethers::{
-    prelude::*,
-    types::spoof::State,
-    utils::{keccak256, secret_key_to_address},
-};
-use k256::{ecdsa::SigningKey, elliptic_curve::generic_array::GenericArray, SecretKey};
+use ethers::{prelude::*, types::spoof::State};
+use k256::ecdsa::SigningKey;
 
 pub struct AbstractAccountContract {
     pub contract: AbstractAccount<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>,
@@ -15,19 +11,14 @@ impl AbstractAccountContract {
     pub async fn deploy(
         wrapped_client: &WrappedClient,
         entry_point_contract_instance: &EntryPointContract,
+        user_public_key: Address,
     ) -> Self {
-        let key_slice = keccak256("account_private_key".as_bytes());
-        let key = SecretKey::from_bytes(&GenericArray::clone_from_slice(&key_slice))
-            .expect("did not get private key");
-
-        let account_verifying_key = secret_key_to_address(&SigningKey::from(&key));
-
         Self {
             contract: AbstractAccount::deploy(
                 wrapped_client.client.clone(),
                 (
                     entry_point_contract_instance.contract.address(),
-                    account_verifying_key,
+                    user_public_key,
                 ),
             )
             .unwrap()

@@ -1,5 +1,21 @@
-use crate::abigen::AssetBasedIntentCurve;
 use ethers::{abi::AbiEncode, prelude::*};
+
+#[derive(
+    Clone,
+    ::ethers::contract::EthAbiType,
+    ::ethers::contract::EthAbiCodec,
+    Default,
+    Debug,
+    PartialEq,
+    Eq,
+    Hash,
+)]
+pub struct AssetBasedIntentCurve {
+    pub asset_id: U256,
+    pub asset_contract: Address,
+    pub flags: u128,
+    pub params: Vec<I256>,
+}
 
 impl AssetBasedIntentCurve {
     pub fn new(asset_id: U256, asset_contract: Address, flags: u128, params: Vec<I256>) -> Self {
@@ -33,17 +49,21 @@ impl CurveFlags {
     }
 }
 
+impl Into<u128> for CurveFlags {
+    fn into(self) -> u128 {
+        let evaluation_type_offset: u8 = 0;
+        let curve_type_offset: u8 = 2;
+        let asset_type_offset: u8 = 8;
+
+        ((self.asset_type as u128) << asset_type_offset)
+            | ((self.curve_type as u128) << curve_type_offset)
+            | ((self.evaluation_type as u128) << evaluation_type_offset)
+    }
+}
+
 impl AbiEncode for CurveFlags {
     fn encode(self) -> Vec<u8> {
-        let evaluation_type_offset: u32 = 0b0000;
-        let curve_type_offset: u32 = 0b0010;
-        let asset_type_offset: u32 = 0b1000;
-
-        let flag: u32 = ((self.asset_type as u32) << asset_type_offset)
-            | ((self.curve_type as u32) << curve_type_offset)
-            | ((self.evaluation_type as u32) << evaluation_type_offset);
-
-        flag.encode()
+        <Self as Into<u128>>::into(self).encode()
     }
 }
 
@@ -69,12 +89,14 @@ pub enum EvaluationType {
     RELATIVE,
 }
 
+#[derive(Clone)]
 pub enum CurveParameters {
     Constant(ConstantCurveParameters),
     Linear(LinearCurveParameters),
     Exponential(ExponentialCurveParameters),
 }
 
+#[derive(Clone)]
 pub struct ConstantCurveParameters {
     b: I256,
 }
@@ -85,6 +107,7 @@ impl ConstantCurveParameters {
     }
 }
 
+#[derive(Clone)]
 pub struct LinearCurveParameters {
     m: I256,
     b: I256,
@@ -97,6 +120,7 @@ impl LinearCurveParameters {
     }
 }
 
+#[derive(Clone)]
 pub struct ExponentialCurveParameters {
     m: I256,
     b: I256,
@@ -148,6 +172,23 @@ impl CurveParameters {
             CurveParameters::Constant(_) => CurveType::CONSTANT,
             CurveParameters::Linear(_) => CurveType::LINEAR,
             CurveParameters::Exponential(_) => CurveType::EXPONENTIAL,
+        }
+    }
+
+    pub fn evaluate(&self, at: U256) -> I256 {
+        match self {
+            CurveParameters::Constant(params) => params.b,
+            CurveParameters::Linear(params) => {
+                (params.m * std::cmp::min(params.max, I256::from_raw(at))) + params.b
+            }
+
+            CurveParameters::Exponential(params) => {
+                (params.m
+                    * I256::from_raw(
+                        std::cmp::min(params.max.unsigned_abs(), at).pow(params.e.unsigned_abs()),
+                    ))
+                    + params.b
+            }
         }
     }
 }

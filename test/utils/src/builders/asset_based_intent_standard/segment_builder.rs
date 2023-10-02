@@ -1,11 +1,11 @@
-use super::curve_builder::{AssetType, CurveFlags, CurveParameters, EvaluationType};
-use crate::abigen::AssetBasedIntentCurve;
+use super::curve_builder::{
+    AssetBasedIntentCurve, AssetType, CurveFlags, CurveParameters, EvaluationType,
+};
 use ethers::{
     abi::{AbiDecode, AbiEncode},
     prelude::*,
 };
 
-// TODO: Replace with abigenerated struct
 #[derive(
     Clone,
     ::ethers::contract::EthAbiType,

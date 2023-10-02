@@ -118,7 +118,7 @@ contract ConditionalPurchaseNFT is ScenarioTestEnvironment {
                 IEntryPoint.FailedIntent.selector,
                 0,
                 0,
-                string.concat("AA61 execution failed: ", "insufficient release balance")
+                string.concat("AA61 execution failed: insufficient release balance")
             )
         );
         _entryPoint.handleIntents(solution);

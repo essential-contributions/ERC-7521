@@ -14,7 +14,7 @@ impl AssetBasedIntentStandardContract {
         wrapped_client: &WrappedClient,
         entry_point_contract_instance: &EntryPointContract,
     ) -> Self {
-        let asset_based_intent_standard_contract_instance = AssetBasedIntentStandard::deploy(
+        let contract = AssetBasedIntentStandard::deploy(
             wrapped_client.client.clone(),
             entry_point_contract_instance.contract.address(),
         )
@@ -23,18 +23,13 @@ impl AssetBasedIntentStandardContract {
         .await
         .unwrap();
 
-        let standard_address: Address = asset_based_intent_standard_contract_instance.address();
-
         let standard_id = entry_point_contract_instance
-            .register_intent_standard(standard_address)
+            .register_intent_standard(contract.address())
             .await
             .unwrap();
 
         Self {
-            contract: AssetBasedIntentStandard::new(
-                standard_address,
-                wrapped_client.client.clone(),
-            ),
+            contract,
             standard_id,
         }
     }
