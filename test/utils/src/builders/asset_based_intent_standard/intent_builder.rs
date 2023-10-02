@@ -24,9 +24,7 @@ impl UserIntent {
         let encoded_prefix =
             U256::from(0x00000000000000000000000000000000000000000000000000000000000f4240).encode();
         let mut encoded_segment = segment.clone().encode();
-        for i in 0..32 {
-            encoded_segment[i] = encoded_prefix[i];
-        }
+        encoded_segment[0..32].copy_from_slice(&encoded_prefix[0..32]);
 
         self.intent_data.push(Bytes::from(encoded_segment));
 

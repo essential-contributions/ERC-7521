@@ -49,15 +49,15 @@ impl CurveFlags {
     }
 }
 
-impl Into<u128> for CurveFlags {
-    fn into(self) -> u128 {
+impl From<CurveFlags> for u128 {
+    fn from(val: CurveFlags) -> Self {
         let evaluation_type_offset: u8 = 0;
         let curve_type_offset: u8 = 2;
         let asset_type_offset: u8 = 8;
 
-        ((self.asset_type as u128) << asset_type_offset)
-            | ((self.curve_type as u128) << curve_type_offset)
-            | ((self.evaluation_type as u128) << evaluation_type_offset)
+        ((val.asset_type as u128) << asset_type_offset)
+            | ((val.curve_type as u128) << curve_type_offset)
+            | ((val.evaluation_type as u128) << evaluation_type_offset)
     }
 }
 
@@ -134,9 +134,9 @@ impl ExponentialCurveParameters {
     }
 }
 
-impl Into<Vec<I256>> for CurveParameters {
-    fn into(self) -> Vec<I256> {
-        match self {
+impl From<CurveParameters> for Vec<I256> {
+    fn from(val: CurveParameters) -> Self {
+        match val {
             CurveParameters::Constant(params) => vec![params.b],
             CurveParameters::Linear(params) => vec![params.m, params.b, params.max],
             CurveParameters::Exponential(params) => {
