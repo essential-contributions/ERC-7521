@@ -88,11 +88,18 @@ library Exec {
 }
 
 library RevertReason {
-    // remove the zero paddings from a revert reason
-    function revertReasonWithoutPadding(bytes calldata data) public pure returns (bytes memory) {
-        while (data[data.length - 1] == 0) {
-            data = data[:data.length - 1];
+    // remove the trailing paddings from a revert reason
+    function revertReasonWithoutPadding(bytes memory data) internal pure returns (bytes memory) {
+        uint256 paddingStartIndex = data.length - 1;
+        while (data[paddingStartIndex] == 0) {
+            paddingStartIndex = paddingStartIndex - 1;
         }
-        return data;
+
+        bytes memory reason = new bytes(paddingStartIndex + 1);
+
+        for (uint256 i = 0; i <= paddingStartIndex; i++) {
+            reason[i] = data[i];
+        }
+        return reason;
     }
 }

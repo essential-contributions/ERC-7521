@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import {UserIntent} from "../../src/interfaces/UserIntent.sol";
 import {
     AssetBasedIntentCurve,
-    AssetBasedIntentCurveLib,
+    generateFlags,
     CurveType,
     EvaluationType
 } from "../../src/standards/assetbased/AssetBasedIntentCurve.sol";
@@ -57,7 +57,9 @@ library AssetBasedIntentBuilder {
         AssetBasedIntentSegment[] memory currentSegments = decodeData(intent);
 
         //clone previous array and add new element
-        AssetBasedIntentSegment[] memory segments = new AssetBasedIntentSegment[](currentSegments.length + 1);
+        AssetBasedIntentSegment[] memory segments = new AssetBasedIntentSegment[](
+                currentSegments.length + 1
+            );
         for (uint256 i = 0; i < currentSegments.length; i++) {
             segments[i] = currentSegments[i];
         }
@@ -96,7 +98,9 @@ library AssetBasedIntentBuilder {
      * @return The asset based intent data.
      */
     function decodeData(UserIntent memory intent) public pure returns (AssetBasedIntentSegment[] memory) {
-        AssetBasedIntentSegment[] memory segments = new AssetBasedIntentSegment[](intent.intentData.length);
+        AssetBasedIntentSegment[] memory segments = new AssetBasedIntentSegment[](
+                intent.intentData.length
+            );
         for (uint256 i = 0; i < intent.intentData.length; i++) {
             bytes memory raw = new bytes(intent.intentData[i].length + 32);
             assembly {
@@ -105,7 +109,7 @@ library AssetBasedIntentBuilder {
             for (uint256 j = 0; j < intent.intentData[i].length; j++) {
                 raw[j + 32] = intent.intentData[i][j];
             }
-            (AssetBasedIntentSegment memory decoded) = abi.decode(raw, (AssetBasedIntentSegment));
+            AssetBasedIntentSegment memory decoded = abi.decode(raw, (AssetBasedIntentSegment));
             segments[i] = decoded;
         }
         return segments;
@@ -291,13 +295,14 @@ library AssetBasedIntentSegmentBuilder {
         AssetBasedIntentCurve memory curve = AssetBasedIntentCurve({
             assetContract: assetContract,
             assetId: assetId,
-            flags: AssetBasedIntentCurveLib.generateFlags(assetType, getCurveType(curveParams), evalType),
+            flags: generateFlags(assetType, getCurveType(curveParams), evalType),
             params: curveParams
         });
 
         //clone previous array and add new element
-        AssetBasedIntentCurve[] memory assetRequirements =
-            new AssetBasedIntentCurve[](segment.assetRequirements.length + 1);
+        AssetBasedIntentCurve[] memory assetRequirements = new AssetBasedIntentCurve[](
+                segment.assetRequirements.length + 1
+            );
         for (uint256 i = 0; i < segment.assetRequirements.length; i++) {
             assetRequirements[i] = segment.assetRequirements[i];
         }
@@ -321,12 +326,14 @@ library AssetBasedIntentSegmentBuilder {
         AssetBasedIntentCurve memory curve = AssetBasedIntentCurve({
             assetContract: assetContract,
             assetId: assetId,
-            flags: AssetBasedIntentCurveLib.generateFlags(assetType, getCurveType(curveParams), EvaluationType.ABSOLUTE),
+            flags: generateFlags(assetType, getCurveType(curveParams), EvaluationType.ABSOLUTE),
             params: curveParams
         });
 
         //clone previous array and add new element
-        AssetBasedIntentCurve[] memory assetReleases = new AssetBasedIntentCurve[](segment.assetReleases.length + 1);
+        AssetBasedIntentCurve[] memory assetReleases = new AssetBasedIntentCurve[](
+                segment.assetReleases.length + 1
+            );
         for (uint256 i = 0; i < segment.assetReleases.length; i++) {
             assetReleases[i] = segment.assetReleases[i];
         }

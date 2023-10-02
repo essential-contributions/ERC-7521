@@ -13,7 +13,7 @@ import {EntryPoint} from "../../src/core/EntryPoint.sol";
 import {UserIntent, UserIntentLib} from "../../src/interfaces/UserIntent.sol";
 import {
     AssetBasedIntentCurve,
-    AssetBasedIntentCurveLib,
+    generateFlags,
     CurveType,
     EvaluationType
 } from "../../src/standards/assetbased/AssetBasedIntentCurve.sol";
@@ -50,9 +50,7 @@ abstract contract TestEnvironment is Test {
         AssetBasedIntentCurve memory curve = AssetBasedIntentCurve({
             assetContract: address(0),
             assetId: 0,
-            flags: AssetBasedIntentCurveLib.generateFlags(
-                AssetType.ETH, AssetBasedIntentSegmentBuilder.getCurveType(curveParams), evaluation
-                ),
+            flags: generateFlags(AssetType.ETH, AssetBasedIntentSegmentBuilder.getCurveType(curveParams), evaluation),
             params: curveParams
         });
         return curve;
