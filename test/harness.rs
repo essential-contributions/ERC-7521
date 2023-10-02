@@ -61,7 +61,7 @@ async fn token_swap_constant_release() {
 
     let solution = IntentSolution::new(block_number, vec![intent, solver_intent], vec![]);
 
-    let _ = artifacts
+    artifacts
         .test_contracts
         .entry_point
         .handle_intents(solution)
