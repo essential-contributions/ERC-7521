@@ -22,3 +22,4 @@ lcov.info
 # Added by cargo
 
 /target
+/test/scenarios/target
