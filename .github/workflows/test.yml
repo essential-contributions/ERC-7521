@@ -10,8 +10,11 @@ env:
   FOUNDRY_PROFILE: ci
 
 jobs:
-  trunk:
-    name: Trunk project
+  project:
+    strategy:
+      fail-fast: true
+
+    name: Project
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -19,19 +22,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-
-      - name: Run Trunk check
-        uses: trunk-io/trunk-action@v1
-        id: trunk-check
-
-  foundry:
-    strategy:
-      fail-fast: true
-
-    name: Foundry project
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
         with:
           submodules: recursive
 
@@ -49,20 +39,34 @@ jobs:
         run: |
           forge --version
           forge build --sizes
-        id: build
+        id: forge-build
+
+      - name: Run Trunk check
+        uses: trunk-io/trunk-action@v1
+        id: trunk-check
 
       - name: Run Forge tests
         run: |
           forge test -vvv
-        id: test
+        id: forge-test
 
       - name: Run Forge coverage
         run: |
           forge coverage --report lcov
-        id: coverage
+        id: forge-coverage
 
       - name: Enforce minimum coverage
         uses: VeryGoodOpenSource/very_good_coverage@v2
         with:
           path: lcov.info
           min_coverage: 80
+
+      - name: Run Cargo build
+        run: |
+          cargo build --locked
+        id: cargo-build
+
+      - name: Run Cargo tests
+        run: |
+          cargo test --locked
+        id: cargo-test
