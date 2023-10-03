@@ -10,15 +10,40 @@ env:
   FOUNDRY_PROFILE: ci
 
 jobs:
-  project:
-    strategy:
-      fail-fast: true
-
-    name: Project
+  trunk:
+    name: Trunk Project
     runs-on: ubuntu-latest
     permissions:
       contents: read
       checks: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Run Forge build
+        run: |
+          forge --version
+          forge build --sizes
+        id: forge-build
+
+      - name: Run Trunk check
+        uses: trunk-io/trunk-action@v1
+        id: trunk-check
+
+  foundry:
+    strategy:
+      fail-fast: true
+
+    name: Foundry Project
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -41,10 +66,6 @@ jobs:
           forge build --sizes
         id: forge-build
 
-      - name: Run Trunk check
-        uses: trunk-io/trunk-action@v1
-        id: trunk-check
-
       - name: Run Forge tests
         run: |
           forge test -vvv
@@ -60,6 +81,27 @@ jobs:
         with:
           path: lcov.info
           min_coverage: 80
+
+  cargo:
+    name: Cargo Project
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Run Forge build
+        run: |
+          forge --version
+          forge build --sizes
+        id: forge-build
 
       - name: Run Cargo build
         run: |
