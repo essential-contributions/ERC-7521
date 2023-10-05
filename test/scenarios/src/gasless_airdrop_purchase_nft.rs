@@ -13,25 +13,23 @@ use utils::{
     setup::{setup, sign_intent, PROVIDER, SOLVER_WALLET, USER_WALLET},
 };
 
-pub async fn token_swap_scenario(
+pub async fn gasless_airdrop_purchase_nft_scenario(
     release_parameters: CurveParameters,
     require_parameters: CurveParameters,
-    block_number: U256,
-    release_evaluation: U256,
-    require_evaluation: U256,
-) -> TestBalances {
+    claim_amount: U256,
+) -> (TestBalances, U256) {
     // setup
     let test_contracts = setup().await;
 
+    // block number to evaluate the curves at
+    let block_number: U256 =
+        std::cmp::max(1, PROVIDER.get_block_number().await.unwrap().as_u64()).into();
+
+    // get nft price
+    let nft_price = test_contracts.test_erc1155.nft_cost().await;
+
     // record initial balances
     let mut test_balances = TestBalances::default();
-
-    test_balances.user.eth.initial = Some(
-        PROVIDER
-            .get_balance(test_contracts.user_account.contract.address(), None)
-            .await
-            .unwrap(),
-    );
 
     test_balances.solver.eth.initial = Some(
         PROVIDER
@@ -47,22 +45,29 @@ pub async fn token_swap_scenario(
             .await,
     );
 
+    test_balances.user.erc1155.initial = Some(U256::zero());
+
+    // calculate release amount
+    let release_evaluation = release_parameters.evaluate(block_number).into_raw();
+
     // create user intent
-    let mut intent = token_swap_intent(
+    let mut intent = gasless_airdrop_purchase_nft_intent(
         &test_contracts,
         test_contracts.user_account.contract.address(),
         release_parameters.clone(),
         require_parameters.clone(),
+        claim_amount,
+        nft_price,
     );
     intent = sign_intent(&test_contracts, intent, USER_WALLET.clone()).await;
 
     // create solver intent
-    let solver_intent = token_swap_solver_intent(
+    let solver_intent = gasless_airdrop_purchase_nft_solver_intent(
         &test_contracts,
         SOLVER_WALLET.address(),
         test_contracts.user_account.contract.address(),
         release_evaluation,
-        require_evaluation,
+        nft_price,
     );
 
     // create intent solution
@@ -75,16 +80,12 @@ pub async fn token_swap_scenario(
         .await
         .unwrap();
 
+    let nft_id = test_contracts.test_erc1155.last_bought_nft().await;
+
     // record final balances
     test_balances.solver.eth.r#final = Some(
         PROVIDER
             .get_balance(SOLVER_WALLET.address(), None)
-            .await
-            .unwrap(),
-    );
-    test_balances.user.eth.r#final = Some(
-        PROVIDER
-            .get_balance(test_contracts.user_account.contract.address(), None)
             .await
             .unwrap(),
     );
@@ -94,17 +95,25 @@ pub async fn token_swap_scenario(
             .balance_of(test_contracts.user_account.contract.address())
             .await,
     );
+    test_balances.user.erc1155.r#final = Some(
+        test_contracts
+            .test_erc1155
+            .balance_of(test_contracts.user_account.contract.address(), nft_id)
+            .await,
+    );
 
-    test_balances
+    (test_balances, nft_price)
 }
 
-fn token_swap_intent(
+fn gasless_airdrop_purchase_nft_intent(
     test_contracts: &TestContracts,
     sender: Address,
-    release_params: CurveParameters,
+    release_parameters: CurveParameters,
     require_params: CurveParameters,
+    claim_amount: U256,
+    nft_price: U256,
 ) -> UserIntent {
-    let mut token_swap_intent = UserIntent::create_asset_based(
+    let mut gasless_airdrop_purchase_nft_intent = UserIntent::create_asset_based(
         test_contracts
             .asset_based_intent_standard
             .standard_id
@@ -114,14 +123,36 @@ fn token_swap_intent(
         0,
     );
 
+    let claim_airdrop_erc20_calldata = test_contracts
+        .test_erc20
+        .mint_calldata(test_contracts.user_account.contract.address(), claim_amount);
+    let claim_airdrop_erc20_execute_calldata = test_contracts.user_account.execute_calldata(
+        test_contracts.test_erc20.contract.address(),
+        U256::zero(),
+        claim_airdrop_erc20_calldata,
+    );
+    let claim_airdrop_erc20_segment =
+        AssetBasedIntentSegment::new(claim_airdrop_erc20_execute_calldata);
+
     let release_erc20_segment = AssetBasedIntentSegment::new(Bytes::default())
         .add_asset_release_curve(
             test_contracts.test_erc20.contract.address(),
             U256::zero(),
             AssetType::ERC20,
-            release_params,
+            release_parameters,
         )
         .clone();
+
+    let buy_erc1155_calldata = test_contracts.test_erc1155.buy_nft_calldata(
+        test_contracts.user_account.contract.address(),
+        U256::from(1),
+    );
+    let buy_erc1155_execute_calldata = test_contracts.user_account.execute_calldata(
+        test_contracts.test_erc1155.contract.address(),
+        nft_price,
+        buy_erc1155_calldata,
+    );
+    let buy_erc1155_segment = AssetBasedIntentSegment::new(buy_erc1155_execute_calldata);
 
     let require_eth_segment = AssetBasedIntentSegment::new(Bytes::default())
         .add_asset_requirement_curve(
@@ -129,22 +160,24 @@ fn token_swap_intent(
             U256::zero(),
             AssetType::ETH,
             require_params,
-            EvaluationType::RELATIVE,
+            EvaluationType::ABSOLUTE,
         )
         .clone();
 
-    token_swap_intent.add_segment_asset_based(release_erc20_segment);
-    token_swap_intent.add_segment_asset_based(require_eth_segment);
+    gasless_airdrop_purchase_nft_intent.add_segment_asset_based(claim_airdrop_erc20_segment);
+    gasless_airdrop_purchase_nft_intent.add_segment_asset_based(release_erc20_segment);
+    gasless_airdrop_purchase_nft_intent.add_segment_asset_based(buy_erc1155_segment);
+    gasless_airdrop_purchase_nft_intent.add_segment_asset_based(require_eth_segment);
 
-    token_swap_intent
+    gasless_airdrop_purchase_nft_intent
 }
 
-fn token_swap_solver_intent(
+fn gasless_airdrop_purchase_nft_solver_intent(
     test_contracts: &TestContracts,
     sender: Address,
     other: Address,
-    erc20_release_amount: U256,
-    evaluation: U256,
+    min_eth: U256,
+    nft_price: U256,
 ) -> UserIntent {
     let mut solution = UserIntent::create_default(
         test_contracts.entry_point.default_standard_id.clone(),
@@ -159,8 +192,8 @@ fn token_swap_solver_intent(
             test_contracts,
             sender,
             other,
-            erc20_release_amount,
-            evaluation,
+            min_eth,
+            nft_price,
         );
 
     let solver_segment = DefaultIntentSegment::new(solver_calldata);

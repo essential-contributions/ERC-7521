@@ -1,16 +1,16 @@
-use super::client::WrappedClient;
 use crate::abigen::TestWrappedNativeToken;
 use ethers::prelude::*;
 use k256::ecdsa::SigningKey;
+use std::sync::Arc;
 
 pub struct TestWrappedNativeTokenContract {
     pub contract: TestWrappedNativeToken<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>,
 }
 
 impl TestWrappedNativeTokenContract {
-    pub async fn deploy(wrapped_client: &WrappedClient) -> Self {
+    pub async fn deploy(client: Arc<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>) -> Self {
         Self {
-            contract: TestWrappedNativeToken::deploy(wrapped_client.client.clone(), ())
+            contract: TestWrappedNativeToken::deploy(client.clone(), ())
                 .unwrap()
                 .send()
                 .await

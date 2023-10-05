@@ -24,47 +24,16 @@ pub struct AssetBasedIntentSegment {
 }
 
 impl AssetBasedIntentSegment {
-    pub fn new(call_gas_limit: U256, call_data: Bytes) -> Self {
+    pub fn new(call_data: Bytes) -> Self {
         Self {
-            call_gas_limit,
+            call_gas_limit: U256::from(1000000),
             call_data,
             asset_releases: vec![],
             asset_requirements: vec![],
         }
     }
 
-    pub fn release_eth(&mut self, curve_parameters: CurveParameters) -> &mut Self {
-        self.add_asset_release_curve(
-            Address::default(),
-            U256::zero(),
-            AssetType::ERC20,
-            curve_parameters,
-        )
-    }
-
-    pub fn release_erc20(
-        &mut self,
-        address: Address,
-        curve_parameters: CurveParameters,
-    ) -> &mut Self {
-        self.add_asset_release_curve(address, U256::zero(), AssetType::ERC20, curve_parameters)
-    }
-
-    pub fn require_eth(
-        &mut self,
-        curve_parameters: CurveParameters,
-        evaluation_type: EvaluationType,
-    ) -> &mut Self {
-        self.add_asset_requirement_curve(
-            Address::default(),
-            U256::zero(),
-            AssetType::ETH,
-            curve_parameters,
-            evaluation_type,
-        )
-    }
-
-    fn add_asset_release_curve(
+    pub fn add_asset_release_curve(
         &mut self,
         asset_contract: Address,
         asset_id: U256,
@@ -88,7 +57,7 @@ impl AssetBasedIntentSegment {
         self
     }
 
-    fn add_asset_requirement_curve(
+    pub fn add_asset_requirement_curve(
         &mut self,
         asset_contract: Address,
         asset_id: U256,

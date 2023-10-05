@@ -1,16 +1,16 @@
-use super::client::WrappedClient;
 use crate::abigen::TestERC20;
 use ethers::prelude::*;
 use k256::ecdsa::SigningKey;
+use std::sync::Arc;
 
 pub struct TestERC20Contract {
     pub contract: TestERC20<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>,
 }
 
 impl TestERC20Contract {
-    pub async fn deploy(wrapped_client: &WrappedClient) -> Self {
+    pub async fn deploy(client: Arc<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>) -> Self {
         Self {
-            contract: TestERC20::deploy(wrapped_client.client.clone(), ())
+            contract: TestERC20::deploy(client.clone(), ())
                 .unwrap()
                 .send()
                 .await
@@ -21,6 +21,11 @@ impl TestERC20Contract {
     pub async fn mint(&self, to: Address, amount: U256) {
         let tx = self.contract.mint(to, amount);
         tx.send().await.unwrap();
+    }
+
+    pub fn mint_calldata(&self, to: Address, amount: U256) -> Bytes {
+        let method = self.contract.mint(to, amount);
+        method.calldata().unwrap()
     }
 
     pub async fn balance_of(&self, account: Address) -> U256 {

@@ -1,10 +1,8 @@
-use super::client::WrappedClient;
-use crate::abigen::entry_point::IntentSolution;
-use crate::abigen::EntryPoint;
-use ethers::abi::AbiDecode;
-use ethers::prelude::*;
+use crate::abigen::{entry_point::IntentSolution, EntryPoint};
+use ethers::{abi::AbiDecode, prelude::*};
 use eyre::Result;
 use k256::ecdsa::SigningKey;
+use std::sync::Arc;
 
 pub struct EntryPointContract {
     pub contract: EntryPoint<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>,
@@ -12,9 +10,9 @@ pub struct EntryPointContract {
 }
 
 impl EntryPointContract {
-    pub async fn deploy(wrapped_client: &WrappedClient) -> Self {
+    pub async fn deploy(client: Arc<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>) -> Self {
         let mut entry_point_contract = Self {
-            contract: EntryPoint::deploy(wrapped_client.client.clone(), ())
+            contract: EntryPoint::deploy(client.clone(), ())
                 .unwrap()
                 .send()
                 .await
@@ -117,8 +115,6 @@ impl EntryPointContract {
         let tx = self
             .contract
             .simulate_handle_intents(solution, Address::zero(), Bytes::default());
-
-        dbg!(tx.estimate_gas().await.unwrap());
 
         match tx.clone().call().await {
             Ok(_) => {

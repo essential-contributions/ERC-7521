@@ -1,12 +1,13 @@
 use crate::wrappers::{
     abstract_account::AbstractAccountContract,
-    asset_based_intent_standard::AssetBasedIntentStandardContract, client::WrappedClient,
-    entry_point::EntryPointContract, solver_utils::SolverUtilsContract,
-    test_erc1155::TestERC1155Contract, test_erc20::TestERC20Contract,
-    test_erc721::TestERC721Contract, test_uniswap::TestUniswapContract,
-    test_wrapped_native_token::TestWrappedNativeTokenContract,
+    asset_based_intent_standard::AssetBasedIntentStandardContract, entry_point::EntryPointContract,
+    solver_utils::SolverUtilsContract, test_erc1155::TestERC1155Contract,
+    test_erc20::TestERC20Contract, test_erc721::TestERC721Contract,
+    test_uniswap::TestUniswapContract, test_wrapped_native_token::TestWrappedNativeTokenContract,
 };
-use ethers::types::Address;
+use ethers::prelude::*;
+use k256::ecdsa::SigningKey;
+use std::sync::Arc;
 
 pub struct TestContracts {
     pub entry_point: EntryPointContract,
@@ -20,19 +21,22 @@ pub struct TestContracts {
     pub solver_utils: SolverUtilsContract,
 }
 
-pub async fn deploy_all(client: &WrappedClient, user_public_key: Address) -> TestContracts {
-    let entry_point = EntryPointContract::deploy(client).await;
+pub async fn deploy_all(
+    client: Arc<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>,
+) -> TestContracts {
+    let entry_point = EntryPointContract::deploy(client.clone()).await;
     let asset_based_intent_standard =
-        AssetBasedIntentStandardContract::deploy(client, &entry_point).await;
-    let user_account = AbstractAccountContract::deploy(client, &entry_point, user_public_key).await;
-    let test_erc20 = TestERC20Contract::deploy(client).await;
-    let test_erc721 = TestERC721Contract::deploy(client).await;
-    let test_erc1155 = TestERC1155Contract::deploy(client).await;
-    let test_wrapped_native_token = TestWrappedNativeTokenContract::deploy(client).await;
+        AssetBasedIntentStandardContract::deploy(client.clone(), &entry_point).await;
+    let user_account = AbstractAccountContract::deploy(client.clone(), &entry_point).await;
+    let test_erc20 = TestERC20Contract::deploy(client.clone()).await;
+    let test_erc721 = TestERC721Contract::deploy(client.clone()).await;
+    let test_erc1155 = TestERC1155Contract::deploy(client.clone()).await;
+    let test_wrapped_native_token = TestWrappedNativeTokenContract::deploy(client.clone()).await;
     let test_uniswap =
-        TestUniswapContract::deploy(client, test_wrapped_native_token.contract.address()).await;
+        TestUniswapContract::deploy(client.clone(), test_wrapped_native_token.contract.address())
+            .await;
     let solver_utils = SolverUtilsContract::deploy(
-        client,
+        client.clone(),
         test_uniswap.contract.address(),
         test_erc20.contract.address(),
         test_wrapped_native_token.contract.address(),
