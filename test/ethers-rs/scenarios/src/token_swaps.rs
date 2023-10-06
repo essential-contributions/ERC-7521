@@ -122,7 +122,6 @@ fn token_swap_intent(
             release_params,
         )
         .clone();
-
     let require_eth_segment = AssetBasedIntentSegment::new(Bytes::default())
         .add_asset_requirement_curve(
             Address::default(),
@@ -152,7 +151,6 @@ fn token_swap_solver_intent(
         0,
         0,
     );
-
     let solver_calldata = test_contracts
         .solver_utils
         .swap_all_erc20_for_eth_and_forward_calldata(
