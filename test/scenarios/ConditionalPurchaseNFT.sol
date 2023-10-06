@@ -113,10 +113,7 @@ contract ConditionalPurchaseNFT is ScenarioTestEnvironment {
         //execute
         vm.expectRevert(
             abi.encodeWithSelector(
-                IEntryPoint.FailedIntent.selector,
-                0,
-                0,
-                string.concat("AA61 execution failed: insufficient release balance")
+                IEntryPoint.FailedIntent.selector, 0, 0, "AA61 execution failed: insufficient release balance"
             )
         );
         _entryPoint.handleIntents(solution);
