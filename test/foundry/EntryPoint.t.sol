@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 /* solhint-disable func-name-mixedcase */
 
 import "./utils/TestEnvironment.sol";
-import "../src/interfaces/IIntentStandard.sol";
+import "../../src/interfaces/IIntentStandard.sol";
 
 contract EntryPointTest is TestEnvironment {
     using AssetBasedIntentBuilder for UserIntent;

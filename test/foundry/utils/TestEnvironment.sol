@@ -9,18 +9,18 @@ import {
     AssetBasedIntentCurveBuilder,
     AssetBasedIntentSegmentBuilder
 } from "./AssetBasedIntentBuilder.sol";
-import {EntryPoint} from "../../src/core/EntryPoint.sol";
-import {UserIntent, UserIntentLib} from "../../src/interfaces/UserIntent.sol";
+import {EntryPoint} from "../../../src/core/EntryPoint.sol";
+import {UserIntent, UserIntentLib} from "../../../src/interfaces/UserIntent.sol";
 import {
     AssetBasedIntentCurve,
     generateFlags,
     CurveType,
     EvaluationType
-} from "../../src/standards/assetbased/AssetBasedIntentCurve.sol";
-import {AssetBasedIntentSegment} from "../../src/standards/assetbased/AssetBasedIntentSegment.sol";
-import {AssetBasedIntentStandard} from "../../src/standards/assetbased/AssetBasedIntentStandard.sol";
-import {AssetType} from "../../src/standards/assetbased/utils/AssetWrapper.sol";
-import {AbstractAccount} from "../../src/wallet/AbstractAccount.sol";
+} from "../../../src/standards/assetbased/AssetBasedIntentCurve.sol";
+import {AssetBasedIntentSegment} from "../../../src/standards/assetbased/AssetBasedIntentSegment.sol";
+import {AssetBasedIntentStandard} from "../../../src/standards/assetbased/AssetBasedIntentStandard.sol";
+import {AssetType} from "../../../src/standards/assetbased/utils/AssetWrapper.sol";
+import {AbstractAccount} from "../../../src/wallet/AbstractAccount.sol";
 import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 
 abstract contract TestEnvironment is Test {

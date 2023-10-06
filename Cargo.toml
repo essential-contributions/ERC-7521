@@ -9,10 +9,10 @@ ethers = { version = "2.0.10", default-features = true, features = [
   "rustls",
 ] }
 tokio = { version = "1.32.0", features = ["macros", "rt-multi-thread"] }
-utils = { path = "./test/utils" }
-scenarios = { path = "./test/scenarios" }
+utils = { path = "./test/ethers-rs/utils" }
+scenarios = { path = "./test/ethers-rs/scenarios" }
 
 [[test]]
 harness = true
 name = "test"
-path = "./test/harness.rs"
+path = "./test/ethers-rs/harness.rs"
