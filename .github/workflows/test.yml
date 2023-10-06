@@ -19,19 +19,32 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Run Forge build
+        run: |
+          forge --version
+          forge build --sizes
+        id: forge-build
 
       - name: Run Trunk check
         uses: trunk-io/trunk-action@v1
         id: trunk-check
 
   foundry:
-    strategy:
-      fail-fast: true
-
     name: Foundry project
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
         with:
           submodules: recursive
 
@@ -49,20 +62,50 @@ jobs:
         run: |
           forge --version
           forge build --sizes
-        id: build
+        id: forge-build
 
       - name: Run Forge tests
         run: |
           forge test -vvv
-        id: test
+        id: forge-test
 
       - name: Run Forge coverage
         run: |
           forge coverage --report lcov
-        id: coverage
+        id: forge-coverage
 
       - name: Enforce minimum coverage
         uses: VeryGoodOpenSource/very_good_coverage@v2
         with:
           path: lcov.info
           min_coverage: 80
+
+  cargo:
+    name: Cargo project
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Run Forge build
+        run: |
+          forge --version
+          forge build --sizes
+        id: forge-build
+
+      - name: Run Cargo build
+        run: |
+          cargo build --locked
+        id: cargo-build
+
+      - name: Run Cargo tests
+        run: |
+          cargo test --locked
+        id: cargo-test

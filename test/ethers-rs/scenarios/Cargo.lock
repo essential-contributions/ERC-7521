@@ -1222,16 +1222,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "generalized_intents"
-version = "0.1.0"
-dependencies = [
- "ethers",
- "scenarios",
- "tokio",
- "utils",
-]
-
-[[package]]
 name = "generic-array"
 version = "0.14.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
