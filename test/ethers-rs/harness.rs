@@ -1,15 +1,14 @@
-use ::utils::builders::asset_based_intent_standard::curve_builder::ExponentialCurveParameters;
 use ethers::{prelude::*, utils::parse_ether};
-use scenarios::token_swaps::token_swap_scenario;
 use utils::{
     builders::asset_based_intent_standard::curve_builder::{
-        ConstantCurveParameters, CurveParameters, LinearCurveParameters,
+        ConstantCurveParameters, CurveParameters, ExponentialCurveParameters, LinearCurveParameters,
     },
     setup::PROVIDER,
 };
 
 mod token_swap {
     use super::*;
+    use scenarios::token_swaps::token_swap_scenario;
 
     #[tokio::test]
     async fn constant_release() {
