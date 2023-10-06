@@ -348,3 +348,4 @@ mod gasless_aidrop_conditional_purchase_nft {
             "The user did not get their NFT"
         );
     }
+}

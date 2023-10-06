@@ -7,7 +7,7 @@ use utils::{
             curve_builder::{AssetType, ConstantCurveParameters, CurveParameters, EvaluationType},
             segment_builder::AssetBasedIntentSegment,
         },
-        default::segment_builder::DefaultIntentSegment,
+        default_intent_standard::segment_builder::DefaultIntentSegment,
     },
     deploy::TestContracts,
     setup::{setup, sign_intent, PROVIDER, SOLVER_WALLET, USER_WALLET},
