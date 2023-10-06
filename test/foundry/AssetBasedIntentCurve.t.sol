@@ -4,8 +4,8 @@ pragma solidity ^0.8.13;
 /* solhint-disable func-name-mixedcase */
 
 import "./utils/TestEnvironment.sol";
-import "../src/test/AssetBasedIntentCurveLibHarness.sol";
-import {generateFlags} from "../src/standards/assetbased/AssetBasedIntentCurve.sol";
+import "../../src/test/AssetBasedIntentCurveLibHarness.sol";
+import {generateFlags} from "../../src/standards/assetbased/AssetBasedIntentCurve.sol";
 
 contract AssetBasedIntentCurveTest is TestEnvironment {
     using AssetBasedIntentCurveLibHarness for AssetBasedIntentCurve;

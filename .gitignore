@@ -22,4 +22,4 @@ lcov.info
 # Added by cargo
 
 /target
-/test/scenarios/target
+/test/ethers-rs/scenarios/target
