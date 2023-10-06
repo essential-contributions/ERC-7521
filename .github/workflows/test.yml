@@ -11,7 +11,7 @@ env:
 
 jobs:
   trunk:
-    name: Trunk Project
+    name: Trunk project
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -42,7 +42,7 @@ jobs:
     strategy:
       fail-fast: true
 
-    name: Foundry Project
+    name: Foundry project
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -83,7 +83,7 @@ jobs:
           min_coverage: 80
 
   cargo:
-    name: Cargo Project
+    name: Cargo project
     runs-on: ubuntu-latest
 
     steps:
