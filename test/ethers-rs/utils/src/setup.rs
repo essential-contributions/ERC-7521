@@ -1,7 +1,6 @@
 use crate::{
     abigen::entry_point::UserIntent,
     deploy::{deploy_all, TestContracts},
-    wrappers::client::WrappedClient,
 };
 use ethers::{
     abi::FixedBytes,
@@ -11,33 +10,22 @@ use ethers::{
 use eyre::Result;
 use std::{convert::TryFrom, sync::Arc, time::Duration};
 
-pub struct SetupArtifacts {
-    pub test_contracts: TestContracts,
-    pub user_wallet: LocalWallet,
-    pub solver_wallet: LocalWallet,
-}
-
-pub static ANVIL: Lazy<AnvilInstance> = Lazy::new(|| Anvil::new().spawn());
+static ANVIL: Lazy<AnvilInstance> = Lazy::new(|| Anvil::new().spawn());
+pub static DEPLOYER_WALLET: Lazy<LocalWallet> = Lazy::new(|| ANVIL.keys()[0].clone().into());
+pub static USER_WALLET: Lazy<LocalWallet> = Lazy::new(|| ANVIL.keys()[1].clone().into());
+pub static SOLVER_WALLET: Lazy<LocalWallet> = Lazy::new(|| ANVIL.keys()[2].clone().into());
 pub static PROVIDER: Lazy<Provider<Http>> = Lazy::new(|| {
     Provider::<Http>::try_from(ANVIL.endpoint())
         .unwrap()
         .interval(Duration::from_millis(10u64))
 });
 
-pub async fn setup() -> SetupArtifacts {
-    let deployer_wallet: LocalWallet = ANVIL.keys()[0].clone().into();
-    let user_wallet: LocalWallet = ANVIL.keys()[1].clone().into();
-    let solver_wallet: LocalWallet = ANVIL.keys()[2].clone().into();
-
-    let client = SignerMiddleware::new(
+pub async fn setup() -> TestContracts {
+    let test_contracts = deploy_all(Arc::new(SignerMiddleware::new(
         PROVIDER.clone(),
-        deployer_wallet.with_chain_id(ANVIL.chain_id()),
-    );
-    let client = WrappedClient {
-        client: Arc::new(client),
-    };
-
-    let test_contracts = deploy_all(&client, user_wallet.address()).await;
+        DEPLOYER_WALLET.clone().with_chain_id(ANVIL.chain_id()),
+    )))
+    .await;
 
     fund_exchange(&test_contracts, parse_ether(1000).unwrap())
         .await
@@ -47,11 +35,7 @@ pub async fn setup() -> SetupArtifacts {
         .await
         .unwrap();
 
-    SetupArtifacts {
-        test_contracts,
-        user_wallet,
-        solver_wallet,
-    }
+    test_contracts
 }
 
 async fn fund_exchange(test_contracts: &TestContracts, fund_amount: U256) -> Result<()> {

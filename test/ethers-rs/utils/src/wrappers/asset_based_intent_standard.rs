@@ -1,8 +1,9 @@
-use super::{client::WrappedClient, entry_point::EntryPointContract};
+use super::entry_point::EntryPointContract;
 use crate::abigen::AssetBasedIntentStandard;
 use ethers::prelude::*;
 use eyre::Result;
 use k256::ecdsa::SigningKey;
+use std::sync::Arc;
 
 pub struct AssetBasedIntentStandardContract {
     pub contract: AssetBasedIntentStandard<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>,
@@ -11,11 +12,11 @@ pub struct AssetBasedIntentStandardContract {
 
 impl AssetBasedIntentStandardContract {
     pub async fn deploy(
-        wrapped_client: &WrappedClient,
+        client: Arc<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>,
         entry_point_contract_instance: &EntryPointContract,
     ) -> Self {
         let contract = AssetBasedIntentStandard::deploy(
-            wrapped_client.client.clone(),
+            client.clone(),
             entry_point_contract_instance.contract.address(),
         )
         .unwrap()

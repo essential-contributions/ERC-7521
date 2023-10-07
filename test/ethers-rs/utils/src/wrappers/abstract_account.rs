@@ -1,7 +1,8 @@
-use super::{client::WrappedClient, entry_point::EntryPointContract};
-use crate::abigen::AbstractAccount;
-use ethers::{prelude::*, types::spoof::State};
+use super::entry_point::EntryPointContract;
+use crate::{abigen::AbstractAccount, setup::USER_WALLET};
+use ethers::{prelude::*, utils::parse_ether};
 use k256::ecdsa::SigningKey;
+use std::sync::Arc;
 
 pub struct AbstractAccountContract {
     pub contract: AbstractAccount<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>,
@@ -9,31 +10,46 @@ pub struct AbstractAccountContract {
 
 impl AbstractAccountContract {
     pub async fn deploy(
-        wrapped_client: &WrappedClient,
+        client: Arc<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>,
         entry_point_contract_instance: &EntryPointContract,
-        user_public_key: Address,
     ) -> Self {
-        Self {
-            contract: AbstractAccount::deploy(
-                wrapped_client.client.clone(),
-                (
-                    entry_point_contract_instance.contract.address(),
-                    user_public_key,
-                ),
-            )
-            .unwrap()
-            .send()
-            .await
-            .unwrap(),
-        }
+        let contract = AbstractAccount::deploy(
+            client.clone(),
+            (
+                entry_point_contract_instance.contract.address(),
+                USER_WALLET.address(),
+            ),
+        )
+        .unwrap()
+        .send()
+        .await
+        .unwrap();
+
+        // fund abstract account
+        let tx = TransactionRequest::new()
+            .to(contract.address())
+            .value(parse_ether(100).unwrap())
+            .from(USER_WALLET.address());
+        let cloned_client = client.clone();
+        cloned_client.send_transaction(tx, None).await.unwrap();
+
+        Self { contract }
     }
 
-    pub async fn funded_state(&self, amount: U256) -> State {
-        let mut state = spoof::State::default();
+    pub fn execute_calldata(&self, target: Address, value: U256, data: Bytes) -> Bytes {
+        let method = self.contract.execute(target, value, data);
 
-        state.account(self.contract.address()).balance(amount);
-        state.account(self.contract.address()).nonce(U64::zero());
+        method.calldata().unwrap()
+    }
 
-        state
+    pub fn execute_multi_calldata(
+        &self,
+        targets: Vec<Address>,
+        values: Vec<U256>,
+        datas: Vec<Bytes>,
+    ) -> Bytes {
+        let method = self.contract.execute_multi(targets, values, datas);
+
+        method.calldata().unwrap()
     }
 }

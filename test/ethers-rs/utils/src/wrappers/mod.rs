@@ -1,6 +1,5 @@
 pub mod abstract_account;
 pub mod asset_based_intent_standard;
-pub mod client;
 pub mod entry_point;
 pub mod libs;
 pub mod solver_utils;

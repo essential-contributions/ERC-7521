@@ -4,7 +4,7 @@ use utils::{
     balance::TestBalances,
     builders::{
         asset_based_intent_standard::{
-            curve_builder::{AssetType, CurveParameters, EvaluationType},
+            curve_builder::{AssetType, CurveParameters},
             segment_builder::AssetBasedIntentSegment,
         },
         default_intent_standard::segment_builder::DefaultIntentSegment,
@@ -13,25 +13,20 @@ use utils::{
     setup::{setup, sign_intent, PROVIDER, SOLVER_WALLET, USER_WALLET},
 };
 
-pub async fn token_swap_scenario(
+pub async fn gasless_airdrop_scenario(
     release_parameters: CurveParameters,
-    require_parameters: CurveParameters,
-    block_number: U256,
-    release_evaluation: U256,
-    require_evaluation: U256,
+    claim_amount: U256,
+    gas_payment: U256,
 ) -> TestBalances {
     // setup
     let test_contracts = setup().await;
 
+    // block number to evaluate the curves at
+    let block_number: U256 =
+        std::cmp::max(1, PROVIDER.get_block_number().await.unwrap().as_u64()).into();
+
     // record initial balances
     let mut test_balances = TestBalances::default();
-
-    test_balances.user.eth.initial = Some(
-        PROVIDER
-            .get_balance(test_contracts.user_account.contract.address(), None)
-            .await
-            .unwrap(),
-    );
 
     test_balances.solver.eth.initial = Some(
         PROVIDER
@@ -39,7 +34,6 @@ pub async fn token_swap_scenario(
             .await
             .unwrap(),
     );
-
     test_balances.user.erc20.initial = Some(
         test_contracts
             .test_erc20
@@ -48,22 +42,16 @@ pub async fn token_swap_scenario(
     );
 
     // create user intent
-    let mut intent = token_swap_intent(
+    let mut intent = gasless_airdrop_intent(
         &test_contracts,
         test_contracts.user_account.contract.address(),
         release_parameters.clone(),
-        require_parameters.clone(),
+        claim_amount,
     );
     intent = sign_intent(&test_contracts, intent, USER_WALLET.clone()).await;
 
     // create solver intent
-    let solver_intent = token_swap_solver_intent(
-        &test_contracts,
-        SOLVER_WALLET.address(),
-        test_contracts.user_account.contract.address(),
-        release_evaluation,
-        require_evaluation,
-    );
+    let solver_intent = gasless_airdrop_solver_intent(&test_contracts, gas_payment);
 
     // create intent solution
     let solution = IntentSolution::new(block_number, vec![intent, solver_intent], vec![]);
@@ -82,12 +70,6 @@ pub async fn token_swap_scenario(
             .await
             .unwrap(),
     );
-    test_balances.user.eth.r#final = Some(
-        PROVIDER
-            .get_balance(test_contracts.user_account.contract.address(), None)
-            .await
-            .unwrap(),
-    );
     test_balances.user.erc20.r#final = Some(
         test_contracts
             .test_erc20
@@ -98,13 +80,13 @@ pub async fn token_swap_scenario(
     test_balances
 }
 
-fn token_swap_intent(
+fn gasless_airdrop_intent(
     test_contracts: &TestContracts,
     sender: Address,
-    release_params: CurveParameters,
-    require_params: CurveParameters,
+    release_parameters: CurveParameters,
+    claim_amount: U256,
 ) -> UserIntent {
-    let mut token_swap_intent = UserIntent::create_asset_based(
+    let mut gasless_airdrop_intent = UserIntent::create_asset_based(
         test_contracts
             .asset_based_intent_standard
             .standard_id
@@ -114,55 +96,45 @@ fn token_swap_intent(
         0,
     );
 
+    let claim_airdrop_erc20_calldata = test_contracts
+        .test_erc20
+        .mint_calldata(test_contracts.user_account.contract.address(), claim_amount);
+    let claim_airdrop_erc20_execute_calldata = test_contracts.user_account.execute_calldata(
+        test_contracts.test_erc20.contract.address(),
+        U256::zero(),
+        claim_airdrop_erc20_calldata,
+    );
+    let claim_airdrop_erc20_segment =
+        AssetBasedIntentSegment::new(claim_airdrop_erc20_execute_calldata);
+
     let release_erc20_segment = AssetBasedIntentSegment::new(Bytes::default())
         .add_asset_release_curve(
             test_contracts.test_erc20.contract.address(),
             U256::zero(),
             AssetType::ERC20,
-            release_params,
-        )
-        .clone();
-    let require_eth_segment = AssetBasedIntentSegment::new(Bytes::default())
-        .add_asset_requirement_curve(
-            Address::default(),
-            U256::zero(),
-            AssetType::ETH,
-            require_params,
-            EvaluationType::RELATIVE,
+            release_parameters,
         )
         .clone();
 
-    token_swap_intent.add_segment_asset_based(release_erc20_segment);
-    token_swap_intent.add_segment_asset_based(require_eth_segment);
+    gasless_airdrop_intent.add_segment_asset_based(claim_airdrop_erc20_segment);
+    gasless_airdrop_intent.add_segment_asset_based(release_erc20_segment);
 
-    token_swap_intent
+    gasless_airdrop_intent
 }
 
-fn token_swap_solver_intent(
-    test_contracts: &TestContracts,
-    sender: Address,
-    other: Address,
-    erc20_release_amount: U256,
-    evaluation: U256,
-) -> UserIntent {
+fn gasless_airdrop_solver_intent(test_contracts: &TestContracts, gas_payment: U256) -> UserIntent {
     let mut solution = UserIntent::create_default(
         test_contracts.entry_point.default_standard_id.clone(),
         test_contracts.solver_utils.contract.address(),
         0,
         0,
     );
-    let solver_calldata = test_contracts
-        .solver_utils
-        .swap_all_erc20_for_eth_and_forward_calldata(
-            test_contracts,
-            sender,
-            other,
-            erc20_release_amount,
-            evaluation,
-        );
 
-    let solver_segment = DefaultIntentSegment::new(solver_calldata);
-    solution.add_segment_default(solver_segment);
+    let swap_all_erc20_for_eth_calldata = test_contracts
+        .solver_utils
+        .swap_all_erc20_for_eth_calldata(test_contracts, SOLVER_WALLET.address(), gas_payment);
+
+    solution.add_segment_default(DefaultIntentSegment::new(swap_all_erc20_for_eth_calldata));
 
     solution
 }
