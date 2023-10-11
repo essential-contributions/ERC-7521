@@ -12,7 +12,6 @@ import {IERC1155} from "openzeppelin/token/ERC1155/IERC1155.sol";
 contract AbstractAccountTest is ScenarioTestEnvironment, TokenCallbackHandler {
     using AssetBasedIntentBuilder for UserIntent;
     using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
-    using UserIntentLib for UserIntent;
     using ECDSA for bytes32;
 
     function test_entryPoint() public {
@@ -26,6 +25,7 @@ contract AbstractAccountTest is ScenarioTestEnvironment, TokenCallbackHandler {
         // user's intent
         UserIntent memory intent = _intent();
         intent = intent.addSegment(
+            _assetBasedIntentStandard.standardId(),
             _segment(_accountClaimAirdropERC20(2 ether)).releaseERC20(
                 address(_testERC20), AssetBasedIntentCurveBuilder.constantCurve(int256(1 ether))
             )
@@ -54,7 +54,7 @@ contract AbstractAccountTest is ScenarioTestEnvironment, TokenCallbackHandler {
         );
 
         UserIntent memory intent = _intent();
-        intent = intent.addSegment(intentSegment);
+        intent = intent.addSegment(_assetBasedIntentStandard.standardId(), intentSegment);
         intent = _signIntent(intent);
 
         IntentSolution memory solution = _solution(intent, _solverIntent("", "", "", 1));
@@ -78,7 +78,7 @@ contract AbstractAccountTest is ScenarioTestEnvironment, TokenCallbackHandler {
         );
 
         UserIntent memory intent = _intent();
-        intent = intent.addSegment(intentSegment);
+        intent = intent.addSegment(_assetBasedIntentStandard.standardId(), intentSegment);
         intent = _signIntent(intent);
 
         IntentSolution memory solution = _solution(intent, _solverIntent("", "", "", 1));
@@ -94,7 +94,9 @@ contract AbstractAccountTest is ScenarioTestEnvironment, TokenCallbackHandler {
     function test_failCall() public {
         UserIntent memory intent = _intent();
         // account is not funded, the call will fail
-        intent = intent.addSegment(_segment(_accountBuyERC1155(_testERC1155.nftCost())));
+        intent = intent.addSegment(
+            _assetBasedIntentStandard.standardId(), _segment(_accountBuyERC1155(_testERC1155.nftCost()))
+        );
         intent = _signIntent(intent);
 
         IntentSolution memory solution = _solution(intent, _solverIntent("", "", "", 1));

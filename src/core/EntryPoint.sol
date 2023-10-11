@@ -100,14 +100,14 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         bytes memory contextData
     ) private returns (bytes memory) {
         UserIntent calldata intent = solution.intents[intentIndex];
-        IIntentStandard intentStandard = _registeredStandards[intent.standard];
+        IIntentStandard intentStandard = _registeredStandards[intent.standards[segmentIndex]];
         _executionStateContext = intent.sender;
         _executionIntentStandard = address(intentStandard);
         bool success = Exec.call(
             address(intentStandard),
             0,
             abi.encodeWithSelector(
-                IIntentStandard.executeUserIntent.selector, solution, executionIndex, segmentIndex, contextData
+                IIntentStandard.executeIntentSegment.selector, solution, executionIndex, segmentIndex, contextData
             ),
             gasleft()
         );
@@ -338,18 +338,20 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         _executionStateContext = EX_STATE_VALIDATION_EXECUTING;
         _executionIntentStandard = EX_STANDARD_NOT_ACTIVE;
 
-        // validate intent standard is recognized
-        IIntentStandard standard = _registeredStandards[intent.standard];
-        if (address(standard) == address(0)) {
-            revert FailedIntent(intentIndex, 0, "AA82 unknown standard");
-        }
+        // validate intent standards are recognized
+        for (uint256 i = 0; i < intent.standards.length; i++) {
+            IIntentStandard standard = _registeredStandards[intent.standards[i]];
+            if (standard == IIntentStandard(address(0))) {
+                revert FailedIntent(intentIndex, 0, "AA82 unknown standard");
+            }
 
-        // validate the intent itself
-        try standard.validateUserIntent(intent) {}
-        catch Error(string memory revertReason) {
-            revert FailedIntent(intentIndex, 0, string.concat("AA62 reverted: ", revertReason));
-        } catch {
-            revert FailedIntent(intentIndex, 0, "AA62 reverted (or OOG)");
+            // validate the intent segment itself
+            try standard.validateIntentSegment(intent.intentData[0]) {}
+            catch Error(string memory revertReason) {
+                revert FailedIntent(intentIndex, 0, string.concat("AA62 reverted: ", revertReason));
+            } catch {
+                revert FailedIntent(intentIndex, 0, "AA62 reverted (or OOG)");
+            }
         }
 
         // validate intent with account

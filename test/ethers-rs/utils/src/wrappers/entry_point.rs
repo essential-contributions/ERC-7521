@@ -72,6 +72,7 @@ impl EntryPointContract {
 
     pub async fn handle_intents(&self, solution: IntentSolution) -> Result<()> {
         let tx = self.contract.handle_intents(solution);
+        dbg!(tx.estimate_gas().await.unwrap());
 
         match tx.clone().send().await {
             Ok(_) => Ok(()),

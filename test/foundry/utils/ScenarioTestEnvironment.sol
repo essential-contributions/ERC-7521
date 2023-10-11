@@ -10,18 +10,22 @@ import {
     AssetBasedIntentCurveBuilder,
     AssetBasedIntentSegmentBuilder
 } from "./AssetBasedIntentBuilder.sol";
+import {IntentBuilder} from "./IntentBuilder.sol";
 import {DefaultIntentBuilder} from "./DefaultIntentBuilder.sol";
 import {EntryPoint} from "../../../src/core/EntryPoint.sol";
 import {IEntryPoint} from "../../../src/interfaces/IEntryPoint.sol";
-import {UserIntent, UserIntentLib} from "../../../src/interfaces/UserIntent.sol";
+import {IIntentStandard} from "../../../src/interfaces/IIntentStandard.sol";
+import {UserIntent} from "../../../src/interfaces/UserIntent.sol";
 import {IntentSolution} from "../../../src/interfaces/IntentSolution.sol";
 import {
     AssetBasedIntentCurve,
     CurveType,
     EvaluationType
 } from "../../../src/standards/assetbased/AssetBasedIntentCurve.sol";
-import {AssetBasedIntentSegment} from "../../../src/standards/assetbased/AssetBasedIntentSegment.sol";
-import {AssetBasedIntentStandard} from "../../../src/standards/assetbased/AssetBasedIntentStandard.sol";
+import {
+    AssetBasedIntentStandard,
+    AssetBasedIntentSegment
+} from "../../../src/standards/assetbased/AssetBasedIntentStandard.sol";
 import {AssetType, _balanceOf, _transfer} from "../../../src/standards/assetbased/utils/AssetWrapper.sol";
 import {TestERC20} from "../../../src/test/TestERC20.sol";
 import {TestERC721} from "../../../src/test/TestERC721.sol";
@@ -36,7 +40,6 @@ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
 
 abstract contract ScenarioTestEnvironment is Test {
-    using UserIntentLib for UserIntent;
     using ECDSA for bytes32;
 
     EntryPoint internal _entryPoint;
@@ -249,13 +252,18 @@ abstract contract ScenarioTestEnvironment is Test {
         view
         returns (UserIntent memory)
     {
-        UserIntent memory intent =
-            DefaultIntentBuilder.create(_entryPoint.getDefaultIntentStandardId(), address(_solverUtils), 0, 0);
-        if (numSegments > 0) intent = DefaultIntentBuilder.addSegment(intent, callData1);
-        if (numSegments > 1) intent = DefaultIntentBuilder.addSegment(intent, callData2);
-        if (numSegments > 2) intent = DefaultIntentBuilder.addSegment(intent, callData3);
+        UserIntent memory intent = IntentBuilder.create(address(_solverUtils), 0, 0);
+        if (numSegments > 0) {
+            intent = DefaultIntentBuilder.addSegment(intent, _entryPoint.getDefaultIntentStandardId(), callData1);
+        }
+        if (numSegments > 1) {
+            intent = DefaultIntentBuilder.addSegment(intent, _entryPoint.getDefaultIntentStandardId(), callData2);
+        }
+        if (numSegments > 2) {
+            intent = DefaultIntentBuilder.addSegment(intent, _entryPoint.getDefaultIntentStandardId(), callData3);
+        }
         for (uint256 i = 3; i < numSegments; i++) {
-            intent = DefaultIntentBuilder.addSegment(intent, "");
+            intent = DefaultIntentBuilder.addSegment(intent, _entryPoint.getDefaultIntentStandardId(), "");
         }
 
         return intent;
@@ -266,8 +274,7 @@ abstract contract ScenarioTestEnvironment is Test {
      * @return The created UserIntent struct.
      */
     function _emptyIntent() internal view returns (UserIntent memory) {
-        UserIntent memory intent =
-            DefaultIntentBuilder.create(_entryPoint.getDefaultIntentStandardId(), address(_account), 0, 0);
+        UserIntent memory intent = IntentBuilder.create(address(_account), 0, 0);
         return intent;
     }
 
@@ -276,7 +283,7 @@ abstract contract ScenarioTestEnvironment is Test {
      * @return The created UserIntent struct.
      */
     function _intent() internal view returns (UserIntent memory) {
-        return AssetBasedIntentBuilder.create(_assetBasedIntentStandard.standardId(), address(_account), 0, 0);
+        return IntentBuilder.create(address(_account), 0, 0);
     }
 
     /**

@@ -86,15 +86,7 @@ fn gasless_airdrop_intent(
     release_parameters: CurveParameters,
     claim_amount: U256,
 ) -> UserIntent {
-    let mut gasless_airdrop_intent = UserIntent::create_asset_based(
-        test_contracts
-            .asset_based_intent_standard
-            .standard_id
-            .clone(),
-        sender,
-        0,
-        0,
-    );
+    let mut gasless_airdrop_intent = UserIntent::create(sender, 0, 0);
 
     let claim_airdrop_erc20_calldata = test_contracts
         .test_erc20
@@ -116,25 +108,35 @@ fn gasless_airdrop_intent(
         )
         .clone();
 
-    gasless_airdrop_intent.add_segment_asset_based(claim_airdrop_erc20_segment);
-    gasless_airdrop_intent.add_segment_asset_based(release_erc20_segment);
+    gasless_airdrop_intent.add_segment_asset_based(
+        test_contracts
+            .asset_based_intent_standard
+            .standard_id
+            .clone(),
+        claim_airdrop_erc20_segment,
+    );
+    gasless_airdrop_intent.add_segment_asset_based(
+        test_contracts
+            .asset_based_intent_standard
+            .standard_id
+            .clone(),
+        release_erc20_segment,
+    );
 
     gasless_airdrop_intent
 }
 
 fn gasless_airdrop_solver_intent(test_contracts: &TestContracts, gas_payment: U256) -> UserIntent {
-    let mut solution = UserIntent::create_default(
-        test_contracts.entry_point.default_standard_id.clone(),
-        test_contracts.solver_utils.contract.address(),
-        0,
-        0,
-    );
+    let mut solution = UserIntent::create(test_contracts.solver_utils.contract.address(), 0, 0);
 
     let swap_all_erc20_for_eth_calldata = test_contracts
         .solver_utils
         .swap_all_erc20_for_eth_calldata(test_contracts, SOLVER_WALLET.address(), gas_payment);
 
-    solution.add_segment_default(DefaultIntentSegment::new(swap_all_erc20_for_eth_calldata));
+    solution.add_segment_default(
+        test_contracts.entry_point.default_standard_id.clone(),
+        DefaultIntentSegment::new(swap_all_erc20_for_eth_calldata),
+    );
 
     solution
 }

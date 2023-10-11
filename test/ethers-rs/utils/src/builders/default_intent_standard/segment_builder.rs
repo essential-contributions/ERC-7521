@@ -11,15 +11,11 @@ use ethers::prelude::*;
     Hash,
 )]
 pub struct DefaultIntentSegment {
-    call_gas_limit: U256,
     call_data: Bytes,
 }
 
 impl DefaultIntentSegment {
     pub fn new(call_data: Bytes) -> Self {
-        Self {
-            call_gas_limit: U256::from(1000000),
-            call_data,
-        }
+        Self { call_data }
     }
 }

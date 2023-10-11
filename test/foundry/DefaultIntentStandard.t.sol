@@ -3,8 +3,7 @@ pragma solidity ^0.8.13;
 
 /* solhint-disable func-name-mixedcase */
 
-import {DefaultIntentSegment} from "../../src/standards/default/DefaultIntentSegment.sol";
-import {DefaultIntentStandard} from "../../src/standards/default/DefaultIntentStandard.sol";
+import {DefaultIntentSegment, DefaultIntentStandard} from "../../src/standards/default/DefaultIntentStandard.sol";
 import "./utils/DefaultIntentBuilder.sol";
 import "./utils/ScenarioTestEnvironment.sol";
 
@@ -20,8 +19,8 @@ contract DefaultIntentStandardTest is ScenarioTestEnvironment {
 
     function test_empty() public {
         // create intent
-        UserIntent memory intent = DefaultIntentBuilder.create(_defaultIntentStandardId, address(_account), 0, 0);
-        intent = intent.addSegment("");
+        UserIntent memory intent = IntentBuilder.create(address(_account), 0, 0);
+        intent = intent.addSegment(_defaultIntentStandardId, "");
         intent = _signIntent(intent);
 
         // create solution
@@ -35,8 +34,8 @@ contract DefaultIntentStandardTest is ScenarioTestEnvironment {
         uint256 claimAmount = 1 ether;
 
         // create intent
-        UserIntent memory intent = DefaultIntentBuilder.create(_defaultIntentStandardId, address(_account), 0, 0);
-        intent = intent.addSegment(_accountClaimAirdropERC20(claimAmount));
+        UserIntent memory intent = IntentBuilder.create(address(_account), 0, 0);
+        intent = intent.addSegment(_defaultIntentStandardId, _accountClaimAirdropERC20(claimAmount));
         intent = _signIntent(intent);
 
         // create solution
@@ -56,9 +55,9 @@ contract DefaultIntentStandardTest is ScenarioTestEnvironment {
         vm.deal(address(_account), nftPrice);
 
         // create intent
-        UserIntent memory intent = DefaultIntentBuilder.create(_defaultIntentStandardId, address(_account), 0, 0);
-        intent = intent.addSegment(_accountClaimAirdropERC20(claimAmount));
-        intent = intent.addSegment(_accountBuyERC1155(nftPrice));
+        UserIntent memory intent = IntentBuilder.create(address(_account), 0, 0);
+        intent = intent.addSegment(_defaultIntentStandardId, _accountClaimAirdropERC20(claimAmount));
+        intent = intent.addSegment(_defaultIntentStandardId, _accountBuyERC1155(nftPrice));
         intent = _signIntent(intent);
 
         // create solution
@@ -76,8 +75,8 @@ contract DefaultIntentStandardTest is ScenarioTestEnvironment {
 
     function test_fail() public {
         //create intent
-        UserIntent memory intent = DefaultIntentBuilder.create(_defaultIntentStandardId, address(_account), 0, 0);
-        intent = intent.addSegment(_accountBuyERC721(1 ether));
+        UserIntent memory intent = IntentBuilder.create(address(_account), 0, 0);
+        intent = intent.addSegment(_defaultIntentStandardId, _accountBuyERC721(1 ether));
         intent = _signIntent(intent);
 
         // create solution

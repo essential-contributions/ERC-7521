@@ -27,12 +27,15 @@ contract ConditionalPurchaseNFT is ScenarioTestEnvironment {
     function _intentForCase(uint256 ethReleaseAmount, uint256 nftPrice) private view returns (UserIntent memory) {
         UserIntent memory intent = _intent();
         intent = intent.addSegment(
+            _assetBasedIntentStandard.standardId(),
             _segment("").releaseETH(AssetBasedIntentCurveBuilder.constantCurve(int256(ethReleaseAmount)))
         );
         intent = intent.addSegment(
+            _assetBasedIntentStandard.standardId(),
             _segment(_accountBuyERC1155AndTransferERC721(nftPrice, _reqTokenId, address(_assetBasedIntentStandard)))
         );
         intent = intent.addSegment(
+            _assetBasedIntentStandard.standardId(),
             _segment("").requireERC721(
                 address(_testERC721), _reqTokenId, AssetBasedIntentCurveBuilder.constantCurve(0), false
             )

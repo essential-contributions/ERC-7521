@@ -79,8 +79,8 @@ library Exec {
         }
     }
 
-    function callAndRevert(address to, bytes memory data, uint256 txGas, uint256 maxLen) internal {
-        bool success = call(to, 0, data, txGas);
+    function callAndRevert(address to, bytes memory data, uint256 maxLen) internal {
+        bool success = call(to, 0, data, gasleft());
         if (!success) {
             revertWithData(getReturnDataMax(0, maxLen));
         }

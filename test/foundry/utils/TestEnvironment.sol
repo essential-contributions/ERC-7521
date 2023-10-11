@@ -10,6 +10,7 @@ import {
     AssetBasedIntentSegmentBuilder
 } from "./AssetBasedIntentBuilder.sol";
 import {EntryPoint} from "../../../src/core/EntryPoint.sol";
+import {IIntentStandard} from "../../../src/interfaces/IIntentStandard.sol";
 import {UserIntent, UserIntentLib} from "../../../src/interfaces/UserIntent.sol";
 import {
     AssetBasedIntentCurve,
@@ -17,8 +18,10 @@ import {
     CurveType,
     EvaluationType
 } from "../../../src/standards/assetbased/AssetBasedIntentCurve.sol";
-import {AssetBasedIntentSegment} from "../../../src/standards/assetbased/AssetBasedIntentSegment.sol";
-import {AssetBasedIntentStandard} from "../../../src/standards/assetbased/AssetBasedIntentStandard.sol";
+import {
+    AssetBasedIntentStandard,
+    AssetBasedIntentSegment
+} from "../../../src/standards/assetbased/AssetBasedIntentStandard.sol";
 import {AssetType} from "../../../src/standards/assetbased/utils/AssetWrapper.sol";
 import {AbstractAccount} from "../../../src/wallet/AbstractAccount.sol";
 import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
@@ -73,7 +76,6 @@ abstract contract TestEnvironment is Test {
         assetRequirements[1] = constantETHCurve;
 
         intentSegments[0].callData = "call data";
-        intentSegments[0].callGasLimit = 100000;
         intentSegments[0].assetReleases = assetReleases;
         intentSegments[1].assetRequirements = assetRequirements;
 
@@ -81,9 +83,12 @@ abstract contract TestEnvironment is Test {
     }
 
     function _intent() internal view returns (UserIntent memory) {
+        bytes32[] memory standards = new bytes32[](1);
+        standards[0] = _assetBasedIntentStandard.standardId();
         bytes[] memory data;
+
         UserIntent memory intent = UserIntent({
-            standard: _assetBasedIntentStandard.standardId(),
+            standards: standards,
             sender: address(_account),
             nonce: 123,
             timestamp: block.timestamp,

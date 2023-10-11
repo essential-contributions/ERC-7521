@@ -36,7 +36,10 @@ contract AssetBasedIntentStandardTest is TestEnvironment {
     }
 
     function test_validate() public view {
-        _assetBasedIntentStandard.validateUserIntent(_intent());
+        UserIntent memory intent = _intent();
+        for (uint256 i = 0; i < intent.intentData.length; i++) {
+            _assetBasedIntentStandard.validateIntentSegment(intent.intentData[i]);
+        }
     }
 
     function test_failValidate_invalidAssets() public {
@@ -46,7 +49,7 @@ contract AssetBasedIntentStandardTest is TestEnvironment {
         intent = intent.encodeData(segments);
 
         vm.expectRevert("invalid curve params");
-        _assetBasedIntentStandard.validateUserIntent(intent);
+        _assetBasedIntentStandard.validateIntentSegment(intent.intentData[0]);
     }
 
     function test_validate_multipleAssetRequirement() public view {
@@ -54,16 +57,8 @@ contract AssetBasedIntentStandardTest is TestEnvironment {
         AssetBasedIntentSegment[] memory segments = _dataForAssetRequirementCheck(EvaluationType.ABSOLUTE);
         intent = intent.encodeData(segments);
 
-        _assetBasedIntentStandard.validateUserIntent(intent);
-    }
-
-    function test_failValidate_relativeRequirementAtBeginning() public {
-        // relative requirement
-        UserIntent memory intent = _intent();
-        AssetBasedIntentSegment[] memory segments = _dataForAssetRequirementCheck(EvaluationType.RELATIVE);
-        intent = intent.encodeData(segments);
-
-        vm.expectRevert("relative requirements not allowed at beginning of intent");
-        _assetBasedIntentStandard.validateUserIntent(intent);
+        for (uint256 i = 0; i < intent.intentData.length; i++) {
+            _assetBasedIntentStandard.validateIntentSegment(intent.intentData[i]);
+        }
     }
 }

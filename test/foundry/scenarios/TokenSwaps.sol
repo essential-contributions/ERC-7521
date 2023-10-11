@@ -27,8 +27,13 @@ contract TokenSwaps is ScenarioTestEnvironment {
         returns (UserIntent memory)
     {
         UserIntent memory intent = _intent();
-        intent = intent.addSegment(_segment("").releaseERC20(address(_testERC20), erc20ReleaseCurveParams));
-        intent = intent.addSegment(_segment("").requireETH(ethRequireCurveParams, true));
+        intent = intent.addSegment(
+            _assetBasedIntentStandard.standardId(),
+            _segment("").releaseERC20(address(_testERC20), erc20ReleaseCurveParams)
+        );
+        intent = intent.addSegment(
+            _assetBasedIntentStandard.standardId(), _segment("").requireETH(ethRequireCurveParams, true)
+        );
         return intent;
     }
 
@@ -54,8 +59,13 @@ contract TokenSwaps is ScenarioTestEnvironment {
         returns (UserIntent memory)
     {
         UserIntent memory intent = _intent();
-        intent = intent.addSegment(_segment("").releaseERC20(address(_testERC20), erc20ReleaseCurveParams));
-        intent = intent.addSegment(_segment("").requireETH(ethRequireCurveParams, true));
+        intent = intent.addSegment(
+            _assetBasedIntentStandard.standardId(),
+            _segment("").releaseERC20(address(_testERC20), erc20ReleaseCurveParams)
+        );
+        intent = intent.addSegment(
+            _assetBasedIntentStandard.standardId(), _segment("").requireETH(ethRequireCurveParams, true)
+        );
         return intent;
     }
 
@@ -85,6 +95,8 @@ contract TokenSwaps is ScenarioTestEnvironment {
         //set specific block.timestamp
         vm.warp(1000);
     }
+
+    event LogSolution(IntentSolution solution);
 
     function testFuzz_constantRelease(
         uint72 erc20ReleaseAmount,
@@ -125,6 +137,8 @@ contract TokenSwaps is ScenarioTestEnvironment {
 
             //create solution
             IntentSolution memory solution = _constantReleaseSolution(intent, erc20ReleaseAmount, evaluation);
+
+            emit LogSolution(solution);
 
             //simulate execution
             vm.expectRevert(abi.encodeWithSelector(IEntryPoint.ExecutionResult.selector, true, false, ""));

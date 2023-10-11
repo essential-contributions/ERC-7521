@@ -4,7 +4,6 @@ pragma solidity ^0.8.13;
 import "openzeppelin/utils/cryptography/ECDSA.sol";
 import "../../../src/interfaces/UserIntent.sol";
 import "../../../src/standards/default/DefaultIntentStandard.sol";
-import "../../../src/standards/default/DefaultIntentSegment.sol";
 
 /**
  * @title DefaultIntentBuilder
@@ -12,38 +11,18 @@ import "../../../src/standards/default/DefaultIntentSegment.sol";
  */
 library DefaultIntentBuilder {
     /**
-     * Create a new user intent with the specified parameters.
-     * @param standard The standard ID for the intent.
-     * @param sender The address of the intent sender.
-     * @param nonce The nonce to prevent replay attacks.
-     * @param timestamp The unix time stamp (in seconds) from when this intent was signed.
-     * @return intent The created user intent.
-     */
-    function create(bytes32 standard, address sender, uint256 nonce, uint256 timestamp)
-        public
-        pure
-        returns (UserIntent memory intent)
-    {
-        bytes[] memory data;
-
-        intent = UserIntent({
-            standard: standard,
-            sender: sender,
-            nonce: nonce,
-            timestamp: timestamp,
-            intentData: data,
-            signature: ""
-        });
-    }
-
-    /**
      * Add an intent segment to the user intent.
      * @param intent The user intent to modify.
+     * @param standard The standard ID for the intent segment.
      * @param callData The intent segment calldata to add.
      * @return The updated user intent.
      */
-    function addSegment(UserIntent memory intent, bytes memory callData) public pure returns (UserIntent memory) {
-        DefaultIntentSegment memory segment = DefaultIntentSegment({callData: callData, callGasLimit: 1000000});
+    function addSegment(UserIntent memory intent, bytes32 standard, bytes memory callData)
+        public
+        pure
+        returns (UserIntent memory)
+    {
+        DefaultIntentSegment memory segment = DefaultIntentSegment({callData: callData});
         DefaultIntentSegment[] memory currentSegments = decodeData(intent);
 
         //clone previous array and add new element
@@ -52,6 +31,13 @@ library DefaultIntentBuilder {
             segments[i] = currentSegments[i];
         }
         segments[currentSegments.length] = segment;
+
+        bytes32[] memory standards = new bytes32[](intent.standards.length + 1);
+        for (uint256 i = 0; i < intent.standards.length; i++) {
+            standards[i] = intent.standards[i];
+        }
+        standards[intent.standards.length] = standard;
+        intent.standards = standards;
 
         return encodeData(intent, segments);
     }

@@ -109,15 +109,7 @@ fn conditional_purchase_nft_intent(
     nft_price: U256,
     token_id: U256,
 ) -> UserIntent {
-    let mut conditional_purchase_nft_intent = UserIntent::create_asset_based(
-        test_contracts
-            .asset_based_intent_standard
-            .standard_id
-            .clone(),
-        sender,
-        0,
-        0,
-    );
+    let mut conditional_purchase_nft_intent = UserIntent::create(sender, 0, 0);
 
     let release_eth_segment = AssetBasedIntentSegment::new(Bytes::default())
         .add_asset_release_curve(
@@ -162,10 +154,27 @@ fn conditional_purchase_nft_intent(
         )
         .clone();
 
-    conditional_purchase_nft_intent.add_segment_asset_based(release_eth_segment);
-    conditional_purchase_nft_intent
-        .add_segment_asset_based(buy_erc1155_and_transfer_erc721_segment);
-    conditional_purchase_nft_intent.add_segment_asset_based(require_erc721_segment);
+    conditional_purchase_nft_intent.add_segment_asset_based(
+        test_contracts
+            .asset_based_intent_standard
+            .standard_id
+            .clone(),
+        release_eth_segment,
+    );
+    conditional_purchase_nft_intent.add_segment_asset_based(
+        test_contracts
+            .asset_based_intent_standard
+            .standard_id
+            .clone(),
+        buy_erc1155_and_transfer_erc721_segment,
+    );
+    conditional_purchase_nft_intent.add_segment_asset_based(
+        test_contracts
+            .asset_based_intent_standard
+            .standard_id
+            .clone(),
+        require_erc721_segment,
+    );
 
     conditional_purchase_nft_intent
 }
@@ -175,12 +184,7 @@ fn conditional_purchase_nft_solver_intent(
     token_id: U256,
     nft_price: U256,
 ) -> UserIntent {
-    let mut solution = UserIntent::create_default(
-        test_contracts.entry_point.default_standard_id.clone(),
-        test_contracts.solver_utils.contract.address(),
-        0,
-        0,
-    );
+    let mut solution = UserIntent::create(test_contracts.solver_utils.contract.address(), 0, 0);
 
     let buy_erc721_calldata = test_contracts.solver_utils.buy_erc721_calldata(
         test_contracts,
@@ -192,10 +196,14 @@ fn conditional_purchase_nft_solver_intent(
         .solver_utils
         .sell_erc721_and_forward_all_calldata(test_contracts, token_id, SOLVER_WALLET.address());
 
-    solution.add_segment_default(DefaultIntentSegment::new(buy_erc721_calldata));
-    solution.add_segment_default(DefaultIntentSegment::new(
-        sell_erc721_and_forward_all_calldata,
-    ));
+    solution.add_segment_default(
+        test_contracts.entry_point.default_standard_id.clone(),
+        DefaultIntentSegment::new(buy_erc721_calldata),
+    );
+    solution.add_segment_default(
+        test_contracts.entry_point.default_standard_id.clone(),
+        DefaultIntentSegment::new(sell_erc721_and_forward_all_calldata),
+    );
 
     solution
 }

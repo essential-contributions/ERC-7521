@@ -113,15 +113,7 @@ fn gasless_airdrop_purchase_nft_intent(
     claim_amount: U256,
     nft_price: U256,
 ) -> UserIntent {
-    let mut gasless_airdrop_purchase_nft_intent = UserIntent::create_asset_based(
-        test_contracts
-            .asset_based_intent_standard
-            .standard_id
-            .clone(),
-        sender,
-        0,
-        0,
-    );
+    let mut gasless_airdrop_purchase_nft_intent = UserIntent::create(sender, 0, 0);
 
     let claim_airdrop_erc20_calldata = test_contracts
         .test_erc20
@@ -164,10 +156,34 @@ fn gasless_airdrop_purchase_nft_intent(
         )
         .clone();
 
-    gasless_airdrop_purchase_nft_intent.add_segment_asset_based(claim_airdrop_erc20_segment);
-    gasless_airdrop_purchase_nft_intent.add_segment_asset_based(release_erc20_segment);
-    gasless_airdrop_purchase_nft_intent.add_segment_asset_based(buy_erc1155_segment);
-    gasless_airdrop_purchase_nft_intent.add_segment_asset_based(require_eth_segment);
+    gasless_airdrop_purchase_nft_intent.add_segment_asset_based(
+        test_contracts
+            .asset_based_intent_standard
+            .standard_id
+            .clone(),
+        claim_airdrop_erc20_segment,
+    );
+    gasless_airdrop_purchase_nft_intent.add_segment_asset_based(
+        test_contracts
+            .asset_based_intent_standard
+            .standard_id
+            .clone(),
+        release_erc20_segment,
+    );
+    gasless_airdrop_purchase_nft_intent.add_segment_asset_based(
+        test_contracts
+            .asset_based_intent_standard
+            .standard_id
+            .clone(),
+        buy_erc1155_segment,
+    );
+    gasless_airdrop_purchase_nft_intent.add_segment_asset_based(
+        test_contracts
+            .asset_based_intent_standard
+            .standard_id
+            .clone(),
+        require_eth_segment,
+    );
 
     gasless_airdrop_purchase_nft_intent
 }
@@ -179,12 +195,7 @@ fn gasless_airdrop_purchase_nft_solver_intent(
     min_eth: U256,
     nft_price: U256,
 ) -> UserIntent {
-    let mut solution = UserIntent::create_default(
-        test_contracts.entry_point.default_standard_id.clone(),
-        test_contracts.solver_utils.contract.address(),
-        0,
-        0,
-    );
+    let mut solution = UserIntent::create(test_contracts.solver_utils.contract.address(), 0, 0);
 
     let solver_calldata = test_contracts
         .solver_utils
@@ -197,7 +208,10 @@ fn gasless_airdrop_purchase_nft_solver_intent(
         );
 
     let solver_segment = DefaultIntentSegment::new(solver_calldata);
-    solution.add_segment_default(solver_segment);
+    solution.add_segment_default(
+        test_contracts.entry_point.default_standard_id.clone(),
+        solver_segment,
+    );
 
     solution
 }

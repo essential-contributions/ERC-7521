@@ -37,7 +37,9 @@ contract ValidateUserIntentTest is ScenarioTestEnvironment {
 
     function test_fail_unknownStandard() public {
         UserIntent memory intent = _intent();
-        intent.standard = bytes32(uint256(123));
+        bytes32[] memory standards = new bytes32[](1);
+        standards[0] = bytes32(uint256(123));
+        intent.standards = standards;
 
         IntentSolution memory solution = _solution(intent, _emptyIntent());
 
@@ -55,7 +57,7 @@ contract ValidateUserIntentTest is ScenarioTestEnvironment {
         AssetBasedIntentSegment memory segment = _segment("").releaseETH(AssetBasedIntentCurveBuilder.constantCurve(10));
         // invalidate curve params
         segment.assetReleases[0].params = new int256[](0);
-        intent = intent.addSegment(segment);
+        intent = intent.addSegment(_assetBasedIntentStandard.standardId(), segment);
         intent = _signIntent(intent);
 
         IntentSolution memory solution = _solution(intent, _emptyIntent());
@@ -95,8 +97,7 @@ contract ValidateUserIntentTest is ScenarioTestEnvironment {
 
     function test_fail_invalidNonce() public {
         // use wrong nonce while creating intent
-        UserIntent memory intent =
-            AssetBasedIntentBuilder.create(_assetBasedIntentStandard.standardId(), address(_account), 123, 0);
+        UserIntent memory intent = IntentBuilder.create(address(_account), 123, 0);
         intent = _signIntent(intent);
 
         IntentSolution memory solution = _solution(intent, _emptyIntent());
@@ -130,9 +131,7 @@ contract ValidateAccountValidationDataTest is ScenarioTestEnvironment {
     }
 
     function test_fail_expired() public {
-        UserIntent memory intent = AssetBasedIntentBuilder.create(
-            _assetBasedIntentStandard.standardId(), address(_account), 0, block.timestamp
-        );
+        UserIntent memory intent = IntentBuilder.create(address(_account), 0, block.timestamp);
         intent = _signIntent(intent);
 
         vm.warp(block.timestamp + 1);
@@ -152,8 +151,7 @@ contract ValidateAccountValidationDataTest is ScenarioTestEnvironment {
 
         TestAbstractAccount _testAccount = new TestAbstractAccount(_entryPoint, _testPublicAddress);
 
-        UserIntent memory intent =
-            AssetBasedIntentBuilder.create(_assetBasedIntentStandard.standardId(), address(_testAccount), 0, 0);
+        UserIntent memory intent = IntentBuilder.create(address(_testAccount), 0, 0);
         bytes32 intentHash = _entryPoint.getUserIntentHash(intent);
         bytes32 digest = intentHash.toEthSignedMessageHash();
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(_testPrivateKey, digest);

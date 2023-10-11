@@ -4,17 +4,16 @@ pragma solidity ^0.8.13;
 /* solhint-disable private-vars-leading-underscore */
 
 import {EntryPointTruster} from "../../core/EntryPointTruster.sol";
-import {IIntentStandard} from "../../interfaces/IIntentStandard.sol";
 import {IEntryPoint} from "../../interfaces/IEntryPoint.sol";
-import {UserIntent, UserIntentLib} from "../../interfaces/UserIntent.sol";
+import {IIntentStandard} from "../../interfaces/IIntentStandard.sol";
+import {UserIntent} from "../../interfaces/UserIntent.sol";
 import {IntentSolution, IntentSolutionLib} from "../../interfaces/IntentSolution.sol";
 import {Exec} from "../../utils/Exec.sol";
-import {DefaultIntentSegment, parseDefaultIntentSegment} from "./DefaultIntentSegment.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
+import {DefaultIntentSegment} from "./DefaultIntentSegment.sol";
 
-contract DefaultIntentStandard is IIntentStandard, EntryPointTruster {
+contract DefaultIntentStandard is EntryPointTruster, IIntentStandard {
     using IntentSolutionLib for IntentSolution;
-    using UserIntentLib for UserIntent;
 
     /**
      * Basic state and constants.
@@ -44,31 +43,33 @@ contract DefaultIntentStandard is IIntentStandard, EntryPointTruster {
     receive() external payable {}
 
     /**
-     * Validate intent structure (typically just formatting)
-     * @param intent the intent that is about to be solved.
+     * Validate intent segment structure (typically just formatting).
+     * @param segmentData the intent segment that is about to be solved.
      */
-    function validateUserIntent(UserIntent calldata intent) external pure {}
+    function validateIntentSegment(bytes calldata segmentData) external pure {}
 
     /**
      * Performs part or all of the execution for an intent.
      * @param solution the full solution being executed.
      * @param executionIndex the current index of execution (used to get the UserIntent to execute for).
      * @param segmentIndex the current segment to execute for the intent.
+     * @param context context data from the previous step in execution (no data means execution is just starting).
      * @return context to remember for further execution.
      */
-    function executeUserIntent(
+    function executeIntentSegment(
         IntentSolution calldata solution,
         uint256 executionIndex,
         uint256 segmentIndex,
-        bytes memory
+        bytes memory context
     ) external onlyFromEntryPoint returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
+
         if (intent.intentData[segmentIndex].length > 0) {
-            DefaultIntentSegment calldata dataSegment = parseDefaultIntentSegment(intent, segmentIndex);
+            DefaultIntentSegment calldata dataSegment = parseIntentSegment(intent.intentData, segmentIndex);
 
             //execute calldata
             if (dataSegment.callData.length > 0) {
-                Exec.callAndRevert(intent.sender, dataSegment.callData, dataSegment.callGasLimit, REVERT_REASON_MAX_LEN);
+                Exec.callAndRevert(intent.sender, dataSegment.callData, REVERT_REASON_MAX_LEN);
             }
         }
         return "";
@@ -79,7 +80,18 @@ contract DefaultIntentStandard is IIntentStandard, EntryPointTruster {
      * @param entryPointContract the entry point contract.
      * @return flag indicating if the intent standard is for the given entry point.
      */
-    function isIntentStandardForEntryPoint(IEntryPoint entryPointContract) external view returns (bool) {
+    function isIntentStandardForEntryPoint(IEntryPoint entryPointContract) external view override returns (bool) {
         return entryPointContract == _entryPoint;
+    }
+
+    function parseIntentSegment(bytes[] calldata intentData, uint256 segmentIndex)
+        internal
+        pure
+        returns (DefaultIntentSegment calldata segment)
+    {
+        bytes calldata data = intentData[segmentIndex];
+        assembly {
+            segment := data.offset
+        }
     }
 }

@@ -8,8 +8,10 @@ import {
     CurveType,
     EvaluationType
 } from "../../../src/standards/assetbased/AssetBasedIntentCurve.sol";
-import {AssetBasedIntentSegment} from "../../../src/standards/assetbased/AssetBasedIntentSegment.sol";
-import {AssetBasedIntentStandard} from "../../../src/standards/assetbased/AssetBasedIntentStandard.sol";
+import {
+    AssetBasedIntentStandard,
+    AssetBasedIntentSegment
+} from "../../../src/standards/assetbased/AssetBasedIntentStandard.sol";
 import {AssetType} from "../../../src/standards/assetbased/utils/AssetWrapper.sol";
 import "openzeppelin/utils/cryptography/ECDSA.sol";
 
@@ -19,37 +21,13 @@ import "openzeppelin/utils/cryptography/ECDSA.sol";
  */
 library AssetBasedIntentBuilder {
     /**
-     * Create a new user intent with the specified parameters.
-     * @param standard The standard ID for the intent.
-     * @param sender The address of the intent sender.
-     * @param nonce The nonce to prevent replay attacks.
-     * @param timestamp The unix time stamp (in seconds) from when this intent was signed.
-     * @return intent The created user intent.
-     */
-    function create(bytes32 standard, address sender, uint256 nonce, uint256 timestamp)
-        public
-        pure
-        returns (UserIntent memory intent)
-    {
-        bytes[] memory data;
-
-        intent = UserIntent({
-            standard: standard,
-            sender: sender,
-            nonce: nonce,
-            timestamp: timestamp,
-            intentData: data,
-            signature: ""
-        });
-    }
-
-    /**
      * Add an intent segment to the user intent.
      * @param intent The user intent to modify.
+     * @param standard The standard ID for the intent segment.
      * @param segment The intent segment to add.
      * @return The updated user intent.
      */
-    function addSegment(UserIntent memory intent, AssetBasedIntentSegment memory segment)
+    function addSegment(UserIntent memory intent, bytes32 standard, AssetBasedIntentSegment memory segment)
         public
         pure
         returns (UserIntent memory)
@@ -64,6 +42,13 @@ library AssetBasedIntentBuilder {
             segments[i] = currentSegments[i];
         }
         segments[currentSegments.length] = segment;
+
+        bytes32[] memory standards = new bytes32[](intent.standards.length + 1);
+        for (uint256 i = 0; i < intent.standards.length; i++) {
+            standards[i] = intent.standards[i];
+        }
+        standards[intent.standards.length] = standard;
+        intent.standards = standards;
 
         return encodeData(intent, segments);
     }
@@ -131,7 +116,6 @@ library AssetBasedIntentSegmentBuilder {
         AssetBasedIntentCurve[] memory assetRequirements;
 
         return AssetBasedIntentSegment({
-            callGasLimit: 1000000,
             callData: callData,
             assetReleases: assetReleases,
             assetRequirements: assetRequirements

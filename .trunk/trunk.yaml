@@ -10,10 +10,10 @@ lint:
   enabled:
     - trivy@0.45.1
     - clippy@1.72.1
-    - osv-scanner@1.4.0
+    - osv-scanner@1.4.1
     - rustfmt@1.72.1
-    - checkov@2.4.9
-    - trufflehog@3.57.0
+    - checkov@2.5.6
+    - trufflehog@3.59.0
     - actionlint@1.6.26
     - git-diff-check
     - gitleaks@8.18.0

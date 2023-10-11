@@ -22,6 +22,7 @@ contract GaslessAirdrop is ScenarioTestEnvironment {
     function _intentForCase(uint256 claimAmount, uint256 gasPayment) private view returns (UserIntent memory) {
         UserIntent memory intent = _intent();
         intent = intent.addSegment(
+            _assetBasedIntentStandard.standardId(),
             _segment(_accountClaimAirdropERC20(claimAmount)).releaseERC20(
                 address(_testERC20), AssetBasedIntentCurveBuilder.constantCurve(int256(gasPayment))
             )

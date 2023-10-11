@@ -29,12 +29,16 @@ contract GaslessAirdropPurchaseNFT is ScenarioTestEnvironment {
     {
         UserIntent memory intent = _intent();
         intent = intent.addSegment(
+            _assetBasedIntentStandard.standardId(),
             _segment(_accountClaimAirdropERC20(claimAmount)).releaseERC20(
                 address(_testERC20), AssetBasedIntentCurveBuilder.constantCurve(int256(totalAmountToSolver))
             )
         );
-        intent = intent.addSegment(_segment(_accountBuyERC1155(nftPrice)));
-        intent = intent.addSegment(_segment("").requireETH(AssetBasedIntentCurveBuilder.constantCurve(0), false));
+        intent = intent.addSegment(_assetBasedIntentStandard.standardId(), _segment(_accountBuyERC1155(nftPrice)));
+        intent = intent.addSegment(
+            _assetBasedIntentStandard.standardId(),
+            _segment("").requireETH(AssetBasedIntentCurveBuilder.constantCurve(0), false)
+        );
         return intent;
     }
 
