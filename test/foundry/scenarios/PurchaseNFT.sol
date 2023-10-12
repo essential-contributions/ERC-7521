@@ -18,23 +18,21 @@ import "../utils/ScenarioTestEnvironment.sol";
  * Intent Action: user account makes the intended purchase with the newly received ETH
  */
 contract PurchaseNFT is ScenarioTestEnvironment {
-    using AssetBasedIntentBuilder for UserIntent;
     using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
 
     uint256 private _accountInitialERC20Balance = 1000 ether;
 
     function _intentForCase(uint256 totalAmountToSolver, uint256 nftPrice) private view returns (UserIntent memory) {
         UserIntent memory intent = _intent();
-        intent = intent.addSegment(
-            _assetBasedIntentStandard.standardId(),
-            _segment("").releaseERC20(
+        intent = _addAssetBasedSegment(
+            intent,
+            _assetBasedSegment("").releaseERC20(
                 address(_testERC20), AssetBasedIntentCurveBuilder.constantCurve(int256(totalAmountToSolver))
             )
         );
-        intent = intent.addSegment(_assetBasedIntentStandard.standardId(), _segment(_accountBuyERC1155(nftPrice)));
-        intent = intent.addSegment(
-            _assetBasedIntentStandard.standardId(),
-            _segment("").requireETH(AssetBasedIntentCurveBuilder.constantCurve(0), false)
+        intent = _addDefaultSegment(intent, _accountBuyERC1155(nftPrice));
+        intent = _addAssetBasedSegment(
+            intent, _assetBasedSegment("").requireETH(AssetBasedIntentCurveBuilder.constantCurve(0), false)
         );
         return intent;
     }

@@ -14,7 +14,6 @@ import {generateFlags} from "../../../src/standards/assetbased/AssetBasedIntentC
  * 1. the solver swaps the released tokens for the desired tokens and pockets the difference
  */
 contract TokenSwaps is ScenarioTestEnvironment {
-    using AssetBasedIntentBuilder for UserIntent;
     using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
     using AssetBasedIntentCurveLibHarness for AssetBasedIntentCurve;
 
@@ -27,13 +26,10 @@ contract TokenSwaps is ScenarioTestEnvironment {
         returns (UserIntent memory)
     {
         UserIntent memory intent = _intent();
-        intent = intent.addSegment(
-            _assetBasedIntentStandard.standardId(),
-            _segment("").releaseERC20(address(_testERC20), erc20ReleaseCurveParams)
+        intent = _addAssetBasedSegment(
+            intent, _assetBasedSegment("").releaseERC20(address(_testERC20), erc20ReleaseCurveParams)
         );
-        intent = intent.addSegment(
-            _assetBasedIntentStandard.standardId(), _segment("").requireETH(ethRequireCurveParams, true)
-        );
+        intent = _addAssetBasedSegment(intent, _assetBasedSegment("").requireETH(ethRequireCurveParams, true));
         return intent;
     }
 
@@ -59,13 +55,10 @@ contract TokenSwaps is ScenarioTestEnvironment {
         returns (UserIntent memory)
     {
         UserIntent memory intent = _intent();
-        intent = intent.addSegment(
-            _assetBasedIntentStandard.standardId(),
-            _segment("").releaseERC20(address(_testERC20), erc20ReleaseCurveParams)
+        intent = _addAssetBasedSegment(
+            intent, _assetBasedSegment("").releaseERC20(address(_testERC20), erc20ReleaseCurveParams)
         );
-        intent = intent.addSegment(
-            _assetBasedIntentStandard.standardId(), _segment("").requireETH(ethRequireCurveParams, true)
-        );
+        intent = _addAssetBasedSegment(intent, _assetBasedSegment("").requireETH(ethRequireCurveParams, true));
         return intent;
     }
 

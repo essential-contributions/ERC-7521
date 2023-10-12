@@ -18,7 +18,7 @@ contract HandleIntentsTest is ScenarioTestEnvironment {
     }
 
     function test_failHandleIntents_invalidTimestamp() public {
-        IntentSolution memory solution = _solution(_emptyIntent(), _emptyIntent());
+        IntentSolution memory solution = _solution(_intent(), _intent());
         // TIMESTAMP_MAX_OVER of EntryPoint.sol is 6
         solution.timestamp = block.timestamp + 7;
 
@@ -32,7 +32,6 @@ contract HandleIntentsTest is ScenarioTestEnvironment {
 }
 
 contract ValidateUserIntentTest is ScenarioTestEnvironment {
-    using AssetBasedIntentBuilder for UserIntent;
     using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
 
     function test_fail_unknownStandard() public {
@@ -41,7 +40,7 @@ contract ValidateUserIntentTest is ScenarioTestEnvironment {
         standards[0] = bytes32(uint256(123));
         intent.standards = standards;
 
-        IntentSolution memory solution = _solution(intent, _emptyIntent());
+        IntentSolution memory solution = _solution(intent, _intent());
 
         // call handleIntents with an unknown intent standard
         vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA82 unknown standard"));
@@ -54,13 +53,14 @@ contract ValidateUserIntentTest is ScenarioTestEnvironment {
 
     function test_fail_validateWithStandard() public {
         UserIntent memory intent = _intent();
-        AssetBasedIntentSegment memory segment = _segment("").releaseETH(AssetBasedIntentCurveBuilder.constantCurve(10));
+        AssetBasedIntentSegment memory segment =
+            _assetBasedSegment("").releaseETH(AssetBasedIntentCurveBuilder.constantCurve(10));
         // invalidate curve params
         segment.assetReleases[0].params = new int256[](0);
-        intent = intent.addSegment(_assetBasedIntentStandard.standardId(), segment);
+        intent = _addAssetBasedSegment(intent, segment);
         intent = _signIntent(intent);
 
-        IntentSolution memory solution = _solution(intent, _emptyIntent());
+        IntentSolution memory solution = _solution(intent, _intent());
 
         vm.expectRevert(
             abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA62 reverted: invalid curve params")
@@ -78,7 +78,7 @@ contract ValidateUserIntentTest is ScenarioTestEnvironment {
 
         // do not sign intent
 
-        IntentSolution memory solution = _solution(intent, _emptyIntent());
+        IntentSolution memory solution = _solution(intent, _intent());
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -100,7 +100,7 @@ contract ValidateUserIntentTest is ScenarioTestEnvironment {
         UserIntent memory intent = IntentBuilder.create(address(_account), 123, 0);
         intent = _signIntent(intent);
 
-        IntentSolution memory solution = _solution(intent, _emptyIntent());
+        IntentSolution memory solution = _solution(intent, _intent());
 
         vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA25 invalid account nonce"));
         _entryPoint.handleIntents(solution);
@@ -121,7 +121,7 @@ contract ValidateAccountValidationDataTest is ScenarioTestEnvironment {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(12345, digest);
         intent.signature = abi.encodePacked(r, s, v);
 
-        IntentSolution memory solution = _solution(intent, _emptyIntent());
+        IntentSolution memory solution = _solution(intent, _intent());
 
         vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA24 signature error"));
         _entryPoint.handleIntents(solution);
@@ -136,7 +136,7 @@ contract ValidateAccountValidationDataTest is ScenarioTestEnvironment {
 
         vm.warp(block.timestamp + 1);
 
-        IntentSolution memory solution = _solution(intent, _emptyIntent());
+        IntentSolution memory solution = _solution(intent, _intent());
 
         vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA22 expired or not due"));
         _entryPoint.handleIntents(solution);
@@ -157,7 +157,7 @@ contract ValidateAccountValidationDataTest is ScenarioTestEnvironment {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(_testPrivateKey, digest);
         intent.signature = abi.encodePacked(r, s, v);
 
-        IntentSolution memory solution = _solution(intent, _emptyIntent());
+        IntentSolution memory solution = _solution(intent, _intent());
 
         vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA22 expired or not due"));
         _entryPoint.handleIntents(solution);

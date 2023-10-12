@@ -22,7 +22,6 @@ import "../utils/ScenarioTestEnvironment.sol";
  * 1. the solver sells the ERC721 NFT and moves all remaining ETH to their wallet
  */
 contract GaslessAirdropConditionalPurchaseNFT is ScenarioTestEnvironment {
-    using AssetBasedIntentBuilder for UserIntent;
     using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
 
     uint256 private _reqTokenId;
@@ -33,19 +32,18 @@ contract GaslessAirdropConditionalPurchaseNFT is ScenarioTestEnvironment {
         returns (UserIntent memory)
     {
         UserIntent memory intent = _intent();
-        intent = intent.addSegment(
-            _assetBasedIntentStandard.standardId(),
-            _segment(_accountClaimAirdropERC20(claimAmount)).releaseERC20(
+        intent = _addAssetBasedSegment(
+            intent,
+            _assetBasedSegment(_accountClaimAirdropERC20(claimAmount)).releaseERC20(
                 address(_testERC20), AssetBasedIntentCurveBuilder.constantCurve(int256(totalAmountToSolver))
             )
         );
-        intent = intent.addSegment(
-            _assetBasedIntentStandard.standardId(),
-            _segment(_accountBuyERC1155AndTransferERC721(nftPrice, _reqTokenId, address(_assetBasedIntentStandard)))
+        intent = _addDefaultSegment(
+            intent, _accountBuyERC1155AndTransferERC721(nftPrice, _reqTokenId, address(_assetBasedIntentStandard))
         );
-        intent = intent.addSegment(
-            _assetBasedIntentStandard.standardId(),
-            _segment("").requireETH(AssetBasedIntentCurveBuilder.constantCurve(0), false).requireERC721(
+        intent = _addAssetBasedSegment(
+            intent,
+            _assetBasedSegment("").requireETH(AssetBasedIntentCurveBuilder.constantCurve(0), false).requireERC721(
                 address(_testERC721), _reqTokenId, AssetBasedIntentCurveBuilder.constantCurve(0), false
             )
         );

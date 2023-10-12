@@ -7,14 +7,9 @@ import "./utils/TestEnvironment.sol";
 import "../../src/interfaces/IIntentStandard.sol";
 
 contract EntryPointTest is TestEnvironment {
-    using AssetBasedIntentBuilder for UserIntent;
-    using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
-    using UserIntentLib for UserIntent;
-    using ECDSA for bytes32;
-
     function test_getUserIntentHash() public {
         UserIntent memory intent = _intent();
-        bytes32 expectedHash = 0x51e6ebfffc55f7d981c13760b7d306843953abaa277832edfbdf4176c479c45a;
+        bytes32 expectedHash = 0x303c7802c40f64dedc0e6689d562a9692852806d577ab813a0fc8b008fc632e4;
         bytes32 intentHash = _entryPoint.getUserIntentHash(intent);
         assertEq(intentHash, expectedHash);
     }

@@ -9,6 +9,7 @@ import {
     AssetBasedIntentCurveBuilder,
     AssetBasedIntentSegmentBuilder
 } from "./AssetBasedIntentBuilder.sol";
+import {IntentBuilder} from "./IntentBuilder.sol";
 import {EntryPoint} from "../../../src/core/EntryPoint.sol";
 import {IIntentStandard} from "../../../src/interfaces/IIntentStandard.sol";
 import {UserIntent, UserIntentLib} from "../../../src/interfaces/UserIntent.sol";
@@ -27,6 +28,7 @@ import {AbstractAccount} from "../../../src/wallet/AbstractAccount.sol";
 import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 
 abstract contract TestEnvironment is Test {
+    using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
     using UserIntentLib for UserIntent;
     using ECDSA for bytes32;
 
@@ -59,43 +61,23 @@ abstract contract TestEnvironment is Test {
         return curve;
     }
 
-    function _data() internal pure returns (AssetBasedIntentSegment[] memory) {
-        AssetBasedIntentSegment[] memory intentSegments = new AssetBasedIntentSegment[](2);
-
-        AssetBasedIntentCurve memory constantETHCurve =
-            _curveETH(AssetBasedIntentCurveBuilder.constantCurve(10), EvaluationType.ABSOLUTE);
-        AssetBasedIntentCurve memory linearETHCurve =
-            _curveETH(AssetBasedIntentCurveBuilder.linearCurve(2, 10, 20, false), EvaluationType.ABSOLUTE);
-
-        AssetBasedIntentCurve[] memory assetReleases = new AssetBasedIntentCurve[](2);
-        AssetBasedIntentCurve[] memory assetRequirements = new AssetBasedIntentCurve[](2);
-
-        assetReleases[0] = constantETHCurve;
-        assetReleases[1] = linearETHCurve;
-        assetRequirements[0] = linearETHCurve;
-        assetRequirements[1] = constantETHCurve;
-
-        intentSegments[0].callData = "call data";
-        intentSegments[0].assetReleases = assetReleases;
-        intentSegments[1].assetRequirements = assetRequirements;
-
-        return intentSegments;
-    }
-
     function _intent() internal view returns (UserIntent memory) {
-        bytes32[] memory standards = new bytes32[](1);
-        standards[0] = _assetBasedIntentStandard.standardId();
-        bytes[] memory data;
+        UserIntent memory intent = IntentBuilder.create(address(_account), 0, block.timestamp);
+        intent = AssetBasedIntentBuilder.addSegment(
+            intent,
+            _assetBasedIntentStandard.standardId(),
+            AssetBasedIntentSegmentBuilder.create("").releaseETH(AssetBasedIntentCurveBuilder.constantCurve(10))
+                .requireETH(AssetBasedIntentCurveBuilder.linearCurve(2, 10, 20, false), false)
+        );
+        intent = AssetBasedIntentBuilder.addSegment(
+            intent,
+            _assetBasedIntentStandard.standardId(),
+            AssetBasedIntentSegmentBuilder.create("").releaseETH(
+                AssetBasedIntentCurveBuilder.linearCurve(2, 10, 20, false)
+            ).requireETH(AssetBasedIntentCurveBuilder.constantCurve(10), false)
+        );
 
-        UserIntent memory intent = UserIntent({
-            standards: standards,
-            sender: address(_account),
-            nonce: 123,
-            timestamp: block.timestamp,
-            intentData: data,
-            signature: ""
-        });
-        return AssetBasedIntentBuilder.encodeData(intent, _data());
+        return intent;
     }
 
     function _getPublicAddress(uint256 privateKey) internal pure returns (address) {

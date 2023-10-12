@@ -11,7 +11,7 @@ import {
     AssetBasedIntentSegmentBuilder
 } from "./AssetBasedIntentBuilder.sol";
 import {IntentBuilder} from "./IntentBuilder.sol";
-import {DefaultIntentBuilder} from "./DefaultIntentBuilder.sol";
+import {DefaultIntentBuilder, DefaultIntentSegmentBuilder} from "./DefaultIntentBuilder.sol";
 import {EntryPoint} from "../../../src/core/EntryPoint.sol";
 import {IEntryPoint} from "../../../src/interfaces/IEntryPoint.sol";
 import {IIntentStandard} from "../../../src/interfaces/IIntentStandard.sol";
@@ -26,6 +26,7 @@ import {
     AssetBasedIntentStandard,
     AssetBasedIntentSegment
 } from "../../../src/standards/assetbased/AssetBasedIntentStandard.sol";
+import {DefaultIntentSegment} from "../../../src/standards/default/DefaultIntentStandard.sol";
 import {AssetType, _balanceOf, _transfer} from "../../../src/standards/assetbased/utils/AssetWrapper.sol";
 import {TestERC20} from "../../../src/test/TestERC20.sol";
 import {TestERC721} from "../../../src/test/TestERC721.sol";
@@ -254,32 +255,23 @@ abstract contract ScenarioTestEnvironment is Test {
     {
         UserIntent memory intent = IntentBuilder.create(address(_solverUtils), 0, 0);
         if (numSegments > 0) {
-            intent = DefaultIntentBuilder.addSegment(intent, _entryPoint.getDefaultIntentStandardId(), callData1);
+            intent = _addDefaultSegment(intent, callData1);
         }
         if (numSegments > 1) {
-            intent = DefaultIntentBuilder.addSegment(intent, _entryPoint.getDefaultIntentStandardId(), callData2);
+            intent = _addDefaultSegment(intent, callData2);
         }
         if (numSegments > 2) {
-            intent = DefaultIntentBuilder.addSegment(intent, _entryPoint.getDefaultIntentStandardId(), callData3);
+            intent = _addDefaultSegment(intent, callData3);
         }
         for (uint256 i = 3; i < numSegments; i++) {
-            intent = DefaultIntentBuilder.addSegment(intent, _entryPoint.getDefaultIntentStandardId(), "");
+            intent = _addDefaultSegment(intent, "");
         }
 
         return intent;
     }
 
     /**
-     * Private helper function to build an empty intent struct for the solver.
-     * @return The created UserIntent struct.
-     */
-    function _emptyIntent() internal view returns (UserIntent memory) {
-        UserIntent memory intent = IntentBuilder.create(address(_account), 0, 0);
-        return intent;
-    }
-
-    /**
-     * Private helper function to build an asset-based intent struct.
+     * Private helper function to build a user intent struct.
      * @return The created UserIntent struct.
      */
     function _intent() internal view returns (UserIntent memory) {
@@ -287,12 +279,56 @@ abstract contract ScenarioTestEnvironment is Test {
     }
 
     /**
-     * Private helper function to build an asset-based intent struct.
+     * Private helper function to build an asset-based intent segment struct.
      * @param callData The data for an intended call.
      * @return The created AssetBasedIntentSegment struct.
      */
-    function _segment(bytes memory callData) internal pure returns (AssetBasedIntentSegment memory) {
+    function _assetBasedSegment(bytes memory callData) internal pure returns (AssetBasedIntentSegment memory) {
         return AssetBasedIntentSegmentBuilder.create(callData);
+    }
+
+    /**
+     * Private helper function to build a default intent segment struct.
+     * @param callData The data for an intended call.
+     * @return The created DefaultIntentSegment struct.
+     */
+    function _defaultSegment(bytes memory callData) internal pure returns (DefaultIntentSegment memory) {
+        return DefaultIntentSegmentBuilder.create(callData);
+    }
+
+    function _addAssetBasedSegment(UserIntent memory intent, bytes memory callData)
+        internal
+        view
+        returns (UserIntent memory)
+    {
+        return AssetBasedIntentBuilder.addSegment(
+            intent, _assetBasedIntentStandard.standardId(), _assetBasedSegment(callData)
+        );
+    }
+
+    function _addDefaultSegment(UserIntent memory intent, bytes memory callData)
+        internal
+        view
+        returns (UserIntent memory)
+    {
+        return
+            DefaultIntentBuilder.addSegment(intent, _entryPoint.getDefaultIntentStandardId(), _defaultSegment(callData));
+    }
+
+    function _addAssetBasedSegment(UserIntent memory intent, AssetBasedIntentSegment memory segment)
+        internal
+        view
+        returns (UserIntent memory)
+    {
+        return AssetBasedIntentBuilder.addSegment(intent, _assetBasedIntentStandard.standardId(), segment);
+    }
+
+    function _addDefaultSegment(UserIntent memory intent, DefaultIntentSegment memory segment)
+        internal
+        view
+        returns (UserIntent memory)
+    {
+        return DefaultIntentBuilder.addSegment(intent, _entryPoint.getDefaultIntentStandardId(), segment);
     }
 
     /**

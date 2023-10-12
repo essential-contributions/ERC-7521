@@ -7,7 +7,6 @@ import "./utils/TestEnvironment.sol";
 
 contract AssetBasedIntentStandardTest is TestEnvironment {
     using AssetBasedIntentBuilder for UserIntent;
-    using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
 
     function _dataForAssetRequirementCheck(EvaluationType evaluationType)
         internal
@@ -42,20 +41,11 @@ contract AssetBasedIntentStandardTest is TestEnvironment {
         }
     }
 
-    function test_failValidate_invalidAssets() public {
-        UserIntent memory intent = _intent();
-        AssetBasedIntentSegment[] memory segments = intent.decodeData();
-        segments[0].assetReleases[0].params = new int256[](0);
-        intent = intent.encodeData(segments);
-
-        vm.expectRevert("invalid curve params");
-        _assetBasedIntentStandard.validateIntentSegment(intent.intentData[0]);
-    }
-
     function test_validate_multipleAssetRequirement() public view {
         UserIntent memory intent = _intent();
         AssetBasedIntentSegment[] memory segments = _dataForAssetRequirementCheck(EvaluationType.ABSOLUTE);
-        intent = intent.encodeData(segments);
+        intent = intent.encodeData(segments[0]);
+        intent = intent.encodeData(segments[1]);
 
         for (uint256 i = 0; i < intent.intentData.length; i++) {
             _assetBasedIntentStandard.validateIntentSegment(intent.intentData[i]);

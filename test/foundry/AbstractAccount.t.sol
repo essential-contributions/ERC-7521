@@ -10,9 +10,7 @@ import {
 import {IERC1155} from "openzeppelin/token/ERC1155/IERC1155.sol";
 
 contract AbstractAccountTest is ScenarioTestEnvironment, TokenCallbackHandler {
-    using AssetBasedIntentBuilder for UserIntent;
     using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
-    using ECDSA for bytes32;
 
     function test_entryPoint() public {
         assertEq(address(_account.entryPoint()), address(_entryPoint));
@@ -24,9 +22,9 @@ contract AbstractAccountTest is ScenarioTestEnvironment, TokenCallbackHandler {
 
         // user's intent
         UserIntent memory intent = _intent();
-        intent = intent.addSegment(
-            _assetBasedIntentStandard.standardId(),
-            _segment(_accountClaimAirdropERC20(2 ether)).releaseERC20(
+        intent = _addAssetBasedSegment(
+            intent,
+            _assetBasedSegment(_accountClaimAirdropERC20(2 ether)).releaseERC20(
                 address(_testERC20), AssetBasedIntentCurveBuilder.constantCurve(int256(1 ether))
             )
         );
@@ -49,12 +47,10 @@ contract AbstractAccountTest is ScenarioTestEnvironment, TokenCallbackHandler {
         uint256[] memory values = new uint256[](1);
         bytes[] memory datas = new bytes[](2);
 
-        AssetBasedIntentSegment memory intentSegment = AssetBasedIntentSegmentBuilder.create(
-            abi.encodeWithSelector(AbstractAccount.executeMulti.selector, targets, values, datas)
-        );
-
         UserIntent memory intent = _intent();
-        intent = intent.addSegment(_assetBasedIntentStandard.standardId(), intentSegment);
+        intent = _addDefaultSegment(
+            intent, abi.encodeWithSelector(AbstractAccount.executeMulti.selector, targets, values, datas)
+        );
         intent = _signIntent(intent);
 
         IntentSolution memory solution = _solution(intent, _solverIntent("", "", "", 1));
@@ -73,12 +69,10 @@ contract AbstractAccountTest is ScenarioTestEnvironment, TokenCallbackHandler {
         uint256[] memory values = new uint256[](2);
         bytes[] memory datas = new bytes[](1);
 
-        AssetBasedIntentSegment memory intentSegment = AssetBasedIntentSegmentBuilder.create(
-            abi.encodeWithSelector(AbstractAccount.executeMulti.selector, targets, values, datas)
-        );
-
         UserIntent memory intent = _intent();
-        intent = intent.addSegment(_assetBasedIntentStandard.standardId(), intentSegment);
+        intent = _addDefaultSegment(
+            intent, abi.encodeWithSelector(AbstractAccount.executeMulti.selector, targets, values, datas)
+        );
         intent = _signIntent(intent);
 
         IntentSolution memory solution = _solution(intent, _solverIntent("", "", "", 1));
@@ -94,9 +88,7 @@ contract AbstractAccountTest is ScenarioTestEnvironment, TokenCallbackHandler {
     function test_failCall() public {
         UserIntent memory intent = _intent();
         // account is not funded, the call will fail
-        intent = intent.addSegment(
-            _assetBasedIntentStandard.standardId(), _segment(_accountBuyERC1155(_testERC1155.nftCost()))
-        );
+        intent = _addDefaultSegment(intent, _accountBuyERC1155(_testERC1155.nftCost()));
         intent = _signIntent(intent);
 
         IntentSolution memory solution = _solution(intent, _solverIntent("", "", "", 1));
