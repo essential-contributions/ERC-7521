@@ -3,11 +3,9 @@ use utils::{
     abigen::entry_point::{IntentSolution, UserIntent},
     balance::TestBalances,
     builders::{
-        asset_based_intent_standard::{
-            curve_builder::{AssetType, CurveParameters},
-            segment_builder::AssetBasedIntentSegment,
-        },
-        default_intent_standard::segment_builder::DefaultIntentSegment,
+        asset_curve_builder::{AssetType, CurveParameters},
+        asset_release_intent_standard::segment_builder::AssetReleaseIntentSegment,
+        call_intent_standard::segment_builder::CallIntentSegment,
     },
     deploy::TestContracts,
     setup::{setup, sign_intent, PROVIDER, SOLVER_WALLET, USER_WALLET},
@@ -96,28 +94,23 @@ fn gasless_airdrop_intent(
         U256::zero(),
         claim_airdrop_erc20_calldata,
     );
-    let claim_airdrop_erc20_segment =
-        AssetBasedIntentSegment::new(claim_airdrop_erc20_execute_calldata);
+    let claim_airdrop_erc20_segment = CallIntentSegment::new(claim_airdrop_erc20_execute_calldata);
 
-    let release_erc20_segment = AssetBasedIntentSegment::new(Bytes::default())
-        .add_asset_release_curve(
-            test_contracts.test_erc20.contract.address(),
-            U256::zero(),
-            AssetType::ERC20,
-            release_parameters,
-        )
-        .clone();
+    let release_erc20_segment = AssetReleaseIntentSegment::new(
+        test_contracts.test_erc20.contract.address(),
+        U256::zero(),
+        AssetType::ERC20,
+        release_parameters,
+    )
+    .clone();
 
-    gasless_airdrop_intent.add_segment_asset_based(
-        test_contracts
-            .asset_based_intent_standard
-            .standard_id
-            .clone(),
+    gasless_airdrop_intent.add_segment_call(
+        test_contracts.call_intent_standard.standard_id.clone(),
         claim_airdrop_erc20_segment,
     );
-    gasless_airdrop_intent.add_segment_asset_based(
+    gasless_airdrop_intent.add_segment_asset_release(
         test_contracts
-            .asset_based_intent_standard
+            .asset_release_intent_standard
             .standard_id
             .clone(),
         release_erc20_segment,
@@ -133,9 +126,9 @@ fn gasless_airdrop_solver_intent(test_contracts: &TestContracts, gas_payment: U2
         .solver_utils
         .swap_all_erc20_for_eth_calldata(test_contracts, SOLVER_WALLET.address(), gas_payment);
 
-    solution.add_segment_default(
-        test_contracts.entry_point.default_standard_id.clone(),
-        DefaultIntentSegment::new(swap_all_erc20_for_eth_calldata),
+    solution.add_segment_call(
+        test_contracts.call_intent_standard.standard_id.clone(),
+        CallIntentSegment::new(swap_all_erc20_for_eth_calldata),
     );
 
     solution

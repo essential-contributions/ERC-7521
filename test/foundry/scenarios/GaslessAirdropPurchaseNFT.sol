@@ -19,7 +19,8 @@ import "../utils/ScenarioTestEnvironment.sol";
  * Intent Action Part2: user account makes the intended purchase with the newly received ETH
  */
 contract GaslessAirdropPurchaseNFT is ScenarioTestEnvironment {
-    using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
+    using AssetReleaseIntentSegmentBuilder for AssetReleaseIntentSegment;
+    using EthRequireIntentSegmentBuilder for EthRequireIntentSegment;
 
     function _intentForCase(uint256 claimAmount, uint256 totalAmountToSolver, uint256 nftPrice)
         private
@@ -27,15 +28,17 @@ contract GaslessAirdropPurchaseNFT is ScenarioTestEnvironment {
         returns (UserIntent memory)
     {
         UserIntent memory intent = _intent();
-        intent = _addAssetBasedSegment(
+        intent = _addCallSegment(intent, CallIntentSegmentBuilder.create(_accountClaimAirdropERC20(claimAmount)));
+        intent = _addAssetReleaseSegment(
             intent,
-            _assetBasedSegment(_accountClaimAirdropERC20(claimAmount)).releaseERC20(
-                address(_testERC20), AssetBasedIntentCurveBuilder.constantCurve(int256(totalAmountToSolver))
+            AssetReleaseIntentSegmentBuilder.create().releaseERC20(
+                address(_testERC20), AssetCurveBuilder.constantCurve(int256(totalAmountToSolver))
             )
         );
-        intent = _addDefaultSegment(intent, _accountBuyERC1155(nftPrice));
-        intent = _addAssetBasedSegment(
-            intent, _assetBasedSegment("").requireETH(AssetBasedIntentCurveBuilder.constantCurve(0), false)
+        intent = _addCallSegment(intent, CallIntentSegmentBuilder.create(_accountBuyERC1155(nftPrice)));
+        intent = _addEthRequireSegment(
+            intent,
+            EthRequireIntentSegmentBuilder.create().requireETH(EthRequireIntentCurveBuilder.constantCurve(0), false)
         );
         return intent;
     }
@@ -53,10 +56,6 @@ contract GaslessAirdropPurchaseNFT is ScenarioTestEnvironment {
             "",
             1
         );
-    }
-
-    function setUp() public override {
-        super.setUp();
     }
 
     // the max value uint72 can hold is just more than 1000 ether,
@@ -114,7 +113,7 @@ contract GaslessAirdropPurchaseNFT is ScenarioTestEnvironment {
         //execute
         vm.expectRevert(
             abi.encodeWithSelector(
-                IEntryPoint.FailedIntent.selector, 0, 0, "AA61 execution failed: insufficient release balance"
+                IEntryPoint.FailedIntent.selector, 0, 1, "AA61 execution failed: insufficient release balance"
             )
         );
         _entryPoint.handleIntents(solution);

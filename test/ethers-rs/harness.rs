@@ -1,6 +1,6 @@
 use ethers::{prelude::*, utils::parse_ether};
 use utils::{
-    builders::asset_based_intent_standard::curve_builder::{
+    builders::asset_curve_builder::{
         ConstantCurveParameters, CurveParameters, ExponentialCurveParameters, LinearCurveParameters,
     },
     setup::PROVIDER,

@@ -32,7 +32,7 @@ contract HandleIntentsTest is ScenarioTestEnvironment {
 }
 
 contract ValidateUserIntentTest is ScenarioTestEnvironment {
-    using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
+    using EthReleaseIntentSegmentBuilder for EthReleaseIntentSegment;
 
     function test_fail_unknownStandard() public {
         UserIntent memory intent = _intent();
@@ -53,11 +53,11 @@ contract ValidateUserIntentTest is ScenarioTestEnvironment {
 
     function test_fail_validateWithStandard() public {
         UserIntent memory intent = _intent();
-        AssetBasedIntentSegment memory segment =
-            _assetBasedSegment("").releaseETH(AssetBasedIntentCurveBuilder.constantCurve(10));
+        EthReleaseIntentSegment memory segment =
+            EthReleaseIntentSegmentBuilder.create().releaseETH(EthReleaseIntentCurveBuilder.constantCurve(10));
         // invalidate curve params
-        segment.assetReleases[0].params = new int256[](0);
-        intent = _addAssetBasedSegment(intent, segment);
+        segment.release.params = new int256[](0);
+        intent = _addEthReleaseSegment(intent, segment);
         intent = _signIntent(intent);
 
         IntentSolution memory solution = _solution(intent, _intent());

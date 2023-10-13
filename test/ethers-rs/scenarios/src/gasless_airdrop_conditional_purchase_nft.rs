@@ -3,11 +3,11 @@ use utils::{
     abigen::entry_point::{IntentSolution, UserIntent},
     balance::TestBalances,
     builders::{
-        asset_based_intent_standard::{
-            curve_builder::{AssetType, CurveParameters, EvaluationType},
-            segment_builder::AssetBasedIntentSegment,
-        },
-        default_intent_standard::segment_builder::DefaultIntentSegment,
+        asset_curve_builder::{AssetType, CurveParameters, EvaluationType},
+        asset_release_intent_standard::segment_builder::AssetReleaseIntentSegment,
+        asset_require_intent_standard::segment_builder::AssetRequireIntentSegment,
+        call_intent_standard::segment_builder::CallIntentSegment,
+        eth_require_intent_standard::segment_builder::EthRequireIntentSegment,
     },
     deploy::TestContracts,
     setup::{setup, sign_intent, PROVIDER, SOLVER_WALLET, USER_WALLET},
@@ -75,7 +75,11 @@ pub async fn gasless_airdrop_conditional_purchase_nft_scenario(
     );
 
     // create intent solution
-    let solution = IntentSolution::new(block_number, vec![intent, solver_intent], vec![]);
+    let solution = IntentSolution::new(
+        block_number,
+        vec![intent, solver_intent],
+        vec![U256::from(0), U256::from(0), U256::from(1), U256::from(0)],
+    );
 
     // call handle intents
     test_contracts
@@ -129,14 +133,15 @@ fn gasless_airdrop_conditional_purchase_nft_intent(
         claim_erc20_airdrop_calldata,
     );
     let claim_erc20_airdrop_and_release_erc20_segment =
-        AssetBasedIntentSegment::new(claim_erc20_airdrop_execute_calldata)
-            .add_asset_release_curve(
-                test_contracts.test_erc20.contract.address(),
-                U256::zero(),
-                AssetType::ERC20,
-                release_parameters,
-            )
-            .clone();
+        CallIntentSegment::new(claim_erc20_airdrop_execute_calldata);
+
+    let release_erc20_segment = AssetReleaseIntentSegment::new(
+        test_contracts.test_erc20.contract.address(),
+        U256::zero(),
+        AssetType::ERC20,
+        release_parameters.clone(),
+    )
+    .clone();
 
     let buy_erc1155_calldata = test_contracts.test_erc1155.buy_nft_calldata(
         test_contracts.user_account.contract.address(),
@@ -144,10 +149,7 @@ fn gasless_airdrop_conditional_purchase_nft_intent(
     );
     let transfer_erc721_calldata = test_contracts.test_erc721.transfer_from_calldata(
         test_contracts.user_account.contract.address(),
-        test_contracts
-            .asset_based_intent_standard
-            .contract
-            .address(),
+        test_contracts.call_intent_standard.contract.address(),
         token_id,
     );
     let buy_erc1155_and_transfer_erc721_execute_multi_calldata =
@@ -160,45 +162,48 @@ fn gasless_airdrop_conditional_purchase_nft_intent(
             vec![buy_erc1155_calldata, transfer_erc721_calldata],
         );
     let buy_erc1155_and_transfer_erc721_segment =
-        AssetBasedIntentSegment::new(buy_erc1155_and_transfer_erc721_execute_multi_calldata);
+        CallIntentSegment::new(buy_erc1155_and_transfer_erc721_execute_multi_calldata);
 
-    let require_eth_and_erc721_segment = AssetBasedIntentSegment::new(Bytes::default())
-        .add_asset_requirement_curve(
-            Address::default(),
-            U256::zero(),
-            AssetType::ETH,
-            require_params.clone(),
-            EvaluationType::ABSOLUTE,
-        )
-        .add_asset_requirement_curve(
-            test_contracts.test_erc721.contract.address(),
-            token_id,
-            AssetType::ERC721,
-            require_params,
-            EvaluationType::ABSOLUTE,
-        )
-        .clone();
+    let require_eth_segment =
+        EthRequireIntentSegment::new(require_params.clone(), EvaluationType::ABSOLUTE);
 
-    gasless_airdrop_conditional_purchase_nft_intent.add_segment_asset_based(
-        test_contracts
-            .asset_based_intent_standard
-            .standard_id
-            .clone(),
+    let require_erc721_segment = AssetRequireIntentSegment::new(
+        test_contracts.test_erc721.contract.address(),
+        token_id,
+        AssetType::ERC721,
+        require_params,
+        EvaluationType::ABSOLUTE,
+    )
+    .clone();
+
+    gasless_airdrop_conditional_purchase_nft_intent.add_segment_call(
+        test_contracts.call_intent_standard.standard_id.clone(),
         claim_erc20_airdrop_and_release_erc20_segment,
     );
-    gasless_airdrop_conditional_purchase_nft_intent.add_segment_asset_based(
+    gasless_airdrop_conditional_purchase_nft_intent.add_segment_asset_release(
         test_contracts
-            .asset_based_intent_standard
+            .asset_release_intent_standard
             .standard_id
             .clone(),
+        release_erc20_segment,
+    );
+    gasless_airdrop_conditional_purchase_nft_intent.add_segment_call(
+        test_contracts.call_intent_standard.standard_id.clone(),
         buy_erc1155_and_transfer_erc721_segment,
     );
-    gasless_airdrop_conditional_purchase_nft_intent.add_segment_asset_based(
+    gasless_airdrop_conditional_purchase_nft_intent.add_segment_eth_require(
         test_contracts
-            .asset_based_intent_standard
+            .eth_require_intent_standard
             .standard_id
             .clone(),
-        require_eth_and_erc721_segment,
+        require_eth_segment,
+    );
+    gasless_airdrop_conditional_purchase_nft_intent.add_segment_asset_require(
+        test_contracts
+            .asset_require_intent_standard
+            .standard_id
+            .clone(),
+        require_erc721_segment,
     );
 
     gasless_airdrop_conditional_purchase_nft_intent
@@ -227,13 +232,13 @@ fn gasless_airdrop_conditional_purchase_nft_solver_intent(
         .solver_utils
         .sell_erc721_and_forward_all_calldata(test_contracts, token_id, SOLVER_WALLET.address());
 
-    solution.add_segment_default(
-        test_contracts.entry_point.default_standard_id.clone(),
-        DefaultIntentSegment::new(calldata_1),
+    solution.add_segment_call(
+        test_contracts.call_intent_standard.standard_id.clone(),
+        CallIntentSegment::new(calldata_1),
     );
-    solution.add_segment_default(
-        test_contracts.entry_point.default_standard_id.clone(),
-        DefaultIntentSegment::new(calldata_2),
+    solution.add_segment_call(
+        test_contracts.call_intent_standard.standard_id.clone(),
+        CallIntentSegment::new(calldata_2),
     );
 
     solution

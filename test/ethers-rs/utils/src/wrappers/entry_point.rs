@@ -6,26 +6,17 @@ use std::sync::Arc;
 
 pub struct EntryPointContract {
     pub contract: EntryPoint<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>,
-    pub default_standard_id: Bytes,
 }
 
 impl EntryPointContract {
     pub async fn deploy(client: Arc<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>) -> Self {
-        let mut entry_point_contract = Self {
+        Self {
             contract: EntryPoint::deploy(client.clone(), ())
                 .unwrap()
                 .send()
                 .await
                 .unwrap(),
-            default_standard_id: Bytes::default(),
-        };
-
-        entry_point_contract.default_standard_id = entry_point_contract
-            .get_default_intent_standard_id()
-            .await
-            .unwrap();
-
-        entry_point_contract
+        }
     }
 
     pub async fn register_intent_standard(&self, standard_address: Address) -> Result<Bytes> {
@@ -42,21 +33,6 @@ impl EntryPointContract {
 
     pub async fn get_intent_standard_id(&self, standard_address: Address) -> Result<Bytes> {
         let tx = self.contract.get_intent_standard_id(standard_address);
-
-        match tx.call().await {
-            Ok(t) => Result::Ok(Bytes::from(t)),
-            Err(e) => {
-                if let Some(decoded_error) = e.decode_revert::<String>() {
-                    panic!("{}", decoded_error);
-                } else {
-                    panic!("{}", e);
-                }
-            }
-        }
-    }
-
-    pub async fn get_default_intent_standard_id(&self) -> Result<Bytes> {
-        let tx = self.contract.get_default_intent_standard_id();
 
         match tx.call().await {
             Ok(t) => Result::Ok(Bytes::from(t)),

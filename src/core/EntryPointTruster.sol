@@ -29,7 +29,7 @@ abstract contract EntryPointTruster {
      */
     modifier onlyFromIntentStandardExecutingForSender() {
         require(
-            entryPoint().verifyExecutingIntentForStandard(IIntentStandard(msg.sender)),
+            entryPoint().verifyExecutingIntentSegmentForStandard(IIntentStandard(msg.sender)),
             "EntryPoint not executing intent standard for sender"
         );
         _;

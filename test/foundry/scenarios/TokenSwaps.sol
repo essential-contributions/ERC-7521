@@ -4,8 +4,15 @@ pragma solidity ^0.8.13;
 /* solhint-disable func-name-mixedcase */
 
 import "../utils/ScenarioTestEnvironment.sol";
-import "../../../src/test/AssetBasedIntentCurveLibHarness.sol";
-import {generateFlags} from "../../../src/standards/assetbased/AssetBasedIntentCurve.sol";
+import {EthRequireIntentCurveLibHarness} from "../../../src/test/EthRequireIntentCurveLibHarness.sol";
+import {
+    EthRequireIntentCurve,
+    evaluate,
+    generateEthRequireFlags
+} from "../../../src/standards/ethRequire/EthRequireIntentCurve.sol";
+import {AssetCurveLibHarness} from "../../../src/test/AssetCurveLibHarness.sol";
+import {AssetCurve, generateAssetFlags, CurveType, EvaluationType} from "../../../src/utils/AssetCurve.sol";
+import {AssetType} from "../../../src/utils/AssetWrapper.sol";
 
 /*
  * In this scenario, a user is specifying different tokens to release and tokens expected by the end.
@@ -14,22 +21,26 @@ import {generateFlags} from "../../../src/standards/assetbased/AssetBasedIntentC
  * 1. the solver swaps the released tokens for the desired tokens and pockets the difference
  */
 contract TokenSwaps is ScenarioTestEnvironment {
-    using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
-    using AssetBasedIntentCurveLibHarness for AssetBasedIntentCurve;
+    using AssetReleaseIntentSegmentBuilder for AssetReleaseIntentSegment;
+    using AssetCurveLibHarness for AssetCurve;
+    using EthRequireIntentSegmentBuilder for EthRequireIntentSegment;
+    using EthRequireIntentCurveLibHarness for EthRequireIntentCurve;
 
     uint256 private _accountInitialETHBalance = 100 ether;
     uint256 private _accountInitialERC20Balance = 100 ether;
 
-    function _constantReleaseIntent(int256[] memory erc20ReleaseCurveParams, int256[] memory ethRequireCurveParams)
+    function _intentForCase(int256[] memory erc20ReleaseCurveParams, int256[] memory ethRequireCurveParams)
         private
         view
         returns (UserIntent memory)
     {
         UserIntent memory intent = _intent();
-        intent = _addAssetBasedSegment(
-            intent, _assetBasedSegment("").releaseERC20(address(_testERC20), erc20ReleaseCurveParams)
+        intent = _addAssetReleaseSegment(
+            intent, AssetReleaseIntentSegmentBuilder.create().releaseERC20(address(_testERC20), erc20ReleaseCurveParams)
         );
-        intent = _addAssetBasedSegment(intent, _assetBasedSegment("").requireETH(ethRequireCurveParams, true));
+        intent = _addEthRequireSegment(
+            intent, EthRequireIntentSegmentBuilder.create().requireETH(ethRequireCurveParams, true)
+        );
         return intent;
     }
 
@@ -47,19 +58,6 @@ contract TokenSwaps is ScenarioTestEnvironment {
             1
         );
         return _solution(intent, solverIntent);
-    }
-
-    function _constantExpectationIntent(int256[] memory erc20ReleaseCurveParams, int256[] memory ethRequireCurveParams)
-        private
-        view
-        returns (UserIntent memory)
-    {
-        UserIntent memory intent = _intent();
-        intent = _addAssetBasedSegment(
-            intent, _assetBasedSegment("").releaseERC20(address(_testERC20), erc20ReleaseCurveParams)
-        );
-        intent = _addAssetBasedSegment(intent, _assetBasedSegment("").requireETH(ethRequireCurveParams, true));
-        return intent;
     }
 
     function _constantExpectationSolution(UserIntent memory intent, uint256 ethRequireAmount, uint256 evaluation)
@@ -89,8 +87,6 @@ contract TokenSwaps is ScenarioTestEnvironment {
         vm.warp(1000);
     }
 
-    event LogSolution(IntentSolution solution);
-
     function testFuzz_constantRelease(
         uint72 erc20ReleaseAmount,
         int16 m,
@@ -108,15 +104,12 @@ contract TokenSwaps is ScenarioTestEnvironment {
         //set specific block.timestamp
         vm.warp(timestamp);
 
-        int256[] memory erc20ReleaseCurveParams =
-            AssetBasedIntentCurveBuilder.constantCurve(int256(uint256(erc20ReleaseAmount)));
+        int256[] memory erc20ReleaseCurveParams = AssetCurveBuilder.constantCurve(int256(uint256(erc20ReleaseAmount)));
         int256[] memory ethRequireCurveParams =
-            AssetBasedIntentCurveBuilder.linearCurve(m / int256(uint256(max)), b, max, flipY);
+            EthRequireIntentCurveBuilder.linearCurve(m / int256(uint256(max)), b, max, flipY);
 
-        AssetBasedIntentCurve memory ethRequireCurve = AssetBasedIntentCurve({
-            assetContract: address(0),
-            assetId: 0,
-            flags: generateFlags(AssetType.ETH, CurveType.LINEAR, EvaluationType.RELATIVE),
+        EthRequireIntentCurve memory ethRequireCurve = EthRequireIntentCurve({
+            flags: generateEthRequireFlags(CurveType.LINEAR, EvaluationType.RELATIVE),
             params: ethRequireCurveParams
         });
 
@@ -125,13 +118,11 @@ contract TokenSwaps is ScenarioTestEnvironment {
         vm.assume(evaluation < erc20ReleaseAmount);
 
         {
-            UserIntent memory intent = _constantReleaseIntent(erc20ReleaseCurveParams, ethRequireCurveParams);
+            UserIntent memory intent = _intentForCase(erc20ReleaseCurveParams, ethRequireCurveParams);
             intent = _signIntent(intent);
 
             //create solution
             IntentSolution memory solution = _constantReleaseSolution(intent, erc20ReleaseAmount, evaluation);
-
-            emit LogSolution(solution);
 
             //simulate execution
             vm.expectRevert(abi.encodeWithSelector(IEntryPoint.ExecutionResult.selector, true, false, ""));
@@ -179,17 +170,18 @@ contract TokenSwaps is ScenarioTestEnvironment {
         // set specific block.timestamp
         vm.warp(timestamp);
 
-        AssetBasedIntentCurve memory erc20ReleaseCurve;
+        AssetCurve memory erc20ReleaseCurve;
 
         int256[] memory erc20ReleaseCurveParams =
-            AssetBasedIntentCurveBuilder.exponentialCurve(m, b, int256(uint256(e)), max, flipY);
+            AssetCurveBuilder.exponentialCurve(m, b, int256(uint256(e)), max, flipY);
 
-        uint96 erc20ReleaseCurveFlags = generateFlags(AssetType.ERC20, CurveType.EXPONENTIAL, EvaluationType.RELATIVE);
+        uint96 erc20ReleaseCurveFlags =
+            generateAssetFlags(AssetType.ERC20, CurveType.EXPONENTIAL, EvaluationType.RELATIVE);
 
         int256[] memory ethRequireCurveParams =
-            AssetBasedIntentCurveBuilder.constantCurve(int256(uint256(ethRequireAmount)));
+            EthRequireIntentCurveBuilder.constantCurve(int256(uint256(ethRequireAmount)));
 
-        erc20ReleaseCurve = AssetBasedIntentCurve({
+        erc20ReleaseCurve = AssetCurve({
             assetContract: address(_testERC20),
             assetId: 0,
             flags: erc20ReleaseCurveFlags,
@@ -202,7 +194,7 @@ contract TokenSwaps is ScenarioTestEnvironment {
 
         {
             //create account intent (curve should evaluate as 7.75ether at timestamp 1000)
-            UserIntent memory intent = _constantExpectationIntent(erc20ReleaseCurveParams, ethRequireCurveParams);
+            UserIntent memory intent = _intentForCase(erc20ReleaseCurveParams, ethRequireCurveParams);
             intent = _signIntent(intent);
 
             //create solution
@@ -242,20 +234,17 @@ contract TokenSwaps is ScenarioTestEnvironment {
         //set specific block.timestamp
         vm.warp(timestamp);
 
-        int256[] memory erc20ReleaseCurveParams =
-            AssetBasedIntentCurveBuilder.constantCurve(int256(uint256(erc20ReleaseAmount)));
+        int256[] memory erc20ReleaseCurveParams = AssetCurveBuilder.constantCurve(int256(uint256(erc20ReleaseAmount)));
         int256[] memory ethRequireCurveParams =
-            AssetBasedIntentCurveBuilder.linearCurve(3 ether / 3000, 7 ether, 3000, false);
+            EthRequireIntentCurveBuilder.linearCurve(3 ether / 3000, 7 ether, 3000, false);
 
-        AssetBasedIntentCurve memory ethRequireCurve = AssetBasedIntentCurve({
-            assetContract: address(0),
-            assetId: 0,
-            flags: generateFlags(AssetType.ETH, CurveType.LINEAR, EvaluationType.RELATIVE),
+        EthRequireIntentCurve memory ethRequireCurve = EthRequireIntentCurve({
+            flags: generateEthRequireFlags(CurveType.LINEAR, EvaluationType.RELATIVE),
             params: ethRequireCurveParams
         });
 
         //create intent
-        UserIntent memory intent = _constantReleaseIntent(erc20ReleaseCurveParams, ethRequireCurveParams);
+        UserIntent memory intent = _intentForCase(erc20ReleaseCurveParams, ethRequireCurveParams);
         intent = _signIntent(intent);
 
         //create solution

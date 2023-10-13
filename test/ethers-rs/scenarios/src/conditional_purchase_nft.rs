@@ -1,13 +1,12 @@
+use ::utils::builders::eth_release_intent_standard::segment_builder::EthReleaseIntentSegment;
 use ethers::prelude::*;
 use utils::{
     abigen::entry_point::{IntentSolution, UserIntent},
     balance::TestBalances,
     builders::{
-        asset_based_intent_standard::{
-            curve_builder::{AssetType, CurveParameters, EvaluationType},
-            segment_builder::AssetBasedIntentSegment,
-        },
-        default_intent_standard::segment_builder::DefaultIntentSegment,
+        asset_curve_builder::{AssetType, CurveParameters, EvaluationType},
+        asset_require_intent_standard::segment_builder::AssetRequireIntentSegment,
+        call_intent_standard::segment_builder::CallIntentSegment,
     },
     deploy::TestContracts,
     setup::{setup, sign_intent, PROVIDER, SOLVER_WALLET, USER_WALLET},
@@ -111,14 +110,7 @@ fn conditional_purchase_nft_intent(
 ) -> UserIntent {
     let mut conditional_purchase_nft_intent = UserIntent::create(sender, 0, 0);
 
-    let release_eth_segment = AssetBasedIntentSegment::new(Bytes::default())
-        .add_asset_release_curve(
-            Address::default(),
-            U256::zero(),
-            AssetType::ETH,
-            release_params,
-        )
-        .clone();
+    let release_eth_segment = EthReleaseIntentSegment::new(release_params).clone();
 
     let buy_erc1155_calldata = test_contracts.test_erc1155.buy_nft_calldata(
         test_contracts.user_account.contract.address(),
@@ -126,10 +118,7 @@ fn conditional_purchase_nft_intent(
     );
     let transfer_erc721_calldata = test_contracts.test_erc721.transfer_from_calldata(
         test_contracts.user_account.contract.address(),
-        test_contracts
-            .asset_based_intent_standard
-            .contract
-            .address(),
+        test_contracts.call_intent_standard.contract.address(),
         token_id,
     );
     let buy_erc1155_and_transfer_erc721_execute_multi_calldata =
@@ -142,35 +131,31 @@ fn conditional_purchase_nft_intent(
             vec![buy_erc1155_calldata, transfer_erc721_calldata],
         );
     let buy_erc1155_and_transfer_erc721_segment =
-        AssetBasedIntentSegment::new(buy_erc1155_and_transfer_erc721_execute_multi_calldata);
+        CallIntentSegment::new(buy_erc1155_and_transfer_erc721_execute_multi_calldata);
 
-    let require_erc721_segment = AssetBasedIntentSegment::new(Bytes::default())
-        .add_asset_requirement_curve(
-            test_contracts.test_erc721.contract.address(),
-            token_id,
-            AssetType::ERC721,
-            require_params,
-            EvaluationType::ABSOLUTE,
-        )
-        .clone();
+    let require_erc721_segment = AssetRequireIntentSegment::new(
+        test_contracts.test_erc721.contract.address(),
+        token_id,
+        AssetType::ERC721,
+        require_params,
+        EvaluationType::ABSOLUTE,
+    )
+    .clone();
 
-    conditional_purchase_nft_intent.add_segment_asset_based(
+    conditional_purchase_nft_intent.add_segment_eth_release(
         test_contracts
-            .asset_based_intent_standard
+            .eth_release_intent_standard
             .standard_id
             .clone(),
         release_eth_segment,
     );
-    conditional_purchase_nft_intent.add_segment_asset_based(
-        test_contracts
-            .asset_based_intent_standard
-            .standard_id
-            .clone(),
+    conditional_purchase_nft_intent.add_segment_call(
+        test_contracts.call_intent_standard.standard_id.clone(),
         buy_erc1155_and_transfer_erc721_segment,
     );
-    conditional_purchase_nft_intent.add_segment_asset_based(
+    conditional_purchase_nft_intent.add_segment_asset_require(
         test_contracts
-            .asset_based_intent_standard
+            .asset_require_intent_standard
             .standard_id
             .clone(),
         require_erc721_segment,
@@ -196,13 +181,13 @@ fn conditional_purchase_nft_solver_intent(
         .solver_utils
         .sell_erc721_and_forward_all_calldata(test_contracts, token_id, SOLVER_WALLET.address());
 
-    solution.add_segment_default(
-        test_contracts.entry_point.default_standard_id.clone(),
-        DefaultIntentSegment::new(buy_erc721_calldata),
+    solution.add_segment_call(
+        test_contracts.call_intent_standard.standard_id.clone(),
+        CallIntentSegment::new(buy_erc721_calldata),
     );
-    solution.add_segment_default(
-        test_contracts.entry_point.default_standard_id.clone(),
-        DefaultIntentSegment::new(sell_erc721_and_forward_all_calldata),
+    solution.add_segment_call(
+        test_contracts.call_intent_standard.standard_id.clone(),
+        CallIntentSegment::new(sell_erc721_and_forward_all_calldata),
     );
 
     solution

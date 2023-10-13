@@ -8,9 +8,10 @@ import {
     IERC165, IERC721Receiver, IERC1155Receiver, TokenCallbackHandler
 } from "../../src/wallet/TokenCallbackHandler.sol";
 import {IERC1155} from "openzeppelin/token/ERC1155/IERC1155.sol";
+import {AssetType, _transfer, _balanceOf} from "../../src/utils/AssetWrapper.sol";
 
 contract AbstractAccountTest is ScenarioTestEnvironment, TokenCallbackHandler {
-    using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
+    using AssetReleaseIntentSegmentBuilder for AssetReleaseIntentSegment;
 
     function test_entryPoint() public {
         assertEq(address(_account.entryPoint()), address(_entryPoint));
@@ -22,10 +23,11 @@ contract AbstractAccountTest is ScenarioTestEnvironment, TokenCallbackHandler {
 
         // user's intent
         UserIntent memory intent = _intent();
-        intent = _addAssetBasedSegment(
+        intent = _addCallSegment(intent, CallIntentSegmentBuilder.create(_accountClaimAirdropERC20(2 ether)));
+        intent = _addAssetReleaseSegment(
             intent,
-            _assetBasedSegment(_accountClaimAirdropERC20(2 ether)).releaseERC20(
-                address(_testERC20), AssetBasedIntentCurveBuilder.constantCurve(int256(1 ether))
+            AssetReleaseIntentSegmentBuilder.create().releaseERC20(
+                address(_testERC20), AssetCurveBuilder.constantCurve(int256(1 ether))
             )
         );
         intent = _signIntent(intent);
@@ -48,12 +50,15 @@ contract AbstractAccountTest is ScenarioTestEnvironment, TokenCallbackHandler {
         bytes[] memory datas = new bytes[](2);
 
         UserIntent memory intent = _intent();
-        intent = _addDefaultSegment(
-            intent, abi.encodeWithSelector(AbstractAccount.executeMulti.selector, targets, values, datas)
+        intent = _addCallSegment(
+            intent,
+            CallIntentSegmentBuilder.create(
+                abi.encodeWithSelector(AbstractAccount.executeMulti.selector, targets, values, datas)
+            )
         );
         intent = _signIntent(intent);
 
-        IntentSolution memory solution = _solution(intent, _solverIntent("", "", "", 1));
+        IntentSolution memory solution = _solution(intent, _solverIntent("", "", "", 0));
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -70,12 +75,15 @@ contract AbstractAccountTest is ScenarioTestEnvironment, TokenCallbackHandler {
         bytes[] memory datas = new bytes[](1);
 
         UserIntent memory intent = _intent();
-        intent = _addDefaultSegment(
-            intent, abi.encodeWithSelector(AbstractAccount.executeMulti.selector, targets, values, datas)
+        intent = _addCallSegment(
+            intent,
+            CallIntentSegmentBuilder.create(
+                abi.encodeWithSelector(AbstractAccount.executeMulti.selector, targets, values, datas)
+            )
         );
         intent = _signIntent(intent);
 
-        IntentSolution memory solution = _solution(intent, _solverIntent("", "", "", 1));
+        IntentSolution memory solution = _solution(intent, _solverIntent("", "", "", 0));
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -88,10 +96,10 @@ contract AbstractAccountTest is ScenarioTestEnvironment, TokenCallbackHandler {
     function test_failCall() public {
         UserIntent memory intent = _intent();
         // account is not funded, the call will fail
-        intent = _addDefaultSegment(intent, _accountBuyERC1155(_testERC1155.nftCost()));
+        intent = _addCallSegment(intent, CallIntentSegmentBuilder.create(_accountBuyERC1155(_testERC1155.nftCost())));
         intent = _signIntent(intent);
 
-        IntentSolution memory solution = _solution(intent, _solverIntent("", "", "", 1));
+        IntentSolution memory solution = _solution(intent, _solverIntent("", "", "", 0));
 
         vm.expectRevert(
             abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA61 execution failed (or OOG)")

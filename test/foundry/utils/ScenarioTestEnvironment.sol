@@ -5,29 +5,43 @@ pragma solidity ^0.8.13;
 /* solhint-disable const-name-snakecase */
 
 import "forge-std/Test.sol";
-import {
-    AssetBasedIntentBuilder,
-    AssetBasedIntentCurveBuilder,
-    AssetBasedIntentSegmentBuilder
-} from "./AssetBasedIntentBuilder.sol";
 import {IntentBuilder} from "./IntentBuilder.sol";
-import {DefaultIntentBuilder, DefaultIntentSegmentBuilder} from "./DefaultIntentBuilder.sol";
+import {AssetCurveBuilder} from "./AssetCurveBuilder.sol";
 import {EntryPoint} from "../../../src/core/EntryPoint.sol";
 import {IEntryPoint} from "../../../src/interfaces/IEntryPoint.sol";
 import {IIntentStandard} from "../../../src/interfaces/IIntentStandard.sol";
 import {UserIntent} from "../../../src/interfaces/UserIntent.sol";
 import {IntentSolution} from "../../../src/interfaces/IntentSolution.sol";
+import {CallIntentStandard, CallIntentSegment} from "../../../src/standards/call/CallIntentStandard.sol";
+import {CallIntentBuilder, CallIntentSegmentBuilder} from "./CallIntentBuilder.sol";
 import {
-    AssetBasedIntentCurve,
-    CurveType,
-    EvaluationType
-} from "../../../src/standards/assetbased/AssetBasedIntentCurve.sol";
+    AssetReleaseIntentStandard,
+    AssetReleaseIntentSegment
+} from "../../../src/standards/assetRelease/AssetReleaseIntentStandard.sol";
+import {AssetReleaseIntentBuilder, AssetReleaseIntentSegmentBuilder} from "./AssetReleaseIntentBuilder.sol";
 import {
-    AssetBasedIntentStandard,
-    AssetBasedIntentSegment
-} from "../../../src/standards/assetbased/AssetBasedIntentStandard.sol";
-import {DefaultIntentSegment} from "../../../src/standards/default/DefaultIntentStandard.sol";
-import {AssetType, _balanceOf, _transfer} from "../../../src/standards/assetbased/utils/AssetWrapper.sol";
+    AssetRequireIntentStandard,
+    AssetRequireIntentSegment
+} from "../../../src/standards/assetRequire/AssetRequireIntentStandard.sol";
+import {AssetRequireIntentBuilder, AssetRequireIntentSegmentBuilder} from "./AssetRequireIntentBuilder.sol";
+import {
+    EthReleaseIntentStandard,
+    EthReleaseIntentSegment
+} from "../../../src/standards/ethRelease/EthReleaseIntentStandard.sol";
+import {
+    EthReleaseIntentBuilder,
+    EthReleaseIntentSegmentBuilder,
+    EthReleaseIntentCurveBuilder
+} from "./EthReleaseIntentBuilder.sol";
+import {
+    EthRequireIntentStandard,
+    EthRequireIntentSegment
+} from "../../../src/standards/ethRequire/EthRequireIntentStandard.sol";
+import {
+    EthRequireIntentBuilder,
+    EthRequireIntentSegmentBuilder,
+    EthRequireIntentCurveBuilder
+} from "./EthRequireIntentBuilder.sol";
 import {TestERC20} from "../../../src/test/TestERC20.sol";
 import {TestERC721} from "../../../src/test/TestERC721.sol";
 import {TestERC1155} from "../../../src/test/TestERC1155.sol";
@@ -44,7 +58,11 @@ abstract contract ScenarioTestEnvironment is Test {
     using ECDSA for bytes32;
 
     EntryPoint internal _entryPoint;
-    AssetBasedIntentStandard internal _assetBasedIntentStandard;
+    CallIntentStandard internal _callIntentStandard;
+    AssetReleaseIntentStandard internal _assetReleaseIntentStandard;
+    AssetRequireIntentStandard internal _assetRequireIntentStandard;
+    EthReleaseIntentStandard internal _ethReleaseIntentStandard;
+    EthRequireIntentStandard internal _ethRequireIntentStandard;
     AbstractAccount internal _account;
 
     TestERC20 internal _testERC20;
@@ -69,11 +87,19 @@ abstract contract ScenarioTestEnvironment is Test {
     function setUp() public virtual {
         //deploy contracts
         _entryPoint = new EntryPoint();
-        _assetBasedIntentStandard = new AssetBasedIntentStandard(_entryPoint);
+        _callIntentStandard = new CallIntentStandard(_entryPoint);
+        _assetReleaseIntentStandard = new AssetReleaseIntentStandard(_entryPoint);
+        _assetRequireIntentStandard = new AssetRequireIntentStandard(_entryPoint);
+        _ethReleaseIntentStandard = new EthReleaseIntentStandard(_entryPoint);
+        _ethRequireIntentStandard = new EthRequireIntentStandard(_entryPoint);
         _account = new AbstractAccount(_entryPoint, _publicAddress);
 
-        //register asset based intent standard to entry point
-        _entryPoint.registerIntentStandard(_assetBasedIntentStandard);
+        //register intent standards to entry point
+        _entryPoint.registerIntentStandard(_callIntentStandard);
+        _entryPoint.registerIntentStandard(_assetReleaseIntentStandard);
+        _entryPoint.registerIntentStandard(_assetRequireIntentStandard);
+        _entryPoint.registerIntentStandard(_ethReleaseIntentStandard);
+        _entryPoint.registerIntentStandard(_ethRequireIntentStandard);
 
         _testERC20 = new TestERC20();
         _testERC721 = new TestERC721();
@@ -241,7 +267,7 @@ abstract contract ScenarioTestEnvironment is Test {
     }
 
     /**
-     * Private helper function to build a default intent struct for the solver.
+     * Private helper function to build a call intent struct for the solver.
      * @param callData1 Optoinal calldata for segment1.
      * @param callData2 Optoinal calldata for segment2.
      * @param callData3 Optoinal calldata for segment3.
@@ -255,16 +281,16 @@ abstract contract ScenarioTestEnvironment is Test {
     {
         UserIntent memory intent = IntentBuilder.create(address(_solverUtils), 0, 0);
         if (numSegments > 0) {
-            intent = _addDefaultSegment(intent, callData1);
+            intent = _addCallSegment(intent, CallIntentSegmentBuilder.create(callData1));
         }
         if (numSegments > 1) {
-            intent = _addDefaultSegment(intent, callData2);
+            intent = _addCallSegment(intent, CallIntentSegmentBuilder.create(callData2));
         }
         if (numSegments > 2) {
-            intent = _addDefaultSegment(intent, callData3);
+            intent = _addCallSegment(intent, CallIntentSegmentBuilder.create(callData3));
         }
         for (uint256 i = 3; i < numSegments; i++) {
-            intent = _addDefaultSegment(intent, "");
+            intent = _addCallSegment(intent, CallIntentSegmentBuilder.create(""));
         }
 
         return intent;
@@ -278,57 +304,44 @@ abstract contract ScenarioTestEnvironment is Test {
         return IntentBuilder.create(address(_account), 0, 0);
     }
 
-    /**
-     * Private helper function to build an asset-based intent segment struct.
-     * @param callData The data for an intended call.
-     * @return The created AssetBasedIntentSegment struct.
-     */
-    function _assetBasedSegment(bytes memory callData) internal pure returns (AssetBasedIntentSegment memory) {
-        return AssetBasedIntentSegmentBuilder.create(callData);
-    }
-
-    /**
-     * Private helper function to build a default intent segment struct.
-     * @param callData The data for an intended call.
-     * @return The created DefaultIntentSegment struct.
-     */
-    function _defaultSegment(bytes memory callData) internal pure returns (DefaultIntentSegment memory) {
-        return DefaultIntentSegmentBuilder.create(callData);
-    }
-
-    function _addAssetBasedSegment(UserIntent memory intent, bytes memory callData)
+    function _addAssetReleaseSegment(UserIntent memory intent, AssetReleaseIntentSegment memory segment)
         internal
         view
         returns (UserIntent memory)
     {
-        return AssetBasedIntentBuilder.addSegment(
-            intent, _assetBasedIntentStandard.standardId(), _assetBasedSegment(callData)
-        );
+        return AssetReleaseIntentBuilder.addSegment(intent, _assetReleaseIntentStandard.standardId(), segment);
     }
 
-    function _addDefaultSegment(UserIntent memory intent, bytes memory callData)
+    function _addAssetRequireSegment(UserIntent memory intent, AssetRequireIntentSegment memory segment)
         internal
         view
         returns (UserIntent memory)
     {
-        return
-            DefaultIntentBuilder.addSegment(intent, _entryPoint.getDefaultIntentStandardId(), _defaultSegment(callData));
+        return AssetRequireIntentBuilder.addSegment(intent, _assetRequireIntentStandard.standardId(), segment);
     }
 
-    function _addAssetBasedSegment(UserIntent memory intent, AssetBasedIntentSegment memory segment)
+    function _addEthReleaseSegment(UserIntent memory intent, EthReleaseIntentSegment memory segment)
         internal
         view
         returns (UserIntent memory)
     {
-        return AssetBasedIntentBuilder.addSegment(intent, _assetBasedIntentStandard.standardId(), segment);
+        return EthReleaseIntentBuilder.addSegment(intent, _ethReleaseIntentStandard.standardId(), segment);
     }
 
-    function _addDefaultSegment(UserIntent memory intent, DefaultIntentSegment memory segment)
+    function _addEthRequireSegment(UserIntent memory intent, EthRequireIntentSegment memory segment)
         internal
         view
         returns (UserIntent memory)
     {
-        return DefaultIntentBuilder.addSegment(intent, _entryPoint.getDefaultIntentStandardId(), segment);
+        return EthRequireIntentBuilder.addSegment(intent, _ethRequireIntentStandard.standardId(), segment);
+    }
+
+    function _addCallSegment(UserIntent memory intent, CallIntentSegment memory segment)
+        internal
+        view
+        returns (UserIntent memory)
+    {
+        return CallIntentBuilder.addSegment(intent, _callIntentStandard.standardId(), segment);
     }
 
     /**
@@ -346,6 +359,24 @@ abstract contract ScenarioTestEnvironment is Test {
         intents[0] = intent1;
         intents[1] = intent2;
         uint256[] memory order = new uint256[](0);
+        return IntentSolution({timestamp: block.timestamp, intents: intents, order: order});
+    }
+
+    /**
+     * Private helper function to build an intent solution struct.
+     * @param intent1 First intent that's part of the solution.
+     * @param intent2 Second intent that's part of the solution.
+     * @param order The order of intents to execute.
+     * @return The created IntentSolution struct.
+     */
+    function _solution(UserIntent memory intent1, UserIntent memory intent2, uint256[] memory order)
+        internal
+        view
+        returns (IntentSolution memory)
+    {
+        UserIntent[] memory intents = new UserIntent[](2);
+        intents[0] = intent1;
+        intents[1] = intent2;
         return IntentSolution({timestamp: block.timestamp, intents: intents, order: order});
     }
 

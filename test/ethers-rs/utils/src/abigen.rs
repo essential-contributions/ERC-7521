@@ -12,12 +12,24 @@ abigen!(RevertReason, "../../../out/Exec.sol/RevertReason.json");
 abigen!(EntryPoint, "../../../out/EntryPoint.sol/EntryPoint.json");
 
 abigen!(
-    AssetBasedIntentStandard,
-    "../../../out/AssetBasedIntentStandard.sol/AssetBasedIntentStandard.json"
+    CallIntentStandard,
+    "../../../out/CallIntentStandard.sol/CallIntentStandard.json"
 );
 abigen!(
-    AssetBasedIntentSegment,
-    "../../../out/AssetBasedIntentSegment.sol/AssetBasedIntentSegment.json"
+    AssetReleaseIntentStandard,
+    "../../../out/AssetReleaseIntentStandard.sol/AssetReleaseIntentStandard.json"
+);
+abigen!(
+    AssetRequireIntentStandard,
+    "../../../out/AssetRequireIntentStandard.sol/AssetRequireIntentStandard.json"
+);
+abigen!(
+    EthReleaseIntentStandard,
+    "../../../out/EthReleaseIntentStandard.sol/EthReleaseIntentStandard.json"
+);
+abigen!(
+    EthRequireIntentStandard,
+    "../../../out/EthRequireIntentStandard.sol/EthRequireIntentStandard.json"
 );
 
 abigen!(

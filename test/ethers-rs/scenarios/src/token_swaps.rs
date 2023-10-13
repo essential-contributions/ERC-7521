@@ -3,11 +3,10 @@ use utils::{
     abigen::entry_point::{IntentSolution, UserIntent},
     balance::TestBalances,
     builders::{
-        asset_based_intent_standard::{
-            curve_builder::{AssetType, CurveParameters, EvaluationType},
-            segment_builder::AssetBasedIntentSegment,
-        },
-        default_intent_standard::segment_builder::DefaultIntentSegment,
+        asset_curve_builder::{AssetType, CurveParameters, EvaluationType},
+        asset_release_intent_standard::segment_builder::AssetReleaseIntentSegment,
+        call_intent_standard::segment_builder::CallIntentSegment,
+        eth_require_intent_standard::segment_builder::EthRequireIntentSegment,
     },
     deploy::TestContracts,
     setup::{setup, sign_intent, PROVIDER, SOLVER_WALLET, USER_WALLET},
@@ -106,34 +105,28 @@ fn token_swap_intent(
 ) -> UserIntent {
     let mut token_swap_intent = UserIntent::create(sender, 0, 0);
 
-    let release_erc20_segment = AssetBasedIntentSegment::new(Bytes::default())
-        .add_asset_release_curve(
-            test_contracts.test_erc20.contract.address(),
-            U256::zero(),
-            AssetType::ERC20,
-            release_params,
-        )
-        .clone();
-    let require_eth_segment = AssetBasedIntentSegment::new(Bytes::default())
-        .add_asset_requirement_curve(
-            Address::default(),
-            U256::zero(),
-            AssetType::ETH,
-            require_params,
-            EvaluationType::RELATIVE,
-        )
-        .clone();
+    let release_erc20_segment = AssetReleaseIntentSegment::new(
+        test_contracts.test_erc20.contract.address(),
+        U256::zero(),
+        AssetType::ERC20,
+        release_params,
+    )
+    .clone();
 
-    token_swap_intent.add_segment_asset_based(
+    let require_eth_segment =
+        EthRequireIntentSegment::new(require_params, EvaluationType::RELATIVE);
+
+    token_swap_intent.add_segment_asset_release(
         test_contracts
-            .asset_based_intent_standard
+            .asset_release_intent_standard
             .standard_id
             .clone(),
         release_erc20_segment,
     );
-    token_swap_intent.add_segment_asset_based(
+
+    token_swap_intent.add_segment_eth_require(
         test_contracts
-            .asset_based_intent_standard
+            .eth_require_intent_standard
             .standard_id
             .clone(),
         require_eth_segment,
@@ -160,9 +153,9 @@ fn token_swap_solver_intent(
             evaluation,
         );
 
-    let solver_segment = DefaultIntentSegment::new(solver_calldata);
-    solution.add_segment_default(
-        test_contracts.entry_point.default_standard_id.clone(),
+    let solver_segment = CallIntentSegment::new(solver_calldata);
+    solution.add_segment_call(
+        test_contracts.call_intent_standard.standard_id.clone(),
         solver_segment,
     );
 

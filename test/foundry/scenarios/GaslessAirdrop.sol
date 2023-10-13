@@ -16,14 +16,15 @@ import "../utils/ScenarioTestEnvironment.sol";
  * 2. the solver unwraps all to ETH and moves them to their own wallet
  */
 contract GaslessAirdrop is ScenarioTestEnvironment {
-    using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
+    using AssetReleaseIntentSegmentBuilder for AssetReleaseIntentSegment;
 
     function _intentForCase(uint256 claimAmount, uint256 gasPayment) private view returns (UserIntent memory) {
         UserIntent memory intent = _intent();
-        intent = _addAssetBasedSegment(
+        intent = _addCallSegment(intent, CallIntentSegmentBuilder.create(_accountClaimAirdropERC20(claimAmount)));
+        intent = _addAssetReleaseSegment(
             intent,
-            _assetBasedSegment(_accountClaimAirdropERC20(claimAmount)).releaseERC20(
-                address(_testERC20), AssetBasedIntentCurveBuilder.constantCurve(int256(gasPayment))
+            AssetReleaseIntentSegmentBuilder.create().releaseERC20(
+                address(_testERC20), AssetCurveBuilder.constantCurve(int256(gasPayment))
             )
         );
         return intent;
@@ -31,10 +32,6 @@ contract GaslessAirdrop is ScenarioTestEnvironment {
 
     function _solverIntentForCase(uint256 gasPayment) private view returns (UserIntent memory) {
         return _solverIntent(_solverSwapAllERC20ForETH(gasPayment, address(_publicAddressSolver)), "", "", 1);
-    }
-
-    function setUp() public override {
-        super.setUp();
     }
 
     // the max value uint72 can hold is just more than 1000 ether,
@@ -85,7 +82,7 @@ contract GaslessAirdrop is ScenarioTestEnvironment {
         //execute
         vm.expectRevert(
             abi.encodeWithSelector(
-                IEntryPoint.FailedIntent.selector, 0, 0, "AA61 execution failed: insufficient release balance"
+                IEntryPoint.FailedIntent.selector, 0, 1, "AA61 execution failed: insufficient release balance"
             )
         );
         _entryPoint.handleIntents(solution);

@@ -11,7 +11,7 @@ import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
 import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
-import {DefaultIntentStandard} from "../standards/default/DefaultIntentStandard.sol";
+import {CallIntentStandard} from "../standards/call/CallIntentStandard.sol";
 import {Exec, RevertReason} from "../utils/Exec.sol";
 import {ValidationData, _parseValidationData} from "../utils/Helpers.sol";
 import {ReentrancyGuard} from "openzeppelin/security/ReentrancyGuard.sol";
@@ -20,8 +20,6 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     using IntentSolutionLib for IntentSolution;
     using UserIntentLib for UserIntent;
     using RevertReason for bytes;
-
-    bytes32 private constant DEFAULT_INTENT_STANDARD_ID = 0;
 
     uint256 private constant REVERT_REASON_MAX_LEN = 2048;
     uint256 private constant CONTEXT_DATA_MAX_LEN = 2048;
@@ -38,9 +36,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     address private _executionStateContext;
     address private _executionIntentStandard;
 
-    constructor() {
-        _registeredStandards[DEFAULT_INTENT_STANDARD_ID] = new DefaultIntentStandard(this);
-    }
+    constructor() {}
 
     /**
      * Execute a user intents solution.
@@ -285,9 +281,6 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
      * gets the intent standard ID for the given intent standard contract.
      */
     function getIntentStandardId(IIntentStandard intentStandard) external view returns (bytes32) {
-        if (address(intentStandard) == address(_registeredStandards[DEFAULT_INTENT_STANDARD_ID])) {
-            return DEFAULT_INTENT_STANDARD_ID;
-        }
         bytes32 standardId = _generateIntentStandardId(intentStandard);
         require(_registeredStandards[standardId] != IIntentStandard(address(0)), "AA82 unknown standard");
         return standardId;
@@ -301,17 +294,10 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     }
 
     /**
-     * returns true if the given standard is currently executing an intent for the msg.sender.
+     * returns true if the given standard is currently executing an intent segment for the msg.sender.
      */
-    function verifyExecutingIntentForStandard(IIntentStandard intentStandard) external view returns (bool) {
+    function verifyExecutingIntentSegmentForStandard(IIntentStandard intentStandard) external view returns (bool) {
         return _executionStateContext == msg.sender && _executionIntentStandard == address(intentStandard);
-    }
-
-    /**
-     * returns the default intent standard id.
-     */
-    function getDefaultIntentStandardId() external pure returns (bytes32) {
-        return DEFAULT_INTENT_STANDARD_ID;
     }
 
     /**
@@ -346,11 +332,11 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
             }
 
             // validate the intent segment itself
-            try standard.validateIntentSegment(intent.intentData[0]) {}
+            try standard.validateIntentSegment(intent.intentData[i]) {}
             catch Error(string memory revertReason) {
-                revert FailedIntent(intentIndex, 0, string.concat("AA62 reverted: ", revertReason));
+                revert FailedIntent(intentIndex, i, string.concat("AA62 reverted: ", revertReason));
             } catch {
-                revert FailedIntent(intentIndex, 0, "AA62 reverted (or OOG)");
+                revert FailedIntent(intentIndex, i, "AA62 reverted (or OOG)");
             }
         }
 

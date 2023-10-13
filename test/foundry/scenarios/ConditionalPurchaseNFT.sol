@@ -18,24 +18,30 @@ import "../utils/ScenarioTestEnvironment.sol";
  * 1. the solver sells the ERC721 NFT and moves all remaining ETH to their wallet
  */
 contract ConditionalPurchaseNFT is ScenarioTestEnvironment {
-    using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
+    using EthReleaseIntentSegmentBuilder for EthReleaseIntentSegment;
+    using AssetRequireIntentSegmentBuilder for AssetRequireIntentSegment;
 
     uint256 private _reqTokenId;
     uint256 private _accountInitialETHBalance = 10 ether;
 
     function _intentForCase(uint256 ethReleaseAmount, uint256 nftPrice) private view returns (UserIntent memory) {
         UserIntent memory intent = _intent();
-        intent = _addAssetBasedSegment(
+        intent = _addEthReleaseSegment(
             intent,
-            _assetBasedSegment("").releaseETH(AssetBasedIntentCurveBuilder.constantCurve(int256(ethReleaseAmount)))
+            EthReleaseIntentSegmentBuilder.create().releaseETH(
+                EthReleaseIntentCurveBuilder.constantCurve(int256(ethReleaseAmount))
+            )
         );
-        intent = _addDefaultSegment(
-            intent, _accountBuyERC1155AndTransferERC721(nftPrice, _reqTokenId, address(_assetBasedIntentStandard))
-        );
-        intent = _addAssetBasedSegment(
+        intent = _addCallSegment(
             intent,
-            _assetBasedSegment("").requireERC721(
-                address(_testERC721), _reqTokenId, AssetBasedIntentCurveBuilder.constantCurve(0), false
+            CallIntentSegmentBuilder.create(
+                _accountBuyERC1155AndTransferERC721(nftPrice, _reqTokenId, address(_callIntentStandard))
+            )
+        );
+        intent = _addAssetRequireSegment(
+            intent,
+            AssetRequireIntentSegmentBuilder.create().requireERC721(
+                address(_testERC721), _reqTokenId, AssetCurveBuilder.constantCurve(0), false
             )
         );
         return intent;

@@ -47,3 +47,24 @@ function _packValidationData(ValidationData memory data) pure returns (uint256) 
 function _packValidationData(bool sigFailed, uint48 validUntil, uint48 validAfter) pure returns (uint256) {
     return (sigFailed ? 1 : 0) | (uint256(validUntil) << 160) | (uint256(validAfter) << (160 + 48));
 }
+
+enum CurveType {
+    CONSTANT,
+    LINEAR,
+    EXPONENTIAL,
+    COUNT
+}
+
+enum EvaluationType {
+    ABSOLUTE,
+    RELATIVE,
+    COUNT
+}
+
+uint256 constant FLAGS_EVAL_TYPE_OFFSET = 0;
+uint256 constant FLAGS_CURVE_TYPE_OFFSET = 2;
+uint256 constant FLAGS_ASSET_TYPE_OFFSET = 8;
+
+uint16 constant FLAGS_EVAL_TYPE_MASK = 0x0003;
+uint16 constant FLAGS_CURVE_TYPE_MASK = 0x00fc;
+uint16 constant FLAGS_ASSET_TYPE_MASK = 0xff00;

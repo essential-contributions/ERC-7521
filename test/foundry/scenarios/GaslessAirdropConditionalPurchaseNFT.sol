@@ -22,7 +22,9 @@ import "../utils/ScenarioTestEnvironment.sol";
  * 1. the solver sells the ERC721 NFT and moves all remaining ETH to their wallet
  */
 contract GaslessAirdropConditionalPurchaseNFT is ScenarioTestEnvironment {
-    using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
+    using AssetReleaseIntentSegmentBuilder for AssetReleaseIntentSegment;
+    using AssetRequireIntentSegmentBuilder for AssetRequireIntentSegment;
+    using EthRequireIntentSegmentBuilder for EthRequireIntentSegment;
 
     uint256 private _reqTokenId;
 
@@ -32,19 +34,27 @@ contract GaslessAirdropConditionalPurchaseNFT is ScenarioTestEnvironment {
         returns (UserIntent memory)
     {
         UserIntent memory intent = _intent();
-        intent = _addAssetBasedSegment(
+        intent = _addCallSegment(intent, CallIntentSegmentBuilder.create(_accountClaimAirdropERC20(claimAmount)));
+        intent = _addAssetReleaseSegment(
             intent,
-            _assetBasedSegment(_accountClaimAirdropERC20(claimAmount)).releaseERC20(
-                address(_testERC20), AssetBasedIntentCurveBuilder.constantCurve(int256(totalAmountToSolver))
+            AssetReleaseIntentSegmentBuilder.create().releaseERC20(
+                address(_testERC20), AssetCurveBuilder.constantCurve(int256(totalAmountToSolver))
             )
         );
-        intent = _addDefaultSegment(
-            intent, _accountBuyERC1155AndTransferERC721(nftPrice, _reqTokenId, address(_assetBasedIntentStandard))
-        );
-        intent = _addAssetBasedSegment(
+        intent = _addCallSegment(
             intent,
-            _assetBasedSegment("").requireETH(AssetBasedIntentCurveBuilder.constantCurve(0), false).requireERC721(
-                address(_testERC721), _reqTokenId, AssetBasedIntentCurveBuilder.constantCurve(0), false
+            CallIntentSegmentBuilder.create(
+                _accountBuyERC1155AndTransferERC721(nftPrice, _reqTokenId, address(_callIntentStandard))
+            )
+        );
+        intent = _addEthRequireSegment(
+            intent,
+            EthRequireIntentSegmentBuilder.create().requireETH(EthRequireIntentCurveBuilder.constantCurve(0), false)
+        );
+        intent = _addAssetRequireSegment(
+            intent,
+            AssetRequireIntentSegmentBuilder.create().requireERC721(
+                address(_testERC721), _reqTokenId, AssetCurveBuilder.constantCurve(0), false
             )
         );
         return intent;
@@ -86,7 +96,12 @@ contract GaslessAirdropConditionalPurchaseNFT is ScenarioTestEnvironment {
         UserIntent memory solverIntent = _solverIntentForCase(totalAmountToSolver, nftPrice);
 
         //create solution
-        IntentSolution memory solution = _solution(intent, solverIntent);
+        uint256[] memory order = new uint256[](7);
+        order[0] = 0;
+        order[1] = 0;
+        order[2] = 1;
+        order[3] = 0;
+        IntentSolution memory solution = _solution(intent, solverIntent, order);
 
         //simulate execution
         vm.expectRevert(abi.encodeWithSelector(IEntryPoint.ExecutionResult.selector, true, false, ""));
@@ -125,7 +140,7 @@ contract GaslessAirdropConditionalPurchaseNFT is ScenarioTestEnvironment {
         //execute
         vm.expectRevert(
             abi.encodeWithSelector(
-                IEntryPoint.FailedIntent.selector, 0, 0, "AA61 execution failed: insufficient release balance"
+                IEntryPoint.FailedIntent.selector, 0, 1, "AA61 execution failed: insufficient release balance"
             )
         );
         _entryPoint.handleIntents(solution);
