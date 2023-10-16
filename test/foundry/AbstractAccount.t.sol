@@ -8,10 +8,10 @@ import {
     IERC165, IERC721Receiver, IERC1155Receiver, TokenCallbackHandler
 } from "../../src/wallet/TokenCallbackHandler.sol";
 import {IERC1155} from "openzeppelin/token/ERC1155/IERC1155.sol";
-import {AssetType, _transfer, _balanceOf} from "../../src/utils/AssetWrapper.sol";
+import {AssetType, _transfer, _balanceOf} from "../../src/utils/wrappers/AssetWrapper.sol";
 
 contract AbstractAccountTest is ScenarioTestEnvironment, TokenCallbackHandler {
-    using AssetReleaseIntentSegmentBuilder for AssetReleaseIntentSegment;
+    using Erc20ReleaseIntentSegmentBuilder for Erc20ReleaseIntentSegment;
 
     function test_entryPoint() public {
         assertEq(address(_account.entryPoint()), address(_entryPoint));
@@ -24,10 +24,10 @@ contract AbstractAccountTest is ScenarioTestEnvironment, TokenCallbackHandler {
         // user's intent
         UserIntent memory intent = _intent();
         intent = _addCallSegment(intent, CallIntentSegmentBuilder.create(_accountClaimAirdropERC20(2 ether)));
-        intent = _addAssetReleaseSegment(
+        intent = _addErc20ReleaseSegment(
             intent,
-            AssetReleaseIntentSegmentBuilder.create().releaseERC20(
-                address(_testERC20), AssetCurveBuilder.constantCurve(int256(1 ether))
+            Erc20ReleaseIntentSegmentBuilder.create().releaseERC20(
+                address(_testERC20), CurveBuilder.constantCurve(int256(1 ether))
             )
         );
         intent = _signIntent(intent);

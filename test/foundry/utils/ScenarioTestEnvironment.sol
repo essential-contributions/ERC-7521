@@ -5,43 +5,51 @@ pragma solidity ^0.8.13;
 /* solhint-disable const-name-snakecase */
 
 import "forge-std/Test.sol";
-import {IntentBuilder} from "./IntentBuilder.sol";
-import {AssetCurveBuilder} from "./AssetCurveBuilder.sol";
+import {IntentBuilder} from "./builders/IntentBuilder.sol";
 import {EntryPoint} from "../../../src/core/EntryPoint.sol";
 import {IEntryPoint} from "../../../src/interfaces/IEntryPoint.sol";
-import {IIntentStandard} from "../../../src/interfaces/IIntentStandard.sol";
 import {UserIntent} from "../../../src/interfaces/UserIntent.sol";
 import {IntentSolution} from "../../../src/interfaces/IntentSolution.sol";
-import {CallIntentStandard, CallIntentSegment} from "../../../src/standards/call/CallIntentStandard.sol";
-import {CallIntentBuilder, CallIntentSegmentBuilder} from "./CallIntentBuilder.sol";
+import {CallIntentStandard, CallIntentSegment} from "../../../src/standards/CallIntentStandard.sol";
+import {CallIntentBuilder, CallIntentSegmentBuilder} from "./builders/standards/CallIntentBuilder.sol";
 import {
     AssetReleaseIntentStandard,
     AssetReleaseIntentSegment
-} from "../../../src/standards/assetRelease/AssetReleaseIntentStandard.sol";
-import {AssetReleaseIntentBuilder, AssetReleaseIntentSegmentBuilder} from "./AssetReleaseIntentBuilder.sol";
+} from "../../../src/standards/AssetReleaseIntentStandard.sol";
+import {AssetReleaseIntentBuilder} from "./builders/standards/AssetReleaseIntentBuilder.sol";
+import {
+    Erc20ReleaseIntentStandard,
+    Erc20ReleaseIntentSegment
+} from "../../../src/standards/Erc20ReleaseIntentStandard.sol";
+import {
+    Erc20ReleaseIntentBuilder,
+    Erc20ReleaseIntentSegmentBuilder
+} from "./builders/standards/Erc20ReleaseIntentBuilder.sol";
 import {
     AssetRequireIntentStandard,
     AssetRequireIntentSegment
-} from "../../../src/standards/assetRequire/AssetRequireIntentStandard.sol";
-import {AssetRequireIntentBuilder, AssetRequireIntentSegmentBuilder} from "./AssetRequireIntentBuilder.sol";
+} from "../../../src/standards/AssetRequireIntentStandard.sol";
 import {
-    EthReleaseIntentStandard,
-    EthReleaseIntentSegment
-} from "../../../src/standards/ethRelease/EthReleaseIntentStandard.sol";
+    AssetRequireIntentBuilder,
+    AssetRequireIntentSegmentBuilder
+} from "./builders/standards/AssetRequireIntentBuilder.sol";
+import {CurveBuilder} from "./builders/CurveBuilder.sol";
 import {
-    EthReleaseIntentBuilder,
-    EthReleaseIntentSegmentBuilder,
-    EthReleaseIntentCurveBuilder
-} from "./EthReleaseIntentBuilder.sol";
+    Erc20RequireIntentStandard,
+    Erc20RequireIntentSegment
+} from "../../../src/standards/Erc20RequireIntentStandard.sol";
 import {
-    EthRequireIntentStandard,
-    EthRequireIntentSegment
-} from "../../../src/standards/ethRequire/EthRequireIntentStandard.sol";
+    Erc20RequireIntentBuilder,
+    Erc20RequireIntentSegmentBuilder
+} from "./builders/standards/Erc20RequireIntentBuilder.sol";
+import {EthReleaseIntentStandard, EthReleaseIntentSegment} from "../../../src/standards/EthReleaseIntentStandard.sol";
 import {
-    EthRequireIntentBuilder,
-    EthRequireIntentSegmentBuilder,
-    EthRequireIntentCurveBuilder
-} from "./EthRequireIntentBuilder.sol";
+    EthReleaseIntentBuilder, EthReleaseIntentSegmentBuilder
+} from "./builders/standards/EthReleaseIntentBuilder.sol";
+import {EthRequireIntentStandard, EthRequireIntentSegment} from "../../../src/standards/EthRequireIntentStandard.sol";
+import {
+    EthRequireIntentBuilder, EthRequireIntentSegmentBuilder
+} from "./builders/standards/EthRequireIntentBuilder.sol";
 import {TestERC20} from "../../../src/test/TestERC20.sol";
 import {TestERC721} from "../../../src/test/TestERC721.sol";
 import {TestERC1155} from "../../../src/test/TestERC1155.sol";
@@ -63,6 +71,8 @@ abstract contract ScenarioTestEnvironment is Test {
     AssetRequireIntentStandard internal _assetRequireIntentStandard;
     EthReleaseIntentStandard internal _ethReleaseIntentStandard;
     EthRequireIntentStandard internal _ethRequireIntentStandard;
+    Erc20ReleaseIntentStandard internal _erc20ReleaseIntentStandard;
+    Erc20RequireIntentStandard internal _erc20RequireIntentStandard;
     AbstractAccount internal _account;
 
     TestERC20 internal _testERC20;
@@ -92,6 +102,8 @@ abstract contract ScenarioTestEnvironment is Test {
         _assetRequireIntentStandard = new AssetRequireIntentStandard(_entryPoint);
         _ethReleaseIntentStandard = new EthReleaseIntentStandard(_entryPoint);
         _ethRequireIntentStandard = new EthRequireIntentStandard(_entryPoint);
+        _erc20ReleaseIntentStandard = new Erc20ReleaseIntentStandard(_entryPoint);
+        _erc20RequireIntentStandard = new Erc20RequireIntentStandard(_entryPoint);
         _account = new AbstractAccount(_entryPoint, _publicAddress);
 
         //register intent standards to entry point
@@ -100,6 +112,8 @@ abstract contract ScenarioTestEnvironment is Test {
         _entryPoint.registerIntentStandard(_assetRequireIntentStandard);
         _entryPoint.registerIntentStandard(_ethReleaseIntentStandard);
         _entryPoint.registerIntentStandard(_ethRequireIntentStandard);
+        _entryPoint.registerIntentStandard(_erc20ReleaseIntentStandard);
+        _entryPoint.registerIntentStandard(_erc20RequireIntentStandard);
 
         _testERC20 = new TestERC20();
         _testERC721 = new TestERC721();
@@ -334,6 +348,22 @@ abstract contract ScenarioTestEnvironment is Test {
         returns (UserIntent memory)
     {
         return EthRequireIntentBuilder.addSegment(intent, _ethRequireIntentStandard.standardId(), segment);
+    }
+
+    function _addErc20ReleaseSegment(UserIntent memory intent, Erc20ReleaseIntentSegment memory segment)
+        internal
+        view
+        returns (UserIntent memory)
+    {
+        return Erc20ReleaseIntentBuilder.addSegment(intent, _erc20ReleaseIntentStandard.standardId(), segment);
+    }
+
+    function _addErc20RequireSegment(UserIntent memory intent, Erc20RequireIntentSegment memory segment)
+        internal
+        view
+        returns (UserIntent memory)
+    {
+        return Erc20RequireIntentBuilder.addSegment(intent, _erc20RequireIntentStandard.standardId(), segment);
     }
 
     function _addCallSegment(UserIntent memory intent, CallIntentSegment memory segment)

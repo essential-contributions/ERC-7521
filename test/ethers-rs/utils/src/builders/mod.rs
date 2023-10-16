@@ -1,9 +1,8 @@
 pub mod asset_curve_builder;
-pub mod asset_release_intent_standard;
-pub mod asset_require_intent_standard;
-pub mod call_intent_standard;
+pub mod curve_type;
+pub mod erc20_curve_builder;
 pub mod eth_curve_builder;
-pub mod eth_release_intent_standard;
-pub mod eth_require_intent_standard;
+pub mod evaluation_type;
 pub mod intent_builder;
 pub mod solution_builder;
+pub mod standards;

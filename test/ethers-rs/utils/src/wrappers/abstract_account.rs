@@ -1,5 +1,6 @@
-use super::entry_point::EntryPointContract;
-use crate::{abigen::AbstractAccount, setup::USER_WALLET};
+use crate::{
+    abigen::AbstractAccount, setup::USER_WALLET, wrappers::entry_point::EntryPointContract,
+};
 use ethers::{prelude::*, utils::parse_ether};
 use k256::ecdsa::SigningKey;
 use std::sync::Arc;

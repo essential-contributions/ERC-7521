@@ -4,29 +4,20 @@ pragma solidity ^0.8.13;
 /* solhint-disable func-name-mixedcase */
 
 import "forge-std/Test.sol";
-import {IntentBuilder} from "./IntentBuilder.sol";
+import {IntentBuilder} from "./builders/IntentBuilder.sol";
+import {CurveBuilder} from "./builders/CurveBuilder.sol";
 import {
-    EthReleaseIntentBuilder,
-    EthReleaseIntentSegmentBuilder,
-    EthReleaseIntentCurveBuilder
-} from "./EthReleaseIntentBuilder.sol";
+    EthReleaseIntentBuilder, EthReleaseIntentSegmentBuilder
+} from "./builders/standards/EthReleaseIntentBuilder.sol";
 import {
-    EthRequireIntentBuilder,
-    EthRequireIntentSegmentBuilder,
-    EthRequireIntentCurveBuilder
-} from "./EthRequireIntentBuilder.sol";
+    EthRequireIntentBuilder, EthRequireIntentSegmentBuilder
+} from "./builders/standards/EthRequireIntentBuilder.sol";
 import {EntryPoint} from "../../../src/core/EntryPoint.sol";
 import {IIntentStandard} from "../../../src/interfaces/IIntentStandard.sol";
 import {UserIntent, UserIntentLib} from "../../../src/interfaces/UserIntent.sol";
-import {CallIntentStandard, CallIntentSegment} from "../../../src/standards/call/CallIntentStandard.sol";
-import {
-    EthReleaseIntentStandard,
-    EthReleaseIntentSegment
-} from "../../../src/standards/ethRelease/EthReleaseIntentStandard.sol";
-import {
-    EthRequireIntentStandard,
-    EthRequireIntentSegment
-} from "../../../src/standards/ethRequire/EthRequireIntentStandard.sol";
+import {CallIntentStandard, CallIntentSegment} from "../../../src/standards/CallIntentStandard.sol";
+import {EthReleaseIntentStandard, EthReleaseIntentSegment} from "../../../src/standards/EthReleaseIntentStandard.sol";
+import {EthRequireIntentStandard, EthRequireIntentSegment} from "../../../src/standards/EthRequireIntentStandard.sol";
 import {AbstractAccount} from "../../../src/wallet/AbstractAccount.sol";
 import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 
@@ -62,14 +53,12 @@ abstract contract TestEnvironment is Test {
         intent = EthReleaseIntentBuilder.addSegment(
             intent,
             _ethReleaseIntentStandard.standardId(),
-            EthReleaseIntentSegmentBuilder.create().releaseETH(
-                EthReleaseIntentCurveBuilder.linearCurve(2, 10, 20, false)
-            )
+            EthReleaseIntentSegmentBuilder.create().releaseETH(CurveBuilder.linearCurve(2, 10, 20, false))
         );
         intent = EthRequireIntentBuilder.addSegment(
             intent,
             _ethRequireIntentStandard.standardId(),
-            EthRequireIntentSegmentBuilder.create().requireETH(EthRequireIntentCurveBuilder.constantCurve(10), false)
+            EthRequireIntentSegmentBuilder.create().requireETH(CurveBuilder.constantCurve(10), false)
         );
 
         return intent;

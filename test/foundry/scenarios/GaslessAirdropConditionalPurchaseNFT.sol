@@ -22,7 +22,7 @@ import "../utils/ScenarioTestEnvironment.sol";
  * 1. the solver sells the ERC721 NFT and moves all remaining ETH to their wallet
  */
 contract GaslessAirdropConditionalPurchaseNFT is ScenarioTestEnvironment {
-    using AssetReleaseIntentSegmentBuilder for AssetReleaseIntentSegment;
+    using Erc20ReleaseIntentSegmentBuilder for Erc20ReleaseIntentSegment;
     using AssetRequireIntentSegmentBuilder for AssetRequireIntentSegment;
     using EthRequireIntentSegmentBuilder for EthRequireIntentSegment;
 
@@ -35,10 +35,10 @@ contract GaslessAirdropConditionalPurchaseNFT is ScenarioTestEnvironment {
     {
         UserIntent memory intent = _intent();
         intent = _addCallSegment(intent, CallIntentSegmentBuilder.create(_accountClaimAirdropERC20(claimAmount)));
-        intent = _addAssetReleaseSegment(
+        intent = _addErc20ReleaseSegment(
             intent,
-            AssetReleaseIntentSegmentBuilder.create().releaseERC20(
-                address(_testERC20), AssetCurveBuilder.constantCurve(int256(totalAmountToSolver))
+            Erc20ReleaseIntentSegmentBuilder.create().releaseERC20(
+                address(_testERC20), CurveBuilder.constantCurve(int256(totalAmountToSolver))
             )
         );
         intent = _addCallSegment(
@@ -48,13 +48,12 @@ contract GaslessAirdropConditionalPurchaseNFT is ScenarioTestEnvironment {
             )
         );
         intent = _addEthRequireSegment(
-            intent,
-            EthRequireIntentSegmentBuilder.create().requireETH(EthRequireIntentCurveBuilder.constantCurve(0), false)
+            intent, EthRequireIntentSegmentBuilder.create().requireETH(CurveBuilder.constantCurve(0), false)
         );
         intent = _addAssetRequireSegment(
             intent,
             AssetRequireIntentSegmentBuilder.create().requireERC721(
-                address(_testERC721), _reqTokenId, AssetCurveBuilder.constantCurve(0), false
+                address(_testERC721), _reqTokenId, CurveBuilder.constantCurve(0), false
             )
         );
         return intent;

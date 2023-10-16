@@ -1,6 +1,5 @@
+use crate::builders::{curve_type::CurveType, evaluation_type::EvaluationType};
 use ethers::{abi::AbiEncode, prelude::*};
-
-use super::asset_curve_builder::{CurveType, EvaluationType};
 
 #[derive(
     Clone,

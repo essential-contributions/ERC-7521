@@ -1,5 +1,4 @@
-use super::entry_point::EntryPointContract;
-use crate::abigen::EthReleaseIntentStandard;
+use crate::{abigen::EthReleaseIntentStandard, wrappers::entry_point::EntryPointContract};
 use ethers::prelude::*;
 use eyre::Result;
 use k256::ecdsa::SigningKey;

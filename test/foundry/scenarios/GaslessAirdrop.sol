@@ -16,15 +16,15 @@ import "../utils/ScenarioTestEnvironment.sol";
  * 2. the solver unwraps all to ETH and moves them to their own wallet
  */
 contract GaslessAirdrop is ScenarioTestEnvironment {
-    using AssetReleaseIntentSegmentBuilder for AssetReleaseIntentSegment;
+    using Erc20ReleaseIntentSegmentBuilder for Erc20ReleaseIntentSegment;
 
     function _intentForCase(uint256 claimAmount, uint256 gasPayment) private view returns (UserIntent memory) {
         UserIntent memory intent = _intent();
         intent = _addCallSegment(intent, CallIntentSegmentBuilder.create(_accountClaimAirdropERC20(claimAmount)));
-        intent = _addAssetReleaseSegment(
+        intent = _addErc20ReleaseSegment(
             intent,
-            AssetReleaseIntentSegmentBuilder.create().releaseERC20(
-                address(_testERC20), AssetCurveBuilder.constantCurve(int256(gasPayment))
+            Erc20ReleaseIntentSegmentBuilder.create().releaseERC20(
+                address(_testERC20), CurveBuilder.constantCurve(int256(gasPayment))
             )
         );
         return intent;

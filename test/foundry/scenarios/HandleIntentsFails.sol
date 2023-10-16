@@ -54,7 +54,7 @@ contract ValidateUserIntentTest is ScenarioTestEnvironment {
     function test_fail_validateWithStandard() public {
         UserIntent memory intent = _intent();
         EthReleaseIntentSegment memory segment =
-            EthReleaseIntentSegmentBuilder.create().releaseETH(EthReleaseIntentCurveBuilder.constantCurve(10));
+            EthReleaseIntentSegmentBuilder.create().releaseETH(CurveBuilder.constantCurve(10));
         // invalidate curve params
         segment.release.params = new int256[](0);
         intent = _addEthReleaseSegment(intent, segment);

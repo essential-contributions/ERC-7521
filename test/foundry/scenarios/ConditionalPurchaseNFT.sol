@@ -28,9 +28,7 @@ contract ConditionalPurchaseNFT is ScenarioTestEnvironment {
         UserIntent memory intent = _intent();
         intent = _addEthReleaseSegment(
             intent,
-            EthReleaseIntentSegmentBuilder.create().releaseETH(
-                EthReleaseIntentCurveBuilder.constantCurve(int256(ethReleaseAmount))
-            )
+            EthReleaseIntentSegmentBuilder.create().releaseETH(CurveBuilder.constantCurve(int256(ethReleaseAmount)))
         );
         intent = _addCallSegment(
             intent,
@@ -41,7 +39,7 @@ contract ConditionalPurchaseNFT is ScenarioTestEnvironment {
         intent = _addAssetRequireSegment(
             intent,
             AssetRequireIntentSegmentBuilder.create().requireERC721(
-                address(_testERC721), _reqTokenId, AssetCurveBuilder.constantCurve(0), false
+                address(_testERC721), _reqTokenId, CurveBuilder.constantCurve(0), false
             )
         );
         return intent;

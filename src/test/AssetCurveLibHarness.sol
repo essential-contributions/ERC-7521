@@ -11,8 +11,8 @@ import {
     isRelativeEvaluation,
     CurveType,
     EvaluationType
-} from "../utils/AssetCurve.sol";
-import {AssetType} from "../utils/AssetWrapper.sol";
+} from "../utils/curves/AssetCurve.sol";
+import {AssetType} from "../utils/wrappers/AssetWrapper.sol";
 
 library AssetCurveLibHarness {
     function validateCurve(AssetCurve calldata curve) public pure {

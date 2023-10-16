@@ -31,6 +31,14 @@ abigen!(
     EthRequireIntentStandard,
     "../../../out/EthRequireIntentStandard.sol/EthRequireIntentStandard.json"
 );
+abigen!(
+    Erc20ReleaseIntentStandard,
+    "../../../out/Erc20ReleaseIntentStandard.sol/Erc20ReleaseIntentStandard.json"
+);
+abigen!(
+    Erc20RequireIntentStandard,
+    "../../../out/Erc20RequireIntentStandard.sol/Erc20RequireIntentStandard.json"
+);
 
 abigen!(
     AbstractAccount,

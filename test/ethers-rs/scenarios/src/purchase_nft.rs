@@ -3,12 +3,13 @@ use utils::{
     abigen::entry_point::{IntentSolution, UserIntent},
     balance::TestBalances,
     builders::{
-        asset_curve_builder::{
-            AssetType, ConstantCurveParameters, CurveParameters, EvaluationType,
+        curve_type::{ConstantCurveParameters, CurveParameters},
+        evaluation_type::EvaluationType,
+        standards::{
+            call_intent_standard::CallIntentSegment,
+            erc20_release_intent_standard::Erc20ReleaseIntentSegment,
+            eth_require_intent_standard::EthRequireIntentSegment,
         },
-        asset_release_intent_standard::segment_builder::AssetReleaseIntentSegment,
-        call_intent_standard::segment_builder::CallIntentSegment,
-        eth_require_intent_standard::segment_builder::EthRequireIntentSegment,
     },
     deploy::TestContracts,
     setup::{setup, sign_intent, PROVIDER, SOLVER_WALLET, USER_WALLET},
@@ -119,10 +120,8 @@ fn purchase_nft_intent(
 ) -> UserIntent {
     let mut purchase_nft_intent = UserIntent::create(sender, 0, 0);
 
-    let release_erc20_segment = AssetReleaseIntentSegment::new(
+    let release_erc20_segment = Erc20ReleaseIntentSegment::new(
         test_contracts.test_erc20.contract.address(),
-        U256::zero(),
-        AssetType::ERC20,
         release_params,
     )
     .clone();
@@ -141,9 +140,9 @@ fn purchase_nft_intent(
     let require_eth_segment =
         EthRequireIntentSegment::new(require_params, EvaluationType::ABSOLUTE).clone();
 
-    purchase_nft_intent.add_segment_asset_release(
+    purchase_nft_intent.add_segment_erc20_release(
         test_contracts
-            .asset_release_intent_standard
+            .erc20_release_intent_standard
             .standard_id
             .clone(),
         release_erc20_segment,

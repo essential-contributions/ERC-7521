@@ -1,12 +1,16 @@
-use ::utils::builders::eth_release_intent_standard::segment_builder::EthReleaseIntentSegment;
 use ethers::prelude::*;
 use utils::{
     abigen::entry_point::{IntentSolution, UserIntent},
     balance::TestBalances,
     builders::{
-        asset_curve_builder::{AssetType, CurveParameters, EvaluationType},
-        asset_require_intent_standard::segment_builder::AssetRequireIntentSegment,
-        call_intent_standard::segment_builder::CallIntentSegment,
+        asset_curve_builder::AssetType,
+        curve_type::CurveParameters,
+        evaluation_type::EvaluationType,
+        standards::{
+            asset_require_intent_standard::AssetRequireIntentSegment,
+            call_intent_standard::CallIntentSegment,
+            eth_release_intent_standard::EthReleaseIntentSegment,
+        },
     },
     deploy::TestContracts,
     setup::{setup, sign_intent, PROVIDER, SOLVER_WALLET, USER_WALLET},

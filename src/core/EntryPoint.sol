@@ -11,7 +11,7 @@ import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
 import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
-import {CallIntentStandard} from "../standards/call/CallIntentStandard.sol";
+import {CallIntentStandard} from "../standards/CallIntentStandard.sol";
 import {Exec, RevertReason} from "../utils/Exec.sol";
 import {ValidationData, _parseValidationData} from "../utils/Helpers.sol";
 import {ReentrancyGuard} from "openzeppelin/security/ReentrancyGuard.sol";

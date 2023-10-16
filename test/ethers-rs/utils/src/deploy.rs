@@ -3,6 +3,8 @@ use crate::wrappers::{
     asset_release_intent_standard::AssetReleaseIntentStandardContract,
     asset_require_intent_standard::AssetRequireIntentStandardContract,
     call_intent_standard::CallIntentStandardContract, entry_point::EntryPointContract,
+    erc20_release_intent_standard::Erc20ReleaseIntentStandardContract,
+    erc20_require_intent_standard::Erc20RequireIntentStandardContract,
     eth_release_intent_standard::EthReleaseIntentStandardContract,
     eth_require_intent_standard::EthRequireIntentStandardContract,
     solver_utils::SolverUtilsContract, test_erc1155::TestERC1155Contract,
@@ -19,6 +21,8 @@ pub struct TestContracts {
     pub asset_require_intent_standard: AssetRequireIntentStandardContract,
     pub eth_release_intent_standard: EthReleaseIntentStandardContract,
     pub eth_require_intent_standard: EthRequireIntentStandardContract,
+    pub erc20_release_intent_standard: Erc20ReleaseIntentStandardContract,
+    pub erc20_require_intent_standard: Erc20RequireIntentStandardContract,
     pub call_intent_standard: CallIntentStandardContract,
     pub user_account: AbstractAccountContract,
     pub test_erc20: TestERC20Contract,
@@ -41,6 +45,10 @@ pub async fn deploy_all(
         EthReleaseIntentStandardContract::deploy(client.clone(), &entry_point).await;
     let eth_require_intent_standard =
         EthRequireIntentStandardContract::deploy(client.clone(), &entry_point).await;
+    let erc20_release_intent_standard =
+        Erc20ReleaseIntentStandardContract::deploy(client.clone(), &entry_point).await;
+    let erc20_require_intent_standard =
+        Erc20RequireIntentStandardContract::deploy(client.clone(), &entry_point).await;
     let call_intent_standard =
         CallIntentStandardContract::deploy(client.clone(), &entry_point).await;
     let user_account = AbstractAccountContract::deploy(client.clone(), &entry_point).await;
@@ -65,6 +73,8 @@ pub async fn deploy_all(
         asset_require_intent_standard,
         eth_release_intent_standard,
         eth_require_intent_standard,
+        erc20_release_intent_standard,
+        erc20_require_intent_standard,
         call_intent_standard,
         user_account,
         test_erc20,
