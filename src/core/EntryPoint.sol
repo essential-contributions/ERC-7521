@@ -321,6 +321,11 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         private
         returns (uint256 validationData)
     {
+        // validate intent standards and intent data arrays are the same length
+        if (intent.standards.length != intent.intentData.length) {
+            revert FailedIntent(intentIndex, 0, "AA83 standards.length != intentData.length");
+        }
+
         _executionStateContext = EX_STATE_VALIDATION_EXECUTING;
         _executionIntentStandard = EX_STANDARD_NOT_ACTIVE;
 
@@ -328,7 +333,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         for (uint256 i = 0; i < intent.standards.length; i++) {
             IIntentStandard standard = _registeredStandards[intent.standards[i]];
             if (standard == IIntentStandard(address(0))) {
-                revert FailedIntent(intentIndex, 0, "AA82 unknown standard");
+                revert FailedIntent(intentIndex, i, "AA82 unknown standard");
             }
 
             // validate the intent segment itself

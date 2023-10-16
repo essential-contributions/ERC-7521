@@ -34,11 +34,38 @@ contract HandleIntentsTest is ScenarioTestEnvironment {
 contract ValidateUserIntentTest is ScenarioTestEnvironment {
     using EthReleaseIntentSegmentBuilder for EthReleaseIntentSegment;
 
+    function test_fail_standardAndDataLengthMismatch() public {
+        UserIntent memory intent = _intent();
+
+        // intent standards.length == intentData.length + 1
+        bytes32[] memory standards = new bytes32[](1);
+        standards[0] = _ethReleaseIntentStandard.standardId();
+        intent.standards = standards;
+
+        IntentSolution memory solution = _solution(intent, _intent());
+
+        // call handleIntents with mismatched standard and data length
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IEntryPoint.FailedIntent.selector, 0, 0, "AA83 standards.length != intentData.length"
+            )
+        );
+        _entryPoint.handleIntents(solution);
+
+        // call simulateHandleIntents with mismatched standard and data length
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IEntryPoint.FailedIntent.selector, 0, 0, "AA83 standards.length != intentData.length"
+            )
+        );
+        _entryPoint.simulateHandleIntents(solution, address(0), "");
+    }
+
     function test_fail_unknownStandard() public {
         UserIntent memory intent = _intent();
-        bytes32[] memory standards = new bytes32[](1);
-        standards[0] = bytes32(uint256(123));
-        intent.standards = standards;
+        intent = _addCallSegment(intent, CallIntentSegmentBuilder.create(""));
+        // invalidate standard id
+        intent.standards[0] = bytes32(uint256(123));
 
         IntentSolution memory solution = _solution(intent, _intent());
 
