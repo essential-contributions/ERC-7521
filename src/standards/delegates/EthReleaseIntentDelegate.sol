@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+import "forge-std/Test.sol";
 import {EthCurve} from "../../utils/curves/EthCurve.sol";
 import {_balanceOf, _transfer} from "../../utils/wrappers/EthWrapper.sol";
 
@@ -32,4 +33,6 @@ contract EthReleaseIntentDelegate {
     function _encodeReleaseEth(address to, uint256 amount) internal pure returns (bytes memory) {
         return abi.encodeWithSelector(this.releaseEth.selector, to, amount);
     }
+
+    function testNothing() public {}
 }

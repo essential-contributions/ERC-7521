@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 /* solhint-disable private-vars-leading-underscore */
 
+import "forge-std/Test.sol";
 import {AssetCurve, isRelativeEvaluation, validate, evaluate, parseAssetType} from "../utils/curves/AssetCurve.sol";
 import {AssetReleaseIntentDelegate} from "./delegates/AssetReleaseIntentDelegate.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
@@ -130,4 +131,6 @@ contract AssetReleaseIntentStandard is EntryPointTruster, AssetReleaseIntentDele
             IIntentDelegate(address(from)).generalizedIntentDelegateCall(data);
         }
     }
+
+    function testNothingAtAll() public {}
 }

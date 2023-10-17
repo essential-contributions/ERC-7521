@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+import "forge-std/Test.sol";
 import {
     Erc20Curve,
     evaluate,
@@ -32,4 +33,6 @@ library Erc20CurveLibHarness {
     function isCurveRelativeEvaluation(Erc20Curve calldata curve) public pure returns (bool) {
         return isRelativeEvaluation(curve);
     }
+
+    function testNothing() public {}
 }

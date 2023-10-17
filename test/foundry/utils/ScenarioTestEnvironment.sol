@@ -97,7 +97,7 @@ abstract contract ScenarioTestEnvironment is Test {
     function setUp() public virtual {
         //deploy contracts
         _entryPoint = new EntryPoint();
-        _callIntentStandard = new CallIntentStandard(_entryPoint);
+        _callIntentStandard = CallIntentStandard(_entryPoint);
         _assetReleaseIntentStandard = new AssetReleaseIntentStandard(_entryPoint);
         _assetRequireIntentStandard = new AssetRequireIntentStandard(_entryPoint);
         _ethReleaseIntentStandard = new EthReleaseIntentStandard(_entryPoint);
@@ -107,7 +107,6 @@ abstract contract ScenarioTestEnvironment is Test {
         _account = new AbstractAccount(_entryPoint, _publicAddress);
 
         //register intent standards to entry point
-        _entryPoint.registerIntentStandard(_callIntentStandard);
         _entryPoint.registerIntentStandard(_assetReleaseIntentStandard);
         _entryPoint.registerIntentStandard(_assetRequireIntentStandard);
         _entryPoint.registerIntentStandard(_ethReleaseIntentStandard);

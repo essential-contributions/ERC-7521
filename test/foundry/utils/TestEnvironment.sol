@@ -37,13 +37,12 @@ abstract contract TestEnvironment is Test {
 
     function setUp() public virtual {
         _entryPoint = new EntryPoint();
-        _callIntentStandard = new CallIntentStandard(_entryPoint);
+        _callIntentStandard = CallIntentStandard(_entryPoint);
         _ethReleaseIntentStandard = new EthReleaseIntentStandard(_entryPoint);
         _ethRequireIntentStandard = new EthRequireIntentStandard(_entryPoint);
         _account = new AbstractAccount(_entryPoint, _publicAddress);
 
         //register intent standards to entry point
-        _entryPoint.registerIntentStandard(_callIntentStandard);
         _entryPoint.registerIntentStandard(_ethReleaseIntentStandard);
         _entryPoint.registerIntentStandard(_ethRequireIntentStandard);
     }

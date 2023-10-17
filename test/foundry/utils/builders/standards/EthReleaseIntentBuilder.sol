@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+import "forge-std/Test.sol";
 import {UserIntent} from "../../../../../src/interfaces/UserIntent.sol";
 import {EthCurve, generateEthFlags, CurveType, EvaluationType} from "../../../../../src/utils/curves/EthCurve.sol";
-import {getCurveType} from "../CurveBuilder.sol";
+import {CurveBuilder} from "../CurveBuilder.sol";
 import {
     EthReleaseIntentStandard,
     EthReleaseIntentSegment
@@ -85,6 +86,8 @@ library EthReleaseIntentBuilder {
         EthReleaseIntentSegment memory decoded = abi.decode(raw, (EthReleaseIntentSegment));
         return decoded;
     }
+
+    function testNothing() public {}
 }
 
 /**
@@ -125,9 +128,13 @@ library EthReleaseIntentSegmentBuilder {
         pure
         returns (EthReleaseIntentSegment memory)
     {
-        segment.release =
-            EthCurve({flags: generateEthFlags(getCurveType(curveParams), EvaluationType.ABSOLUTE), params: curveParams});
+        segment.release = EthCurve({
+            flags: generateEthFlags(CurveBuilder.getCurveType(curveParams), EvaluationType.ABSOLUTE),
+            params: curveParams
+        });
 
         return segment;
     }
+
+    function testNothing() public {}
 }

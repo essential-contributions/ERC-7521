@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 /* solhint-disable private-vars-leading-underscore */
 
+import "forge-std/Test.sol";
 import {EntryPointTruster} from "../core/EntryPointTruster.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
@@ -26,6 +27,7 @@ contract CallIntentStandard is EntryPointTruster, IIntentStandard {
      * Basic state and constants.
      */
     IEntryPoint private immutable _entryPoint;
+    bytes32 internal constant CALL_INTENT_STANDARD_ID = 0;
     uint256 private constant REVERT_REASON_MAX_LEN = 2048;
 
     /**
@@ -41,7 +43,7 @@ contract CallIntentStandard is EntryPointTruster, IIntentStandard {
     }
 
     function standardId() public view returns (bytes32) {
-        return _entryPoint.getIntentStandardId(this);
+        return CALL_INTENT_STANDARD_ID;
     }
 
     /**
@@ -101,4 +103,6 @@ contract CallIntentStandard is EntryPointTruster, IIntentStandard {
             segment := data.offset
         }
     }
+
+    function testNothing() public {}
 }

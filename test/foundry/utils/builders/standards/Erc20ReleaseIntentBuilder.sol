@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+import "forge-std/Test.sol";
 import {UserIntent} from "../../../../../src/interfaces/UserIntent.sol";
 import {
     Erc20Curve, generateErc20Flags, CurveType, EvaluationType
 } from "../../../../../src/utils/curves/Erc20Curve.sol";
-import {getCurveType} from "../CurveBuilder.sol";
+import {CurveBuilder} from "../CurveBuilder.sol";
 import {
     Erc20ReleaseIntentStandard,
     Erc20ReleaseIntentSegment
@@ -87,6 +88,8 @@ library Erc20ReleaseIntentBuilder {
         Erc20ReleaseIntentSegment memory decoded = abi.decode(raw, (Erc20ReleaseIntentSegment));
         return decoded;
     }
+
+    function testNothing() public {}
 }
 
 /**
@@ -129,10 +132,12 @@ library Erc20ReleaseIntentSegmentBuilder {
     ) private pure returns (Erc20ReleaseIntentSegment memory) {
         segment.release = Erc20Curve({
             erc20Contract: erc20Contract,
-            flags: generateErc20Flags(getCurveType(curveParams), EvaluationType.ABSOLUTE),
+            flags: generateErc20Flags(CurveBuilder.getCurveType(curveParams), EvaluationType.ABSOLUTE),
             params: curveParams
         });
 
         return segment;
     }
+
+    function testNothing() public {}
 }

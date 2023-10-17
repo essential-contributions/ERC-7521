@@ -16,7 +16,7 @@ import {Exec, RevertReason} from "../utils/Exec.sol";
 import {ValidationData, _parseValidationData} from "../utils/Helpers.sol";
 import {ReentrancyGuard} from "openzeppelin/security/ReentrancyGuard.sol";
 
-contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
+contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentStandard {
     using IntentSolutionLib for IntentSolution;
     using UserIntentLib for UserIntent;
     using RevertReason for bytes;
@@ -36,7 +36,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
     address private _executionStateContext;
     address private _executionIntentStandard;
 
-    constructor() {}
+    constructor() CallIntentStandard(this) {}
 
     /**
      * Execute a user intents solution.
@@ -96,7 +96,17 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
         bytes memory contextData
     ) private returns (bytes memory) {
         UserIntent calldata intent = solution.intents[intentIndex];
-        IIntentStandard intentStandard = _registeredStandards[intent.standards[segmentIndex]];
+        IIntentStandard intentStandard;
+        if (intent.standards[segmentIndex] == CALL_INTENT_STANDARD_ID) {
+            intentStandard = this;
+        }
+        else { 
+            intentStandard = _registeredStandards[intent.standards[segmentIndex]];
+        }
+        if (intentStandard == IIntentStandard(address(0))) {
+            revert FailedIntent(intentIndex, segmentIndex, "AA82 unknown standard");
+        }
+
         _executionStateContext = intent.sender;
         _executionIntentStandard = address(intentStandard);
         bool success = Exec.call(
@@ -331,7 +341,12 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard {
 
         // validate intent standards are recognized
         for (uint256 i = 0; i < intent.standards.length; i++) {
-            IIntentStandard standard = _registeredStandards[intent.standards[i]];
+            IIntentStandard standard;
+            if (intent.standards[i] == CALL_INTENT_STANDARD_ID) {
+                standard = this;
+            } else {
+                standard = _registeredStandards[intent.standards[i]];
+            }
             if (standard == IIntentStandard(address(0))) {
                 revert FailedIntent(intentIndex, i, "AA82 unknown standard");
             }

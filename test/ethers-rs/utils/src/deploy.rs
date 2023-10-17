@@ -1,15 +1,21 @@
 use crate::wrappers::{
     abstract_account::AbstractAccountContract,
-    asset_release_intent_standard::AssetReleaseIntentStandardContract,
-    asset_require_intent_standard::AssetRequireIntentStandardContract,
-    call_intent_standard::CallIntentStandardContract, entry_point::EntryPointContract,
-    erc20_release_intent_standard::Erc20ReleaseIntentStandardContract,
-    erc20_require_intent_standard::Erc20RequireIntentStandardContract,
-    eth_release_intent_standard::EthReleaseIntentStandardContract,
-    eth_require_intent_standard::EthRequireIntentStandardContract,
-    solver_utils::SolverUtilsContract, test_erc1155::TestERC1155Contract,
-    test_erc20::TestERC20Contract, test_erc721::TestERC721Contract,
-    test_uniswap::TestUniswapContract, test_wrapped_native_token::TestWrappedNativeTokenContract,
+    entry_point::EntryPointContract,
+    solver_utils::SolverUtilsContract,
+    standards::{
+        asset_release_intent_standard::AssetReleaseIntentStandardContract,
+        asset_require_intent_standard::AssetRequireIntentStandardContract,
+        call_intent_standard::CallIntentStandardContract,
+        erc20_release_intent_standard::Erc20ReleaseIntentStandardContract,
+        erc20_require_intent_standard::Erc20RequireIntentStandardContract,
+        eth_release_intent_standard::EthReleaseIntentStandardContract,
+        eth_require_intent_standard::EthRequireIntentStandardContract,
+    },
+    test_erc1155::TestERC1155Contract,
+    test_erc20::TestERC20Contract,
+    test_erc721::TestERC721Contract,
+    test_uniswap::TestUniswapContract,
+    test_wrapped_native_token::TestWrappedNativeTokenContract,
 };
 use ethers::prelude::*;
 use k256::ecdsa::SigningKey;
@@ -49,8 +55,7 @@ pub async fn deploy_all(
         Erc20ReleaseIntentStandardContract::deploy(client.clone(), &entry_point).await;
     let erc20_require_intent_standard =
         Erc20RequireIntentStandardContract::deploy(client.clone(), &entry_point).await;
-    let call_intent_standard =
-        CallIntentStandardContract::deploy(client.clone(), &entry_point).await;
+    let call_intent_standard = CallIntentStandardContract::new(client.clone(), &entry_point).await;
     let user_account = AbstractAccountContract::deploy(client.clone(), &entry_point).await;
     let test_erc20 = TestERC20Contract::deploy(client.clone()).await;
     let test_erc721 = TestERC721Contract::deploy(client.clone()).await;

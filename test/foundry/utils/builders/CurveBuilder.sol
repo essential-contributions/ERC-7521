@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+import "forge-std/Test.sol";
 import {CurveType} from "../../../../src/utils/Helpers.sol";
 
 /**
@@ -60,13 +61,15 @@ library CurveBuilder {
         params[3] = signedMax;
         return params;
     }
-}
 
-/**
- * Helper function to determine the type of the curve based on its parameters.
- */
-function getCurveType(int256[] memory params) pure returns (CurveType) {
-    if (params.length == 4) return CurveType.EXPONENTIAL;
-    if (params.length == 3) return CurveType.LINEAR;
-    return CurveType.CONSTANT;
+    /**
+     * Helper function to determine the type of the curve based on its parameters.
+     */
+    function getCurveType(int256[] memory params) public pure returns (CurveType) {
+        if (params.length == 4) return CurveType.EXPONENTIAL;
+        if (params.length == 3) return CurveType.LINEAR;
+        return CurveType.CONSTANT;
+    }
+
+    function testNothing() public {}
 }

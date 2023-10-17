@@ -10,23 +10,15 @@ pub struct CallIntentStandardContract {
 }
 
 impl CallIntentStandardContract {
-    pub async fn deploy(
+    pub async fn new(
         client: Arc<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>,
         entry_point_contract_instance: &EntryPointContract,
     ) -> Self {
-        let contract = CallIntentStandard::deploy(
-            client.clone(),
+        let contract = CallIntentStandard::new(
             entry_point_contract_instance.contract.address(),
-        )
-        .unwrap()
-        .send()
-        .await
-        .unwrap();
-
-        let standard_id = entry_point_contract_instance
-            .register_intent_standard(contract.address())
-            .await
-            .unwrap();
+            client.clone(),
+        );
+        let standard_id: Bytes = contract.standard_id().await.unwrap().into();
 
         Self {
             contract,

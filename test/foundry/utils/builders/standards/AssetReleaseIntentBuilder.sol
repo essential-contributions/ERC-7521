@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+import "forge-std/Test.sol";
 import {UserIntent} from "../../../../../src/interfaces/UserIntent.sol";
-import {getCurveType} from "../CurveBuilder.sol";
+import {CurveBuilder} from "../CurveBuilder.sol";
 import {AssetCurve, generateAssetFlags, EvaluationType} from "../../../../../src/utils/curves/AssetCurve.sol";
 import {
     AssetReleaseIntentStandard,
@@ -86,6 +87,8 @@ library AssetReleaseIntentBuilder {
         AssetReleaseIntentSegment memory decoded = abi.decode(raw, (AssetReleaseIntentSegment));
         return decoded;
     }
+
+    function testNothing() public {}
 }
 
 /**
@@ -148,10 +151,12 @@ library AssetReleaseIntentSegmentBuilder {
         segment.assetRelease = AssetCurve({
             assetContract: assetContract,
             assetId: assetId,
-            flags: generateAssetFlags(assetType, getCurveType(curveParams), EvaluationType.ABSOLUTE),
+            flags: generateAssetFlags(assetType, CurveBuilder.getCurveType(curveParams), EvaluationType.ABSOLUTE),
             params: curveParams
         });
 
         return segment;
     }
+
+    function testNothing() public {}
 }

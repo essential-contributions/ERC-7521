@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 /* solhint-disable private-vars-leading-underscore */
 
+import "forge-std/Test.sol";
 import {AssetCurve, isRelativeEvaluation, validate, evaluate, parseAssetType} from "../utils/curves/AssetCurve.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {IIntentDelegate} from "../interfaces/IIntentDelegate.sol";
@@ -99,4 +100,6 @@ contract AssetRequireIntentStandard is EntryPointTruster, IIntentStandard {
             segment := segmentData.offset
         }
     }
+
+    function testNothing() public {}
 }

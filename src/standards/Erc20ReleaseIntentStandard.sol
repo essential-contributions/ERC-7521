@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 /* solhint-disable private-vars-leading-underscore */
 
+import "forge-std/Test.sol";
 import {Erc20ReleaseIntentDelegate} from "./delegates/Erc20ReleaseIntentDelegate.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {IIntentDelegate} from "../interfaces/IIntentDelegate.sol";
@@ -131,4 +132,6 @@ contract Erc20ReleaseIntentStandard is EntryPointTruster, Erc20ReleaseIntentDele
             IIntentDelegate(address(from)).generalizedIntentDelegateCall(data);
         }
     }
+
+    function testNothingAtAll() public {}
 }

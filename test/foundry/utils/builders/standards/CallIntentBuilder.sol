@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+import "forge-std/Test.sol";
 import "openzeppelin/utils/cryptography/ECDSA.sol";
 import "../../../../../src/interfaces/UserIntent.sol";
 import "../../../../../src/standards/CallIntentStandard.sol";
@@ -80,6 +81,8 @@ library CallIntentBuilder {
         (CallIntentSegment memory decoded) = abi.decode(raw, (CallIntentSegment));
         return decoded;
     }
+
+    function testNothing() public {}
 }
 
 /**
@@ -95,4 +98,6 @@ library CallIntentSegmentBuilder {
     function create(bytes memory callData) public pure returns (CallIntentSegment memory) {
         return CallIntentSegment({callData: callData});
     }
+
+    function testNothing() public {}
 }
