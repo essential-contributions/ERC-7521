@@ -99,8 +99,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
         IIntentStandard intentStandard;
         if (intent.standards[segmentIndex] == CALL_INTENT_STANDARD_ID) {
             intentStandard = this;
-        }
-        else { 
+        } else {
             intentStandard = _registeredStandards[intent.standards[segmentIndex]];
         }
         if (intentStandard == IIntentStandard(address(0))) {
