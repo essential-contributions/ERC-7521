@@ -31,7 +31,6 @@ contract AssetReleaseIntentStandard is EntryPointTruster, AssetReleaseIntentDele
      * Basic state and constants.
      */
     IEntryPoint private immutable _entryPoint;
-    uint256 private constant REVERT_REASON_MAX_LEN = 2048;
 
     /**
      * Contract constructor.

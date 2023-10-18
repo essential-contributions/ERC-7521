@@ -4,27 +4,26 @@ pragma solidity ^0.8.13;
 /* solhint-disable private-vars-leading-underscore */
 
 import "forge-std/Test.sol";
-import {AssetCurve, isRelativeEvaluation, validate, evaluate, parseAssetType} from "../utils/curves/AssetCurve.sol";
+import {EntryPointTruster} from "../core/EntryPointTruster.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
-import {IIntentDelegate} from "../interfaces/IIntentDelegate.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
-import {EntryPointTruster} from "../core/EntryPointTruster.sol";
-import {Exec, RevertReason} from "../utils/Exec.sol";
+import {Exec} from "../utils/Exec.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
 
 /**
- * Asset Require Intent Segment struct
- * @param assetRequirement asset that is required to be owned by the account at the end of the solution execution.
+ * User Operation Segment struct
+ * @param callGasLimit max gas to be spent on the call data.
+ * @param callData the desired call data.
  */
-struct AssetRequireIntentSegment {
-    AssetCurve assetRequirement;
+struct UserOperationSegment {
+    uint256 callGasLimit;
+    bytes callData;
 }
 
-contract AssetRequireIntentStandard is EntryPointTruster, IIntentStandard {
+contract UserOperation is EntryPointTruster, IIntentStandard {
     using IntentSolutionLib for IntentSolution;
-    using RevertReason for bytes;
 
     /**
      * Basic state and constants.
@@ -48,15 +47,15 @@ contract AssetRequireIntentStandard is EntryPointTruster, IIntentStandard {
     }
 
     /**
+     * Default receive function.
+     */
+    receive() external payable {}
+
+    /**
      * Validate intent segment structure (typically just formatting).
      * @param segmentData the intent segment that is about to be solved.
      */
-    function validateIntentSegment(bytes calldata segmentData) external pure {
-        if (segmentData.length > 0) {
-            AssetRequireIntentSegment calldata segment = parseIntentSegment(segmentData);
-            validate(segment.assetRequirement);
-        }
-    }
+    function validateIntentSegment(bytes calldata segmentData) external pure {}
 
     /**
      * Performs part or all of the execution for an intent.
@@ -71,11 +70,18 @@ contract AssetRequireIntentStandard is EntryPointTruster, IIntentStandard {
         uint256 executionIndex,
         uint256 segmentIndex,
         bytes memory context
-    ) external pure returns (bytes memory) {
+    ) external onlyFromEntryPoint returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
+
         if (intent.intentData[segmentIndex].length > 0) {
-            if (segmentIndex + 1 < intent.intentData.length && intent.intentData[segmentIndex + 1].length > 0) {
-                return context;
+            UserOperationSegment calldata dataSegment = parseIntentSegment(intent.intentData, segmentIndex);
+
+            //execute calldata
+            if (dataSegment.callData.length > 0) {
+                Exec.call(intent.sender, 0, dataSegment.callData, dataSegment.callGasLimit);
+                if (segmentIndex + 1 < intent.intentData.length && intent.intentData[segmentIndex + 1].length > 0) {
+                    return context;
+                }
             }
         }
         return "";
@@ -90,13 +96,14 @@ contract AssetRequireIntentStandard is EntryPointTruster, IIntentStandard {
         return entryPointContract == _entryPoint;
     }
 
-    function parseIntentSegment(bytes calldata segmentData)
+    function parseIntentSegment(bytes[] calldata intentData, uint256 segmentIndex)
         internal
         pure
-        returns (AssetRequireIntentSegment calldata segment)
+        returns (UserOperationSegment calldata segment)
     {
+        bytes calldata data = intentData[segmentIndex];
         assembly {
-            segment := segmentData.offset
+            segment := data.offset
         }
     }
 

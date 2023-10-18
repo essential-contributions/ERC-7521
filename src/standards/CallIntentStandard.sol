@@ -42,7 +42,7 @@ contract CallIntentStandard is EntryPointTruster, IIntentStandard {
         return _entryPoint;
     }
 
-    function standardId() public view returns (bytes32) {
+    function standardId() public pure returns (bytes32) {
         return CALL_INTENT_STANDARD_ID;
     }
 
@@ -79,6 +79,9 @@ contract CallIntentStandard is EntryPointTruster, IIntentStandard {
             //execute calldata
             if (dataSegment.callData.length > 0) {
                 Exec.callAndRevert(intent.sender, dataSegment.callData, REVERT_REASON_MAX_LEN);
+                if (segmentIndex + 1 < intent.intentData.length && intent.intentData[segmentIndex + 1].length > 0) {
+                    return context;
+                }
             }
         }
         return "";

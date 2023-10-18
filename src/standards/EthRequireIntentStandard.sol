@@ -30,7 +30,6 @@ contract EthRequireIntentStandard is EntryPointTruster, IIntentStandard {
      * Basic state and constants.
      */
     IEntryPoint private immutable _entryPoint;
-    uint256 private constant REVERT_REASON_MAX_LEN = 2048;
 
     /**
      * Contract constructor.
@@ -72,7 +71,7 @@ contract EthRequireIntentStandard is EntryPointTruster, IIntentStandard {
         uint256 executionIndex,
         uint256 segmentIndex,
         bytes memory context
-    ) external returns (bytes memory) {
+    ) external pure returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
         if (intent.intentData[segmentIndex].length > 0) {
             if (segmentIndex + 1 < intent.intentData.length && intent.intentData[segmentIndex + 1].length > 0) {

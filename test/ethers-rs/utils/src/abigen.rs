@@ -39,6 +39,10 @@ abigen!(
     Erc20RequireIntentStandard,
     "../../../out/Erc20RequireIntentStandard.sol/Erc20RequireIntentStandard.json"
 );
+abigen!(
+    UserOperation,
+    "../../../out/UserOperation.sol/UserOperation.json"
+);
 
 abigen!(
     AbstractAccount,

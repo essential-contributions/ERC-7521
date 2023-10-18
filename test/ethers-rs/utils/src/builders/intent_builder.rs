@@ -7,7 +7,7 @@ use crate::{
         erc20_release_intent_standard::Erc20ReleaseIntentSegment,
         erc20_require_intent_standard::Erc20RequireIntentSegment,
         eth_release_intent_standard::EthReleaseIntentSegment,
-        eth_require_intent_standard::EthRequireIntentSegment,
+        eth_require_intent_standard::EthRequireIntentSegment, user_operation::UserOperationSegment,
     },
 };
 use ethers::{abi::AbiEncode, prelude::*};
@@ -22,6 +22,20 @@ impl UserIntent {
             intent_data: vec![],
             signature: Bytes::default(),
         }
+    }
+
+    pub fn add_segment_call(
+        &mut self,
+        standard_id: Bytes,
+        segment: CallIntentSegment,
+    ) -> &mut Self {
+        let encoded_segment = segment.clone().encode();
+
+        self.intent_data.push(Bytes::from(encoded_segment));
+        self.standards
+            .push(standard_id.to_vec().try_into().unwrap());
+
+        self
     }
 
     pub fn add_segment_asset_release(
@@ -108,10 +122,10 @@ impl UserIntent {
         self
     }
 
-    pub fn add_segment_call(
+    pub fn add_segment_user_operation(
         &mut self,
         standard_id: Bytes,
-        segment: CallIntentSegment,
+        segment: UserOperationSegment,
     ) -> &mut Self {
         let encoded_segment = segment.clone().encode();
 
