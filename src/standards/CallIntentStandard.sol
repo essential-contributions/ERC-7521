@@ -70,7 +70,7 @@ contract CallIntentStandard is EntryPointTruster, IIntentStandard {
         uint256 executionIndex,
         uint256 segmentIndex,
         bytes memory context
-    ) external onlyFromEntryPoint returns (bytes memory) {
+    ) external returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
 
         if (intent.intentData[segmentIndex].length > 0) {
