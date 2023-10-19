@@ -20,7 +20,7 @@ struct CallIntentSegment {
     bytes callData;
 }
 
-contract CallIntentStandard is EntryPointTruster, IIntentStandard {
+contract CallIntentStandard is IIntentStandard {
     using IntentSolutionLib for IntentSolution;
 
     /**
@@ -38,7 +38,7 @@ contract CallIntentStandard is EntryPointTruster, IIntentStandard {
         _entryPoint = entryPointContract;
     }
 
-    function entryPoint() public view virtual override returns (IEntryPoint) {
+    function entryPoint() public view virtual returns (IEntryPoint) {
         return _entryPoint;
     }
 
