@@ -10,7 +10,7 @@ import {IIntentDelegate} from "../interfaces/IIntentDelegate.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
-import {EntryPointTruster} from "../core/EntryPointTruster.sol";
+import {BaseStandard} from "../core/BaseStandard.sol";
 import {Exec, RevertReason} from "../utils/Exec.sol";
 import {_balanceOf, _transfer} from "../utils/wrappers/Erc20Wrapper.sol";
 import {Erc20Curve, isRelativeEvaluation, validate, evaluate} from "../utils/curves/Erc20Curve.sol";
@@ -24,28 +24,17 @@ struct Erc20ReleaseIntentSegment {
     Erc20Curve release;
 }
 
-contract Erc20ReleaseIntentStandard is EntryPointTruster, Erc20ReleaseIntentDelegate, IIntentStandard {
+contract Erc20ReleaseIntentStandard is IIntentStandard, BaseStandard, Erc20ReleaseIntentDelegate {
     using IntentSolutionLib for IntentSolution;
     using RevertReason for bytes;
-
-    /**
-     * Basic state and constants.
-     */
-    IEntryPoint private immutable _entryPoint;
 
     /**
      * Contract constructor.
      * @param entryPointContract the address of the entrypoint contract
      */
-    constructor(IEntryPoint entryPointContract) Erc20ReleaseIntentDelegate() {
-        _entryPoint = entryPointContract;
-    }
+    constructor(IEntryPoint entryPointContract) BaseStandard(entryPointContract) Erc20ReleaseIntentDelegate() {}
 
-    function entryPoint() public view virtual override returns (IEntryPoint) {
-        return _entryPoint;
-    }
-
-    function standardId() public view returns (bytes32) {
+    function standardId() public view override returns (bytes32) {
         return _entryPoint.getIntentStandardId(this);
     }
 

@@ -11,7 +11,7 @@ import {IIntentDelegate} from "../interfaces/IIntentDelegate.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
-import {EntryPointTruster} from "../core/EntryPointTruster.sol";
+import {BaseStandard} from "../core/BaseStandard.sol";
 import {Exec, RevertReason} from "../utils/Exec.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
 
@@ -23,28 +23,17 @@ struct EthReleaseIntentSegment {
     EthCurve release;
 }
 
-contract EthReleaseIntentStandard is EntryPointTruster, IIntentStandard, EthReleaseIntentDelegate {
+contract EthReleaseIntentStandard is IIntentStandard, BaseStandard, EthReleaseIntentDelegate {
     using IntentSolutionLib for IntentSolution;
     using RevertReason for bytes;
-
-    /**
-     * Basic state and constants.
-     */
-    IEntryPoint private immutable _entryPoint;
 
     /**
      * Contract constructor.
      * @param entryPointContract the address of the entrypoint contract
      */
-    constructor(IEntryPoint entryPointContract) EthReleaseIntentDelegate() {
-        _entryPoint = entryPointContract;
-    }
+    constructor(IEntryPoint entryPointContract) BaseStandard(entryPointContract) EthReleaseIntentDelegate() {}
 
-    function entryPoint() public view virtual override returns (IEntryPoint) {
-        return _entryPoint;
-    }
-
-    function standardId() public view returns (bytes32) {
+    function standardId() public view override returns (bytes32) {
         return _entryPoint.getIntentStandardId(this);
     }
 

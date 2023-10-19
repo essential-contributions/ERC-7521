@@ -9,6 +9,7 @@ import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
+import {BaseStandard} from "../core/BaseStandard.sol";
 import {Exec} from "../utils/Exec.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
 
@@ -20,13 +21,12 @@ struct CallIntentSegment {
     bytes callData;
 }
 
-contract CallIntentStandard is IIntentStandard {
+contract CallIntentStandard is IIntentStandard, BaseStandard {
     using IntentSolutionLib for IntentSolution;
 
     /**
      * Basic state and constants.
      */
-    IEntryPoint private immutable _entryPoint;
     bytes32 internal constant CALL_INTENT_STANDARD_ID = 0;
     uint256 private constant REVERT_REASON_MAX_LEN = 2048;
 
@@ -34,22 +34,11 @@ contract CallIntentStandard is IIntentStandard {
      * Contract constructor.
      * @param entryPointContract the address of the entrypoint contract
      */
-    constructor(IEntryPoint entryPointContract) {
-        _entryPoint = entryPointContract;
-    }
+    constructor(IEntryPoint entryPointContract) BaseStandard(entryPointContract) {}
 
-    function entryPoint() public view virtual returns (IEntryPoint) {
-        return _entryPoint;
-    }
-
-    function standardId() public pure returns (bytes32) {
+    function standardId() public pure override returns (bytes32) {
         return CALL_INTENT_STANDARD_ID;
     }
-
-    /**
-     * Default receive function.
-     */
-    receive() external payable {}
 
     /**
      * Validate intent segment structure (typically just formatting).
