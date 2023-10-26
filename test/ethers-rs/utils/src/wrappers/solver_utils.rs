@@ -30,13 +30,13 @@ impl SolverUtilsContract {
         }
     }
 
-    pub fn swap_all_erc20_for_eth_calldata(
+    pub fn swap_erc20_for_eth_calldata(
         &self,
         test_contracts: &TestContracts,
         solver_address: Address,
         min_eth: U256,
     ) -> Bytes {
-        let method = self.contract.swap_all_erc20_for_eth(
+        let method = self.contract.swap_erc20_for_eth(
             test_contracts.test_uniswap.contract.address(),
             test_contracts.test_erc20.contract.address(),
             test_contracts.test_wrapped_native_token.contract.address(),
@@ -47,7 +47,7 @@ impl SolverUtilsContract {
         method.calldata().unwrap()
     }
 
-    pub fn swap_all_erc20_for_eth_and_forward_calldata(
+    pub fn swap_erc20_for_eth_and_forward_calldata(
         &self,
         test_contracts: &TestContracts,
         solver_address: Address,
@@ -55,7 +55,7 @@ impl SolverUtilsContract {
         min_eth: U256,
         forward_amount: U256,
     ) -> Bytes {
-        let method = self.contract.swap_all_erc20_for_eth_and_forward(
+        let method = self.contract.swap_erc20_for_eth_and_forward(
             test_contracts.test_uniswap.contract.address(),
             test_contracts.test_erc20.contract.address(),
             test_contracts.test_wrapped_native_token.contract.address(),
@@ -64,6 +64,27 @@ impl SolverUtilsContract {
             forward_amount,
             user_address,
         );
+
+        method.calldata().unwrap()
+    }
+
+    pub fn transfer_erc20_calldata(
+        &self,
+        test_contracts: &TestContracts,
+        recipient: Address,
+        amount: U256,
+    ) -> Bytes {
+        let method = self.contract.transfer_erc20(
+            test_contracts.test_erc20.contract.address(),
+            recipient,
+            amount,
+        );
+
+        method.calldata().unwrap()
+    }
+
+    pub fn transfer_eth_calldata(&self, recipient: Address, amount: U256) -> Bytes {
+        let method = self.contract.transfer_eth(recipient, amount);
 
         method.calldata().unwrap()
     }

@@ -16,4 +16,5 @@ pub struct Balance {
 pub struct TestBalances {
     pub user: Balance,
     pub solver: Balance,
+    pub recipient: Balance,
 }

@@ -3,12 +3,13 @@ use utils::{
     abigen::entry_point::{IntentSolution, UserIntent},
     balance::TestBalances,
     builders::{
-        curve_type::CurveParameters,
+        curve_type::{ConstantCurveParameters, CurveParameters},
         evaluation_type::EvaluationType,
         intent_segment::IntentSegment,
         standards::{
             call_intent_standard::CallIntentSegment,
             erc20_release_intent_standard::Erc20ReleaseIntentSegment,
+            eth_release_intent_standard::EthReleaseIntentSegment,
             eth_require_intent_standard::EthRequireIntentSegment,
         },
     },
@@ -16,12 +17,11 @@ use utils::{
     setup::{setup, sign_intent, PROVIDER, SOLVER_WALLET, USER_WALLET},
 };
 
-pub async fn token_swap_scenario(
+pub async fn transfer_eth_scenario(
     release_parameters: CurveParameters,
-    require_parameters: CurveParameters,
+    transfer_amount: U256,
     block_number: U256,
     release_evaluation: U256,
-    require_evaluation: U256,
 ) -> TestBalances {
     // setup
     let test_contracts = setup().await;
@@ -50,22 +50,31 @@ pub async fn token_swap_scenario(
             .await,
     );
 
+    test_balances.recipient.eth.initial = Some(
+        PROVIDER
+            .get_balance(USER_WALLET.address(), None)
+            .await
+            .unwrap(),
+    );
+
     // create user intent
-    let mut intent = token_swap_intent(
+    let mut intent = transfer_eth_intent(
         &test_contracts,
         test_contracts.user_account.contract.address(),
         release_parameters.clone(),
-        require_parameters.clone(),
+        CurveParameters::Constant(ConstantCurveParameters::new(I256::from_raw(
+            transfer_amount,
+        ))),
     );
     intent = sign_intent(&test_contracts, intent, USER_WALLET.clone()).await;
 
     // create solver intent
-    let solver_intent = token_swap_solver_intent(
+    let solver_intent = transfer_eth_solver_intent(
         &test_contracts,
         SOLVER_WALLET.address(),
-        test_contracts.user_account.contract.address(),
         release_evaluation,
-        require_evaluation,
+        transfer_amount,
+        USER_WALLET.address(),
     );
 
     // create intent solution
@@ -98,59 +107,74 @@ pub async fn token_swap_scenario(
             .await,
     );
 
+    test_balances.recipient.eth.r#final = Some(
+        PROVIDER
+            .get_balance(USER_WALLET.address(), None)
+            .await
+            .unwrap(),
+    );
+
     test_balances
 }
 
-fn token_swap_intent(
+fn transfer_eth_intent(
     test_contracts: &TestContracts,
     sender: Address,
-    release_params: CurveParameters,
-    require_params: CurveParameters,
+    erc20_release_params: CurveParameters,
+    eth_transfer_params: CurveParameters,
 ) -> UserIntent {
-    let mut token_swap_intent = UserIntent::create(sender, 0, 0);
+    let mut transfer_eth_intent = UserIntent::create(sender, 0, 0);
 
     let release_erc20_segment = Erc20ReleaseIntentSegment::new(
         test_contracts.erc20_release_intent_standard.standard_id,
         test_contracts.test_erc20.contract.address(),
-        release_params,
+        erc20_release_params,
     )
     .clone();
 
+    let release_eth_segment = EthReleaseIntentSegment::new(
+        test_contracts.eth_release_intent_standard.standard_id,
+        eth_transfer_params,
+    );
+
     let require_eth_segment = EthRequireIntentSegment::new(
         test_contracts.eth_require_intent_standard.standard_id,
-        require_params,
-        EvaluationType::RELATIVE,
+        CurveParameters::Constant(ConstantCurveParameters::new(I256::from(0))),
+        EvaluationType::ABSOLUTE,
     );
 
-    token_swap_intent.add_segment(IntentSegment::Erc20Release(release_erc20_segment));
-    token_swap_intent.add_segment(IntentSegment::EthRequire(require_eth_segment));
+    transfer_eth_intent.add_segment(IntentSegment::Erc20Release(release_erc20_segment));
+    transfer_eth_intent.add_segment(IntentSegment::EthRelease(release_eth_segment));
+    transfer_eth_intent.add_segment(IntentSegment::EthRequire(require_eth_segment));
 
-    token_swap_intent
+    transfer_eth_intent
 }
 
-fn token_swap_solver_intent(
+fn transfer_eth_solver_intent(
     test_contracts: &TestContracts,
-    sender: Address,
-    other: Address,
+    solver: Address,
     erc20_release_amount: U256,
-    evaluation: U256,
+    eth_transfer_amount: U256,
+    recipient: Address,
 ) -> UserIntent {
     let mut solution = UserIntent::create(test_contracts.solver_utils.contract.address(), 0, 0);
-    let solver_calldata = test_contracts
-        .solver_utils
-        .swap_erc20_for_eth_and_forward_calldata(
-            test_contracts,
-            sender,
-            other,
-            erc20_release_amount,
-            evaluation,
-        );
-
-    let solver_segment = CallIntentSegment::new(
+    let swap_erc20_for_eth_segment = CallIntentSegment::new(
         test_contracts.call_intent_standard.standard_id,
-        solver_calldata,
+        test_contracts.solver_utils.swap_erc20_for_eth_calldata(
+            test_contracts,
+            solver,
+            erc20_release_amount,
+        ),
     );
-    solution.add_segment(IntentSegment::Call(solver_segment));
+    let transfer_eth_segment = CallIntentSegment::new(
+        test_contracts.call_intent_standard.standard_id,
+        test_contracts
+            .solver_utils
+            .transfer_eth_calldata(recipient, eth_transfer_amount),
+    );
+
+    solution.add_segment(IntentSegment::Call(swap_erc20_for_eth_segment));
+    solution.add_segment(IntentSegment::Call(transfer_eth_segment));
 
     solution
 }

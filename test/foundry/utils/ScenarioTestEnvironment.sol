@@ -167,8 +167,8 @@ abstract contract ScenarioTestEnvironment is Test {
         );
     }
 
-    function _solverTransferERC20(uint256 amount, address recipient) internal view returns (bytes memory) {
-        return abi.encodeWithSelector(SolverUtils.transferERC20.selector, _testERC20, amount, recipient);
+    function _solverTransferERC20(address recipient, uint256 amount) internal view returns (bytes memory) {
+        return abi.encodeWithSelector(SolverUtils.transferERC20.selector, _testERC20, recipient, amount);
     }
 
     function _solverTransferETH(address recipient, uint256 amount) internal pure returns (bytes memory) {

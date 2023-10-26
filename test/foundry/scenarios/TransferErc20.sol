@@ -38,7 +38,7 @@ contract TransferErc20 is ScenarioTestEnvironment {
     ) private view returns (IntentSolution memory) {
         UserIntent memory solverIntent = _solverIntent(
             _solverSwapERC20ForETH(erc20ReleaseAmount, address(_publicAddressSolver)),
-            _solverTransferERC20(erc20transferAmount, erc20transferTo),
+            _solverTransferERC20(erc20transferTo, erc20transferAmount),
             "",
             2
         );

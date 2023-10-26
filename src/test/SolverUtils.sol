@@ -99,7 +99,7 @@ contract SolverUtils is Test, IAccount {
         payable(recipient).transfer(amount - forwardAmount);
     }
 
-    function transferERC20(address erc20, uint256 amount, address recipient) external {
+    function transferERC20(address erc20, address recipient, uint256 amount) external {
         IERC20(erc20).transfer(recipient, amount);
     }
 
