@@ -15,9 +15,11 @@ import {Strings} from "openzeppelin/utils/Strings.sol";
 
 /**
  * Call Intent Segment struct
+ * @param standard intent standard id for segment.
  * @param callData the intents desired call data.
  */
 struct CallIntentSegment {
+    bytes32 standard;
     bytes callData;
 }
 

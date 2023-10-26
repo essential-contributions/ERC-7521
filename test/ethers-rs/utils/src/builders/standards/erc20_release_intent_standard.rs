@@ -12,18 +12,22 @@ use ethers::{
     Clone,
     ::ethers::contract::EthAbiType,
     ::ethers::contract::EthAbiCodec,
-    Default,
     Debug,
     PartialEq,
     Eq,
     Hash,
 )]
 pub struct Erc20ReleaseIntentSegment {
-    release: Erc20Curve,
+    pub standard: [u8; 32],
+    pub release: Erc20Curve,
 }
 
 impl Erc20ReleaseIntentSegment {
-    pub fn new(erc20_contract: Address, curve_parameters: CurveParameters) -> Self {
+    pub fn new(
+        standard: [u8; 32],
+        erc20_contract: Address,
+        curve_parameters: CurveParameters,
+    ) -> Self {
         let flags: u128 = AbiDecode::decode(
             Erc20CurveFlags::new(curve_parameters.get_curve_type(), EvaluationType::ABSOLUTE)
                 .encode(),
@@ -31,6 +35,9 @@ impl Erc20ReleaseIntentSegment {
         .unwrap();
         let curve = Erc20Curve::new(erc20_contract, flags, curve_parameters.into());
 
-        Self { release: curve }
+        Self {
+            standard,
+            release: curve,
+        }
     }
 }

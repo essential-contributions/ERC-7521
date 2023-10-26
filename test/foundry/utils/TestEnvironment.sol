@@ -51,13 +51,15 @@ abstract contract TestEnvironment is Test {
         UserIntent memory intent = IntentBuilder.create(address(_account), 0, block.timestamp);
         intent = EthReleaseIntentBuilder.addSegment(
             intent,
-            _ethReleaseIntentStandard.standardId(),
-            EthReleaseIntentSegmentBuilder.create().releaseETH(CurveBuilder.linearCurve(2, 10, 20, false))
+            EthReleaseIntentSegmentBuilder.create(_ethReleaseIntentStandard.standardId()).releaseEth(
+                CurveBuilder.linearCurve(2, 10, 20, false)
+            )
         );
         intent = EthRequireIntentBuilder.addSegment(
             intent,
-            _ethRequireIntentStandard.standardId(),
-            EthRequireIntentSegmentBuilder.create().requireETH(CurveBuilder.constantCurve(10), false)
+            EthRequireIntentSegmentBuilder.create(_ethRequireIntentStandard.standardId()).requireEth(
+                CurveBuilder.constantCurve(10), false
+            )
         );
 
         return intent;

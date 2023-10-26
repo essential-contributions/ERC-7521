@@ -15,10 +15,12 @@ import {Strings} from "openzeppelin/utils/Strings.sol";
 
 /**
  * User Operation Segment struct
+ * @param standard intent standard id for segment.
  * @param callGasLimit max gas to be spent on the call data.
  * @param callData the desired call data.
  */
 struct UserOperationSegment {
+    bytes32 standard;
     uint256 callGasLimit;
     bytes callData;
 }

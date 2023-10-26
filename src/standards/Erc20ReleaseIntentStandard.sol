@@ -18,9 +18,11 @@ import {Strings} from "openzeppelin/utils/Strings.sol";
 
 /**
  * Erc20 Release Intent Segment struct
+ * @param standard intent standard id for segment.
  * @param release release curve.
  */
 struct Erc20ReleaseIntentSegment {
+    bytes32 standard;
     Erc20Curve release;
 }
 

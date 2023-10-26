@@ -5,7 +5,6 @@ use ethers::{abi::AbiEncode, prelude::*};
     Clone,
     ::ethers::contract::EthAbiType,
     ::ethers::contract::EthAbiCodec,
-    Default,
     Debug,
     PartialEq,
     Eq,

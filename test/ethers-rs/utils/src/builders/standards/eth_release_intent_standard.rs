@@ -9,18 +9,18 @@ use ethers::abi::{AbiDecode, AbiEncode};
     Clone,
     ::ethers::contract::EthAbiType,
     ::ethers::contract::EthAbiCodec,
-    Default,
     Debug,
     PartialEq,
     Eq,
     Hash,
 )]
 pub struct EthReleaseIntentSegment {
-    release: EthCurve,
+    pub standard: [u8; 32],
+    pub release: EthCurve,
 }
 
 impl EthReleaseIntentSegment {
-    pub fn new(curve_parameters: CurveParameters) -> Self {
+    pub fn new(standard: [u8; 32], curve_parameters: CurveParameters) -> Self {
         let flags: u128 = AbiDecode::decode(
             EthCurveFlags::new(curve_parameters.get_curve_type(), EvaluationType::ABSOLUTE)
                 .encode(),
@@ -28,6 +28,9 @@ impl EthReleaseIntentSegment {
         .unwrap();
         let curve = EthCurve::new(flags, curve_parameters.into());
 
-        Self { release: curve }
+        Self {
+            standard,
+            release: curve,
+        }
     }
 }

@@ -10,8 +10,6 @@ pub struct Chronology {
 pub struct Balance {
     pub eth: Chronology,
     pub erc20: Chronology,
-    pub erc721: Chronology,
-    pub erc1155: Chronology,
 }
 
 #[derive(Default)]

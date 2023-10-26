@@ -14,22 +14,14 @@ library UserOperationBuilder {
     /**
      * Add an intent segment to the user intent.
      * @param intent The user intent to modify.
-     * @param standard The standard ID for the intent segment.
      * @param segment The intent segment to add.
      * @return The updated user intent.
      */
-    function addSegment(UserIntent memory intent, bytes32 standard, UserOperationSegment memory segment)
+    function addSegment(UserIntent memory intent, UserOperationSegment memory segment)
         public
         pure
         returns (UserIntent memory)
     {
-        bytes32[] memory standards = new bytes32[](intent.standards.length + 1);
-        for (uint256 i = 0; i < intent.standards.length; i++) {
-            standards[i] = intent.standards[i];
-        }
-        standards[intent.standards.length] = standard;
-        intent.standards = standards;
-
         return encodeData(intent, segment);
     }
 
@@ -92,12 +84,17 @@ library UserOperationBuilder {
 library UserOperationSegmentBuilder {
     /**
      * Create a new intent segment with the specified parameters.
+     * @param standard The standard ID for the intent segment.
      * @param callData The data for an intended call.
      * @param callGasLimit The gas limit for the intended call.
      * @return intent The created user intent segment.
      */
-    function create(bytes memory callData, uint256 callGasLimit) public pure returns (UserOperationSegment memory) {
-        return UserOperationSegment({callData: callData, callGasLimit: callGasLimit});
+    function create(bytes32 standard, bytes memory callData, uint256 callGasLimit)
+        public
+        pure
+        returns (UserOperationSegment memory)
+    {
+        return UserOperationSegment({standard: standard, callData: callData, callGasLimit: callGasLimit});
     }
 
     function testNothing() public {}

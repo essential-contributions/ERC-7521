@@ -30,12 +30,8 @@ contract TokenSwaps is ScenarioTestEnvironment {
         returns (UserIntent memory)
     {
         UserIntent memory intent = _intent();
-        intent = _addErc20ReleaseSegment(
-            intent, Erc20ReleaseIntentSegmentBuilder.create().releaseERC20(address(_testERC20), erc20ReleaseCurveParams)
-        );
-        intent = _addEthRequireSegment(
-            intent, EthRequireIntentSegmentBuilder.create().requireETH(ethRequireCurveParams, true)
-        );
+        intent = _addErc20ReleaseSegment(intent, address(_testERC20), erc20ReleaseCurveParams);
+        intent = _addEthRequireSegment(intent, ethRequireCurveParams, true);
         return intent;
     }
 

@@ -17,9 +17,11 @@ import {Strings} from "openzeppelin/utils/Strings.sol";
 
 /**
  * Eth Release Intent Segment struct
+ * @param standard intent standard id for segment.
  * @param release release curve.
  */
 struct EthReleaseIntentSegment {
+    bytes32 standard;
     EthCurve release;
 }
 

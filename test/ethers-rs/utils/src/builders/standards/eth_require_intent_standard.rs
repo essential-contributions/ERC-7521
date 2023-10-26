@@ -9,24 +9,31 @@ use ethers::abi::{AbiDecode, AbiEncode};
     Clone,
     ::ethers::contract::EthAbiType,
     ::ethers::contract::EthAbiCodec,
-    Default,
     Debug,
     PartialEq,
     Eq,
     Hash,
 )]
 pub struct EthRequireIntentSegment {
-    require: EthCurve,
+    pub standard: [u8; 32],
+    pub require: EthCurve,
 }
 
 impl EthRequireIntentSegment {
-    pub fn new(curve_parameters: CurveParameters, evaluation_type: EvaluationType) -> Self {
+    pub fn new(
+        standard: [u8; 32],
+        curve_parameters: CurveParameters,
+        evaluation_type: EvaluationType,
+    ) -> Self {
         let flags: u128 = AbiDecode::decode(
             EthCurveFlags::new(curve_parameters.get_curve_type(), evaluation_type).encode(),
         )
         .unwrap();
         let curve = EthCurve::new(flags, curve_parameters.into());
 
-        Self { require: curve }
+        Self {
+            standard,
+            require: curve,
+        }
     }
 }

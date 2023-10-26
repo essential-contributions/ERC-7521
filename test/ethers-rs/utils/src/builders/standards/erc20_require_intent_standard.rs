@@ -12,18 +12,19 @@ use ethers::{
     Clone,
     ::ethers::contract::EthAbiType,
     ::ethers::contract::EthAbiCodec,
-    Default,
     Debug,
     PartialEq,
     Eq,
     Hash,
 )]
 pub struct Erc20RequireIntentSegment {
-    requirement: Erc20Curve,
+    pub standard: [u8; 32],
+    pub require: Erc20Curve,
 }
 
 impl Erc20RequireIntentSegment {
     pub fn new(
+        standard: [u8; 32],
         erc20_contract: Address,
         curve_parameters: CurveParameters,
         evaluation_type: EvaluationType,
@@ -34,6 +35,9 @@ impl Erc20RequireIntentSegment {
         .unwrap();
         let curve = Erc20Curve::new(erc20_contract, flags, curve_parameters.into());
 
-        Self { requirement: curve }
+        Self {
+            standard,
+            require: curve,
+        }
     }
 }

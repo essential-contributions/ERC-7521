@@ -13,17 +13,9 @@ library IntentBuilder {
      * @return intent The created user intent.
      */
     function create(address sender, uint256 nonce, uint256 timestamp) public pure returns (UserIntent memory intent) {
-        bytes32[] memory standards;
         bytes[] memory data;
 
-        intent = UserIntent({
-            standards: standards,
-            sender: sender,
-            nonce: nonce,
-            timestamp: timestamp,
-            intentData: data,
-            signature: ""
-        });
+        intent = UserIntent({sender: sender, nonce: nonce, timestamp: timestamp, intentData: data, signature: ""});
     }
 
     function testNothing() public {}

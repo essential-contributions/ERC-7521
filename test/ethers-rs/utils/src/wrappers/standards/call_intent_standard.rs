@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 pub struct CallIntentStandardContract {
     pub contract: CallIntentStandard<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>,
-    pub standard_id: Bytes,
+    pub standard_id: [u8; 32],
 }
 
 impl CallIntentStandardContract {
@@ -18,7 +18,7 @@ impl CallIntentStandardContract {
             entry_point_contract_instance.contract.address(),
             client.clone(),
         );
-        let standard_id: Bytes = contract.standard_id().await.unwrap().into();
+        let standard_id = contract.standard_id().await.unwrap();
 
         Self {
             contract,
@@ -26,10 +26,10 @@ impl CallIntentStandardContract {
         }
     }
 
-    pub async fn standard_id(&self) -> Result<Bytes> {
+    pub async fn standard_id(&self) -> Result<[u8; 32]> {
         let tx = self.contract.standard_id();
         match tx.call().await {
-            Ok(t) => Result::Ok(Bytes::from(t)),
+            Ok(t) => Result::Ok(t),
             Err(e) => {
                 if let Some(decoded_error) = e.decode_revert::<String>() {
                     panic!("{}", decoded_error);

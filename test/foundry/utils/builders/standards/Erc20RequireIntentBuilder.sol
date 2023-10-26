@@ -21,22 +21,14 @@ library Erc20RequireIntentBuilder {
     /**
      * Add an intent segment to the user intent.
      * @param intent The user intent to modify.
-     * @param standard The standard ID for the intent segment.
      * @param segment The intent segment to add.
      * @return The updated user intent.
      */
-    function addSegment(UserIntent memory intent, bytes32 standard, Erc20RequireIntentSegment memory segment)
+    function addSegment(UserIntent memory intent, Erc20RequireIntentSegment memory segment)
         public
         pure
         returns (UserIntent memory)
     {
-        bytes32[] memory standards = new bytes32[](intent.standards.length + 1);
-        for (uint256 i = 0; i < intent.standards.length; i++) {
-            standards[i] = intent.standards[i];
-        }
-        standards[intent.standards.length] = standard;
-        intent.standards = standards;
-
         return encodeData(intent, segment);
     }
 
@@ -99,12 +91,13 @@ library Erc20RequireIntentBuilder {
 library Erc20RequireIntentSegmentBuilder {
     /**
      * Create a new intent segment.
+     * @param standard The standard ID for the intent segment.
      * @return intent The created user intent segment.
      */
-    function create() public pure returns (Erc20RequireIntentSegment memory) {
+    function create(bytes32 standard) public pure returns (Erc20RequireIntentSegment memory) {
         Erc20Curve memory erc20Requirement;
 
-        return Erc20RequireIntentSegment({requirement: erc20Requirement});
+        return Erc20RequireIntentSegment({standard: standard, requirement: erc20Requirement});
     }
 
     /**
@@ -115,7 +108,7 @@ library Erc20RequireIntentSegmentBuilder {
      * @param relative Boolean flag to indicate if the curve is relative.
      * @return The updated user intent segment.
      */
-    function requireERC20(Erc20RequireIntentSegment memory segment, address addr, int256[] memory curve, bool relative)
+    function requireErc20(Erc20RequireIntentSegment memory segment, address addr, int256[] memory curve, bool relative)
         public
         pure
         returns (Erc20RequireIntentSegment memory)

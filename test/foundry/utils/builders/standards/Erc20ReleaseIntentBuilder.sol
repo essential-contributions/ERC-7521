@@ -21,22 +21,14 @@ library Erc20ReleaseIntentBuilder {
     /**
      * Add an intent segment to the user intent.
      * @param intent The user intent to modify.
-     * @param standard The standard ID for the intent segment.
      * @param segment The intent segment to add.
      * @return The updated user intent.
      */
-    function addSegment(UserIntent memory intent, bytes32 standard, Erc20ReleaseIntentSegment memory segment)
+    function addSegment(UserIntent memory intent, Erc20ReleaseIntentSegment memory segment)
         public
         pure
         returns (UserIntent memory)
     {
-        bytes32[] memory standards = new bytes32[](intent.standards.length + 1);
-        for (uint256 i = 0; i < intent.standards.length; i++) {
-            standards[i] = intent.standards[i];
-        }
-        standards[intent.standards.length] = standard;
-        intent.standards = standards;
-
         return encodeData(intent, segment);
     }
 
@@ -99,12 +91,13 @@ library Erc20ReleaseIntentBuilder {
 library Erc20ReleaseIntentSegmentBuilder {
     /**
      * Create a new intent segment.
+     * @param standard The standard ID for the intent segment.
      * @return intent The created user intent segment.
      */
-    function create() public pure returns (Erc20ReleaseIntentSegment memory) {
+    function create(bytes32 standard) public pure returns (Erc20ReleaseIntentSegment memory) {
         Erc20Curve memory erc20Release;
 
-        return Erc20ReleaseIntentSegment({release: erc20Release});
+        return Erc20ReleaseIntentSegment({standard: standard, release: erc20Release});
     }
 
     /**
@@ -114,7 +107,7 @@ library Erc20ReleaseIntentSegmentBuilder {
      * @param curve The curve parameters for the erc20 release.
      * @return The updated user intent segment.
      */
-    function releaseERC20(Erc20ReleaseIntentSegment memory segment, address addr, int256[] memory curve)
+    function releaseErc20(Erc20ReleaseIntentSegment memory segment, address addr, int256[] memory curve)
         public
         pure
         returns (Erc20ReleaseIntentSegment memory)

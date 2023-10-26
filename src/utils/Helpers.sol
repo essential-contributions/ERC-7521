@@ -63,11 +63,9 @@ enum EvaluationType {
 
 uint256 constant FLAGS_EVAL_TYPE_OFFSET = 0;
 uint256 constant FLAGS_CURVE_TYPE_OFFSET = 2;
-uint256 constant FLAGS_ASSET_TYPE_OFFSET = 8;
 
 uint16 constant FLAGS_EVAL_TYPE_MASK = 0x0003;
 uint16 constant FLAGS_CURVE_TYPE_MASK = 0x00fc;
-uint16 constant FLAGS_ASSET_TYPE_MASK = 0xff00;
 
 function evaluateConstantCurve(int256[] calldata curveParams) pure returns (int256 val) {
     val = curveParams[0];

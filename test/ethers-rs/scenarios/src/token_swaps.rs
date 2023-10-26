@@ -5,6 +5,7 @@ use utils::{
     builders::{
         curve_type::CurveParameters,
         evaluation_type::EvaluationType,
+        intent_segment::IntentSegment,
         standards::{
             call_intent_standard::CallIntentSegment,
             erc20_release_intent_standard::Erc20ReleaseIntentSegment,
@@ -109,29 +110,20 @@ fn token_swap_intent(
     let mut token_swap_intent = UserIntent::create(sender, 0, 0);
 
     let release_erc20_segment = Erc20ReleaseIntentSegment::new(
+        test_contracts.erc20_release_intent_standard.standard_id,
         test_contracts.test_erc20.contract.address(),
         release_params,
     )
     .clone();
 
-    let require_eth_segment =
-        EthRequireIntentSegment::new(require_params, EvaluationType::RELATIVE);
-
-    token_swap_intent.add_segment_erc20_release(
-        test_contracts
-            .erc20_release_intent_standard
-            .standard_id
-            .clone(),
-        release_erc20_segment,
+    let require_eth_segment = EthRequireIntentSegment::new(
+        test_contracts.eth_require_intent_standard.standard_id,
+        require_params,
+        EvaluationType::RELATIVE,
     );
 
-    token_swap_intent.add_segment_eth_require(
-        test_contracts
-            .eth_require_intent_standard
-            .standard_id
-            .clone(),
-        require_eth_segment,
-    );
+    token_swap_intent.add_segment(IntentSegment::Erc20Release(release_erc20_segment));
+    token_swap_intent.add_segment(IntentSegment::EthRequire(require_eth_segment));
 
     token_swap_intent
 }
@@ -154,11 +146,11 @@ fn token_swap_solver_intent(
             evaluation,
         );
 
-    let solver_segment = CallIntentSegment::new(solver_calldata);
-    solution.add_segment_call(
-        test_contracts.call_intent_standard.standard_id.clone(),
-        solver_segment,
+    let solver_segment = CallIntentSegment::new(
+        test_contracts.call_intent_standard.standard_id,
+        solver_calldata,
     );
+    solution.add_segment(IntentSegment::Call(solver_segment));
 
     solution
 }

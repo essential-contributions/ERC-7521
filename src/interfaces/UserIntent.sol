@@ -3,7 +3,6 @@ pragma solidity ^0.8.13;
 
 /**
  * User Intent struct
- * @param standards the intent standard (type/format).
  * @param sender the sender account of this request.
  * @param nonce unique value the sender uses to verify it is not a replay.
  * @param timestamp the time when the intent was created.
@@ -11,7 +10,6 @@ pragma solidity ^0.8.13;
  * @param signature sender-verified signature over the entire request, the EntryPoint address and the chain ID.
  */
 struct UserIntent {
-    bytes32[] standards;
     address sender;
     uint256 nonce;
     uint256 timestamp;
@@ -28,12 +26,11 @@ library UserIntentLib {
     }
 
     function _pack(UserIntent calldata intent) private pure returns (bytes memory ret) {
-        bytes32 standardsHash = keccak256(abi.encode(intent.standards));
         address sender = intent.sender;
         uint256 nonce = intent.nonce;
         uint256 timestamp = intent.timestamp;
         bytes32 intentDataHash = keccak256(abi.encode(intent.intentData));
 
-        return abi.encode(standardsHash, sender, nonce, timestamp, intentDataHash);
+        return abi.encode(sender, nonce, timestamp, intentDataHash);
     }
 }

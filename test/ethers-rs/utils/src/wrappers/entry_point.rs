@@ -19,23 +19,23 @@ impl EntryPointContract {
         }
     }
 
-    pub async fn register_intent_standard(&self, standard_address: Address) -> Result<Bytes> {
+    pub async fn register_intent_standard(&self, standard_address: Address) -> Result<[u8; 32]> {
         let tx = self.contract.register_intent_standard(standard_address);
         let standard_id = tx.clone().call().await.unwrap();
 
         match tx.clone().send().await {
-            Ok(_) => Ok(standard_id.into()),
+            Ok(_) => Ok(standard_id),
             Err(e) => {
                 panic!("{}", e);
             }
         }
     }
 
-    pub async fn get_intent_standard_id(&self, standard_address: Address) -> Result<Bytes> {
+    pub async fn get_intent_standard_id(&self, standard_address: Address) -> Result<[u8; 32]> {
         let tx = self.contract.get_intent_standard_id(standard_address);
 
         match tx.call().await {
-            Ok(t) => Result::Ok(Bytes::from(t)),
+            Ok(t) => Result::Ok(t),
             Err(e) => {
                 if let Some(decoded_error) = e.decode_revert::<String>() {
                     panic!("{}", decoded_error);

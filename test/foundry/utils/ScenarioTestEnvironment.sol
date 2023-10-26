@@ -10,13 +10,6 @@ import {EntryPoint} from "../../../src/core/EntryPoint.sol";
 import {IEntryPoint} from "../../../src/interfaces/IEntryPoint.sol";
 import {UserIntent} from "../../../src/interfaces/UserIntent.sol";
 import {IntentSolution} from "../../../src/interfaces/IntentSolution.sol";
-import {CallIntentStandard, CallIntentSegment} from "../../../src/standards/CallIntentStandard.sol";
-import {CallIntentBuilder, CallIntentSegmentBuilder} from "./builders/standards/CallIntentBuilder.sol";
-import {
-    AssetReleaseIntentStandard,
-    AssetReleaseIntentSegment
-} from "../../../src/standards/AssetReleaseIntentStandard.sol";
-import {AssetReleaseIntentBuilder} from "./builders/standards/AssetReleaseIntentBuilder.sol";
 import {
     Erc20ReleaseIntentStandard,
     Erc20ReleaseIntentSegment
@@ -25,14 +18,6 @@ import {
     Erc20ReleaseIntentBuilder,
     Erc20ReleaseIntentSegmentBuilder
 } from "./builders/standards/Erc20ReleaseIntentBuilder.sol";
-import {
-    AssetRequireIntentStandard,
-    AssetRequireIntentSegment
-} from "../../../src/standards/AssetRequireIntentStandard.sol";
-import {
-    AssetRequireIntentBuilder,
-    AssetRequireIntentSegmentBuilder
-} from "./builders/standards/AssetRequireIntentBuilder.sol";
 import {CurveBuilder} from "./builders/CurveBuilder.sol";
 import {
     Erc20RequireIntentStandard,
@@ -50,9 +35,11 @@ import {EthRequireIntentStandard, EthRequireIntentSegment} from "../../../src/st
 import {
     EthRequireIntentBuilder, EthRequireIntentSegmentBuilder
 } from "./builders/standards/EthRequireIntentBuilder.sol";
+import {CallIntentStandard, CallIntentSegment} from "../../../src/standards/CallIntentStandard.sol";
+import {CallIntentBuilder, CallIntentSegmentBuilder} from "./builders/standards/CallIntentBuilder.sol";
+import {UserOperation, UserOperationSegment} from "../../../src/standards/UserOperation.sol";
+import {UserOperationBuilder, UserOperationSegmentBuilder} from "./builders/standards/UserOperationBuilder.sol";
 import {TestERC20} from "../../../src/test/TestERC20.sol";
-import {TestERC721} from "../../../src/test/TestERC721.sol";
-import {TestERC1155} from "../../../src/test/TestERC1155.sol";
 import {TestUniswap} from "../../../src/test/TestUniswap.sol";
 import {TestWrappedNativeToken} from "../../../src/test/TestWrappedNativeToken.sol";
 import {SolverUtils} from "../../../src/test/SolverUtils.sol";
@@ -60,15 +47,17 @@ import {ValidationData, _packValidationData, _parseValidationData} from "../../.
 import {AbstractAccount} from "../../../src/wallet/AbstractAccount.sol";
 import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
-import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
 
 abstract contract ScenarioTestEnvironment is Test {
+    using EthReleaseIntentSegmentBuilder for EthReleaseIntentSegment;
+    using EthRequireIntentSegmentBuilder for EthRequireIntentSegment;
+    using Erc20ReleaseIntentSegmentBuilder for Erc20ReleaseIntentSegment;
+    using Erc20RequireIntentSegmentBuilder for Erc20RequireIntentSegment;
     using ECDSA for bytes32;
 
     EntryPoint internal _entryPoint;
     CallIntentStandard internal _callIntentStandard;
-    AssetReleaseIntentStandard internal _assetReleaseIntentStandard;
-    AssetRequireIntentStandard internal _assetRequireIntentStandard;
+    UserOperation internal _userOperation;
     EthReleaseIntentStandard internal _ethReleaseIntentStandard;
     EthRequireIntentStandard internal _ethRequireIntentStandard;
     Erc20ReleaseIntentStandard internal _erc20ReleaseIntentStandard;
@@ -76,8 +65,6 @@ abstract contract ScenarioTestEnvironment is Test {
     AbstractAccount internal _account;
 
     TestERC20 internal _testERC20;
-    TestERC721 internal _testERC721;
-    TestERC1155 internal _testERC1155;
     TestUniswap internal _testUniswap;
     TestWrappedNativeToken internal _testWrappedNativeToken;
     SolverUtils internal _solverUtils;
@@ -98,8 +85,7 @@ abstract contract ScenarioTestEnvironment is Test {
         //deploy contracts
         _entryPoint = new EntryPoint();
         _callIntentStandard = CallIntentStandard(_entryPoint);
-        _assetReleaseIntentStandard = new AssetReleaseIntentStandard(_entryPoint);
-        _assetRequireIntentStandard = new AssetRequireIntentStandard(_entryPoint);
+        _userOperation = new UserOperation(_entryPoint);
         _ethReleaseIntentStandard = new EthReleaseIntentStandard(_entryPoint);
         _ethRequireIntentStandard = new EthRequireIntentStandard(_entryPoint);
         _erc20ReleaseIntentStandard = new Erc20ReleaseIntentStandard(_entryPoint);
@@ -107,16 +93,13 @@ abstract contract ScenarioTestEnvironment is Test {
         _account = new AbstractAccount(_entryPoint, _publicAddress);
 
         //register intent standards to entry point
-        _entryPoint.registerIntentStandard(_assetReleaseIntentStandard);
-        _entryPoint.registerIntentStandard(_assetRequireIntentStandard);
+        _entryPoint.registerIntentStandard(_userOperation);
         _entryPoint.registerIntentStandard(_ethReleaseIntentStandard);
         _entryPoint.registerIntentStandard(_ethRequireIntentStandard);
         _entryPoint.registerIntentStandard(_erc20ReleaseIntentStandard);
         _entryPoint.registerIntentStandard(_erc20RequireIntentStandard);
 
         _testERC20 = new TestERC20();
-        _testERC721 = new TestERC721();
-        _testERC1155 = new TestERC1155();
         _testWrappedNativeToken = new TestWrappedNativeToken();
         _testUniswap = new TestUniswap(_testWrappedNativeToken);
         _solverUtils = new SolverUtils(_testUniswap, _testERC20, _testWrappedNativeToken);
@@ -135,54 +118,6 @@ abstract contract ScenarioTestEnvironment is Test {
         vm.deal(address(this), amount);
         _testWrappedNativeToken.deposit{value: amount}();
         _testWrappedNativeToken.transfer(to, amount);
-    }
-
-    /**
-     * Private helper function to build call data for the account buying an ERC721 NFT.
-     * @param price The price of the ERC721 NFT to buy.
-     * @return The encoded call data for the buy action.
-     */
-    function _accountBuyERC721(uint256 price) internal view returns (bytes memory) {
-        bytes memory buyCall = abi.encodeWithSelector(TestERC721.buyNFT.selector, address(_account));
-        return abi.encodeWithSelector(AbstractAccount.execute.selector, _testERC721, price, buyCall);
-    }
-
-    /**
-     * Private helper function to build call data for the account buying an ERC1155 NFT.
-     * @param price The price of the ERC1155 NFT to buy.
-     * @return The encoded call data for the buy action.
-     */
-    function _accountBuyERC1155(uint256 price) internal view returns (bytes memory) {
-        bytes memory buyCall = abi.encodeWithSelector(TestERC1155.buyNFT.selector, address(_account), 1);
-        return abi.encodeWithSelector(AbstractAccount.execute.selector, _testERC1155, price, buyCall);
-    }
-
-    /**
-     * Private helper function to build call data for the account buying an ERC1155 NFT and then transferring an ERC721.
-     * @param price The price of the ERC1155 NFT to buy.
-     * @param transferAssetId The ID of the ERC721 token to transfer after buying the ERC1155.
-     * @param transferTo The address to transfer the ERC721 token to.
-     * @return The encoded call data for the buy and transfer actions.
-     */
-    function _accountBuyERC1155AndTransferERC721(uint256 price, uint256 transferAssetId, address transferTo)
-        internal
-        view
-        returns (bytes memory)
-    {
-        address[] memory targets = new address[](2);
-        uint256[] memory values = new uint256[](2);
-        bytes[] memory datas = new bytes[](2);
-
-        targets[0] = address(_testERC1155);
-        datas[0] = abi.encodeWithSelector(TestERC1155.buyNFT.selector, address(_account), 1);
-        values[0] = price;
-
-        targets[1] = address(_testERC721);
-        datas[1] = abi.encodeWithSelector(
-            IERC721.transferFrom.selector, address(_account), address(transferTo), transferAssetId
-        );
-
-        return abi.encodeWithSelector(AbstractAccount.executeMulti.selector, targets, values, datas);
     }
 
     /**
@@ -233,53 +168,6 @@ abstract contract ScenarioTestEnvironment is Test {
     }
 
     /**
-     * Private helper function to build call data for the solver to buying and forwarding an ERC721 token.
-     * @param price The price of the ERC721 token to buy.
-     * @param to The address to forward the purchased ERC721 token to.
-     * @return The array of solution steps for buying and forwarding an ERC721 token.
-     */
-    function _solverBuyERC721AndForward(uint256 price, address to) internal view returns (bytes memory) {
-        return abi.encodeWithSelector(SolverUtils.buyERC721.selector, _testERC721, price, to);
-    }
-
-    /**
-     * Private helper function to build call data for the solver to swap tokens and forward some ETH.
-     * @param minETH The minimum amount of ETH to be received after the swap.
-     * @param nftPrice The price required to buy the NFT.
-     * @param forwardETHAmount The amount of ETH to forward to another address.
-     * @param forwardTo The address to forward the ETH to.
-     * @return The array of solution steps for swapping tokens and forwarding ETH.
-     */
-    function _solverSwapAllERC20ForETHBuyNFTAndForward(
-        uint256 minETH,
-        uint256 nftPrice,
-        uint256 forwardETHAmount,
-        address forwardTo
-    ) internal view returns (bytes memory) {
-        return abi.encodeWithSelector(
-            SolverUtils.swapAllERC20ForETHBuyNFTAndForward.selector,
-            _testUniswap,
-            _testERC721,
-            _testERC20,
-            _testWrappedNativeToken,
-            minETH,
-            nftPrice,
-            forwardETHAmount,
-            forwardTo
-        );
-    }
-
-    /**
-     * Private helper function to build call data for the solver to selling an ERC721 token and forwarding ETH.
-     * @param tokenId The ID of the ERC721 token to sell.
-     * @param to The address to forward the received ETH to.
-     * @return The array of solution steps for selling an ERC721 token and forwarding ETH.
-     */
-    function _solverSellERC721AndForward(uint256 tokenId, address to) internal view returns (bytes memory) {
-        return abi.encodeWithSelector(SolverUtils.sellERC721AndForwardAll.selector, _testERC721, tokenId, to);
-    }
-
-    /**
      * Private helper function to build a call intent struct for the solver.
      * @param callData1 Optoinal calldata for segment1.
      * @param callData2 Optoinal calldata for segment2.
@@ -294,16 +182,16 @@ abstract contract ScenarioTestEnvironment is Test {
     {
         UserIntent memory intent = IntentBuilder.create(address(_solverUtils), 0, 0);
         if (numSegments > 0) {
-            intent = _addCallSegment(intent, CallIntentSegmentBuilder.create(callData1));
+            intent = _addCallSegment(intent, callData1);
         }
         if (numSegments > 1) {
-            intent = _addCallSegment(intent, CallIntentSegmentBuilder.create(callData2));
+            intent = _addCallSegment(intent, callData2);
         }
         if (numSegments > 2) {
-            intent = _addCallSegment(intent, CallIntentSegmentBuilder.create(callData3));
+            intent = _addCallSegment(intent, callData3);
         }
         for (uint256 i = 3; i < numSegments; i++) {
-            intent = _addCallSegment(intent, CallIntentSegmentBuilder.create(""));
+            intent = _addCallSegment(intent, "");
         }
 
         return intent;
@@ -317,60 +205,69 @@ abstract contract ScenarioTestEnvironment is Test {
         return IntentBuilder.create(address(_account), 0, 0);
     }
 
-    function _addAssetReleaseSegment(UserIntent memory intent, AssetReleaseIntentSegment memory segment)
+    function _addEthReleaseSegment(UserIntent memory intent, int256[] memory curve)
         internal
         view
         returns (UserIntent memory)
     {
-        return AssetReleaseIntentBuilder.addSegment(intent, _assetReleaseIntentStandard.standardId(), segment);
+        return EthReleaseIntentBuilder.addSegment(
+            intent, EthReleaseIntentSegmentBuilder.create(_ethReleaseIntentStandard.standardId()).releaseEth(curve)
+        );
     }
 
-    function _addAssetRequireSegment(UserIntent memory intent, AssetRequireIntentSegment memory segment)
+    function _addEthRequireSegment(UserIntent memory intent, int256[] memory curve, bool relative)
         internal
         view
         returns (UserIntent memory)
     {
-        return AssetRequireIntentBuilder.addSegment(intent, _assetRequireIntentStandard.standardId(), segment);
+        return EthRequireIntentBuilder.addSegment(
+            intent,
+            EthRequireIntentSegmentBuilder.create(_ethRequireIntentStandard.standardId()).requireEth(curve, relative)
+        );
     }
 
-    function _addEthReleaseSegment(UserIntent memory intent, EthReleaseIntentSegment memory segment)
+    function _addErc20ReleaseSegment(UserIntent memory intent, address addr, int256[] memory curve)
         internal
         view
         returns (UserIntent memory)
     {
-        return EthReleaseIntentBuilder.addSegment(intent, _ethReleaseIntentStandard.standardId(), segment);
+        return Erc20ReleaseIntentBuilder.addSegment(
+            intent,
+            Erc20ReleaseIntentSegmentBuilder.create(_erc20ReleaseIntentStandard.standardId()).releaseErc20(addr, curve)
+        );
     }
 
-    function _addEthRequireSegment(UserIntent memory intent, EthRequireIntentSegment memory segment)
+    function _addErc20RequireSegment(UserIntent memory intent, address addr, int256[] memory curve, bool relative)
         internal
         view
         returns (UserIntent memory)
     {
-        return EthRequireIntentBuilder.addSegment(intent, _ethRequireIntentStandard.standardId(), segment);
+        return Erc20RequireIntentBuilder.addSegment(
+            intent,
+            Erc20RequireIntentSegmentBuilder.create(_erc20RequireIntentStandard.standardId()).requireErc20(
+                addr, curve, relative
+            )
+        );
     }
 
-    function _addErc20ReleaseSegment(UserIntent memory intent, Erc20ReleaseIntentSegment memory segment)
+    function _addCallSegment(UserIntent memory intent, bytes memory callData)
         internal
         view
         returns (UserIntent memory)
     {
-        return Erc20ReleaseIntentBuilder.addSegment(intent, _erc20ReleaseIntentStandard.standardId(), segment);
+        return CallIntentBuilder.addSegment(
+            intent, CallIntentSegmentBuilder.create(_callIntentStandard.standardId(), callData)
+        );
     }
 
-    function _addErc20RequireSegment(UserIntent memory intent, Erc20RequireIntentSegment memory segment)
+    function _addUserOperationSegment(UserIntent memory intent, bytes memory callData, uint256 txGas)
         internal
         view
         returns (UserIntent memory)
     {
-        return Erc20RequireIntentBuilder.addSegment(intent, _erc20RequireIntentStandard.standardId(), segment);
-    }
-
-    function _addCallSegment(UserIntent memory intent, CallIntentSegment memory segment)
-        internal
-        view
-        returns (UserIntent memory)
-    {
-        return CallIntentBuilder.addSegment(intent, _callIntentStandard.standardId(), segment);
+        return UserOperationBuilder.addSegment(
+            intent, UserOperationSegmentBuilder.create(_userOperation.standardId(), callData, txGas)
+        );
     }
 
     /**

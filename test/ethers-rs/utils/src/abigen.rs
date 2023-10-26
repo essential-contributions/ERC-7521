@@ -16,14 +16,6 @@ abigen!(
     "../../../out/CallIntentStandard.sol/CallIntentStandard.json"
 );
 abigen!(
-    AssetReleaseIntentStandard,
-    "../../../out/AssetReleaseIntentStandard.sol/AssetReleaseIntentStandard.json"
-);
-abigen!(
-    AssetRequireIntentStandard,
-    "../../../out/AssetRequireIntentStandard.sol/AssetRequireIntentStandard.json"
-);
-abigen!(
     EthReleaseIntentStandard,
     "../../../out/EthReleaseIntentStandard.sol/EthReleaseIntentStandard.json"
 );
@@ -49,8 +41,6 @@ abigen!(
     "../../../out/AbstractAccount.sol/AbstractAccount.json"
 );
 abigen!(TestERC20, "../../../out/TestERC20.sol/TestERC20.json");
-abigen!(TestERC721, "../../../out/TestERC721.sol/TestERC721.json");
-abigen!(TestERC1155, "../../../out/TestERC1155.sol/TestERC1155.json");
 abigen!(
     TestWrappedNativeToken,
     "../../../out/TestWrappedNativeToken.sol/TestWrappedNativeToken.json"

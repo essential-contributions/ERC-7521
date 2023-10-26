@@ -96,14 +96,15 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
         bytes memory contextData
     ) private returns (bytes memory) {
         UserIntent calldata intent = solution.intents[intentIndex];
+        bytes32 standardId = abi.decode(intent.intentData[segmentIndex], (bytes32));
         IIntentStandard intentStandard;
-        if (intent.standards[segmentIndex] == CALL_INTENT_STANDARD_ID) {
+        if (standardId == CALL_INTENT_STANDARD_ID) {
             intentStandard = this;
         } else {
-            intentStandard = _registeredStandards[intent.standards[segmentIndex]];
-        }
-        if (intentStandard == IIntentStandard(address(0))) {
-            revert FailedIntent(intentIndex, segmentIndex, "AA82 unknown standard");
+            intentStandard = _registeredStandards[standardId];
+            if (intentStandard == IIntentStandard(address(0))) {
+                revert FailedIntent(intentIndex, segmentIndex, "AA82 unknown standard");
+            }
         }
 
         _executionStateContext = intent.sender;
@@ -269,7 +270,9 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
      */
     function registerIntentStandard(IIntentStandard intentStandard) external returns (bytes32) {
         require(intentStandard.isIntentStandardForEntryPoint(this), "AA80 invalid standard");
-
+        if (address(intentStandard) == address(this)) {
+            return CALL_INTENT_STANDARD_ID;
+        }
         bytes32 standardId = _generateIntentStandardId(intentStandard);
         require(address(_registeredStandards[standardId]) == address(0), "AA81 already registered");
 
@@ -281,6 +284,9 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
      * gets the intent standard contract for the given intent standard ID.
      */
     function getIntentStandardContract(bytes32 standardId) external view returns (IIntentStandard) {
+        if (standardId == CALL_INTENT_STANDARD_ID) {
+            return this;
+        }
         IIntentStandard intentStandard = _registeredStandards[standardId];
         require(intentStandard != IIntentStandard(address(0)), "AA82 unknown standard");
         return intentStandard;
@@ -290,6 +296,9 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
      * gets the intent standard ID for the given intent standard contract.
      */
     function getIntentStandardId(IIntentStandard intentStandard) external view returns (bytes32) {
+        if (address(intentStandard) == address(this)) {
+            return CALL_INTENT_STANDARD_ID;
+        }
         bytes32 standardId = _generateIntentStandardId(intentStandard);
         require(_registeredStandards[standardId] != IIntentStandard(address(0)), "AA82 unknown standard");
         return standardId;
@@ -330,24 +339,20 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
         private
         returns (uint256 validationData)
     {
-        // validate intent standards and intent data arrays are the same length
-        if (intent.standards.length != intent.intentData.length) {
-            revert FailedIntent(intentIndex, 0, "AA83 standards.length != intentData.length");
-        }
-
         _executionStateContext = EX_STATE_VALIDATION_EXECUTING;
         _executionIntentStandard = EX_STANDARD_NOT_ACTIVE;
 
         // validate intent standards are recognized
-        for (uint256 i = 0; i < intent.standards.length; i++) {
+        for (uint256 i = 0; i < intent.intentData.length; i++) {
+            bytes32 standardId = abi.decode(intent.intentData[i], (bytes32));
             IIntentStandard standard;
-            if (intent.standards[i] == CALL_INTENT_STANDARD_ID) {
+            if (standardId == CALL_INTENT_STANDARD_ID) {
                 standard = this;
             } else {
-                standard = _registeredStandards[intent.standards[i]];
-            }
-            if (standard == IIntentStandard(address(0))) {
-                revert FailedIntent(intentIndex, i, "AA82 unknown standard");
+                standard = _registeredStandards[standardId];
+                if (standard == IIntentStandard(address(0))) {
+                    revert FailedIntent(intentIndex, i, "AA82 unknown standard");
+                }
             }
 
             // validate the intent segment itself

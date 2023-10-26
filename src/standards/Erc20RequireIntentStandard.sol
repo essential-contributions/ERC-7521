@@ -16,9 +16,11 @@ import {Strings} from "openzeppelin/utils/Strings.sol";
 
 /**
  * Erc20 Require Intent Segment struct
+ * @param standard intent standard id for segment.
  * @param requirement asset that is required to be owned by the account at the end of the solution execution.
  */
 struct Erc20RequireIntentSegment {
+    bytes32 standard;
     Erc20Curve requirement;
 }
 

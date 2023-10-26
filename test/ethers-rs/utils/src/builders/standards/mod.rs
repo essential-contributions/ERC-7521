@@ -1,5 +1,3 @@
-pub mod asset_release_intent_standard;
-pub mod asset_require_intent_standard;
 pub mod call_intent_standard;
 pub mod erc20_release_intent_standard;
 pub mod erc20_require_intent_standard;

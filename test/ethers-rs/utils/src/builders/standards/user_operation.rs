@@ -4,20 +4,21 @@ use ethers::prelude::*;
     Clone,
     ::ethers::contract::EthAbiType,
     ::ethers::contract::EthAbiCodec,
-    Default,
     Debug,
     PartialEq,
     Eq,
     Hash,
 )]
 pub struct UserOperationSegment {
-    call_data: Bytes,
-    call_gas_limit: U256,
+    pub standard: [u8; 32],
+    pub call_data: Bytes,
+    pub call_gas_limit: U256,
 }
 
 impl UserOperationSegment {
-    pub fn new(call_data: Bytes, call_gas_limit: U256) -> Self {
+    pub fn new(standard: [u8; 32], call_data: Bytes, call_gas_limit: U256) -> Self {
         Self {
+            standard,
             call_data,
             call_gas_limit,
         }
