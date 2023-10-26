@@ -78,10 +78,3 @@ function parseEvaluationType(EthCurve calldata curve) pure returns (EvaluationTy
 function isRelativeEvaluation(EthCurve calldata curve) pure returns (bool) {
     return parseEvaluationType(curve) == EvaluationType.RELATIVE;
 }
-
-/**
- * Generate flags from curve type and evaluation type.
- */
-function generateEthFlags(CurveType curve, EvaluationType eval) pure returns (uint96) {
-    return uint96((uint256(curve) << FLAGS_CURVE_TYPE_OFFSET) | (uint256(eval) << FLAGS_EVAL_TYPE_OFFSET));
-}

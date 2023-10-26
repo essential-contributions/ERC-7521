@@ -3,14 +3,13 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 import {UserIntent} from "../../../../../src/interfaces/UserIntent.sol";
-import {
-    Erc20Curve, generateErc20Flags, CurveType, EvaluationType
-} from "../../../../../src/utils/curves/Erc20Curve.sol";
+import {Erc20Curve, CurveType, EvaluationType} from "../../../../../src/utils/curves/Erc20Curve.sol";
 import {CurveBuilder} from "../CurveBuilder.sol";
 import {
     Erc20RequireIntentStandard,
     Erc20RequireIntentSegment
 } from "../../../../../src/standards/Erc20RequireIntentStandard.sol";
+import {generateFlags} from "../../../../../src/utils/Helpers.sol";
 import "openzeppelin/utils/cryptography/ECDSA.sol";
 
 /**
@@ -130,7 +129,7 @@ library Erc20RequireIntentSegmentBuilder {
         if (isRelative) evalType = EvaluationType.RELATIVE;
         segment.requirement = Erc20Curve({
             erc20Contract: erc20Contract,
-            flags: generateErc20Flags(CurveBuilder.getCurveType(curveParams), evalType),
+            flags: generateFlags(CurveBuilder.getCurveType(curveParams), evalType),
             params: curveParams
         });
 

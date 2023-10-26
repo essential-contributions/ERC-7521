@@ -5,9 +5,10 @@ pragma solidity ^0.8.13;
 
 import "../utils/ScenarioTestEnvironment.sol";
 import {EthCurveLibHarness} from "../../../src/test/EthCurveLibHarness.sol";
-import {EthCurve, evaluate, generateEthFlags} from "../../../src/utils/curves/EthCurve.sol";
+import {EthCurve, evaluate} from "../../../src/utils/curves/EthCurve.sol";
+import {generateFlags} from "../../../src/utils/Helpers.sol";
 import {Erc20CurveLibHarness} from "../../../src/test/Erc20CurveLibHarness.sol";
-import {Erc20Curve, generateErc20Flags, CurveType, EvaluationType} from "../../../src/utils/curves/Erc20Curve.sol";
+import {Erc20Curve, CurveType, EvaluationType} from "../../../src/utils/curves/Erc20Curve.sol";
 
 /*
  * In this scenario, a user is specifying different tokens to release and tokens expected by the end.
@@ -98,10 +99,8 @@ contract TokenSwaps is ScenarioTestEnvironment {
         int256[] memory erc20ReleaseCurveParams = CurveBuilder.constantCurve(int256(uint256(erc20ReleaseAmount)));
         int256[] memory ethRequireCurveParams = CurveBuilder.linearCurve(m / int256(uint256(max)), b, max, flipY);
 
-        EthCurve memory ethRequireCurve = EthCurve({
-            flags: generateEthFlags(CurveType.LINEAR, EvaluationType.RELATIVE),
-            params: ethRequireCurveParams
-        });
+        EthCurve memory ethRequireCurve =
+            EthCurve({flags: generateFlags(CurveType.LINEAR, EvaluationType.RELATIVE), params: ethRequireCurveParams});
 
         uint256 evaluation = uint256(ethRequireCurve.evaluateCurve(timestamp));
 
@@ -164,7 +163,7 @@ contract TokenSwaps is ScenarioTestEnvironment {
 
         int256[] memory erc20ReleaseCurveParams = CurveBuilder.exponentialCurve(m, b, int256(uint256(e)), max, flipY);
 
-        uint96 erc20ReleaseCurveFlags = generateErc20Flags(CurveType.EXPONENTIAL, EvaluationType.RELATIVE);
+        uint96 erc20ReleaseCurveFlags = generateFlags(CurveType.EXPONENTIAL, EvaluationType.RELATIVE);
 
         int256[] memory ethRequireCurveParams = CurveBuilder.constantCurve(int256(uint256(ethRequireAmount)));
 
@@ -223,10 +222,8 @@ contract TokenSwaps is ScenarioTestEnvironment {
         int256[] memory erc20ReleaseCurveParams = CurveBuilder.constantCurve(int256(uint256(erc20ReleaseAmount)));
         int256[] memory ethRequireCurveParams = CurveBuilder.linearCurve(3 ether / 3000, 7 ether, 3000, false);
 
-        EthCurve memory ethRequireCurve = EthCurve({
-            flags: generateEthFlags(CurveType.LINEAR, EvaluationType.RELATIVE),
-            params: ethRequireCurveParams
-        });
+        EthCurve memory ethRequireCurve =
+            EthCurve({flags: generateFlags(CurveType.LINEAR, EvaluationType.RELATIVE), params: ethRequireCurveParams});
 
         //create intent
         UserIntent memory intent = _intentForCase(erc20ReleaseCurveParams, ethRequireCurveParams);

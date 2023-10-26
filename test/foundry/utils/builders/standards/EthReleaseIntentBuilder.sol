@@ -3,7 +3,8 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 import {UserIntent} from "../../../../../src/interfaces/UserIntent.sol";
-import {EthCurve, generateEthFlags, CurveType, EvaluationType} from "../../../../../src/utils/curves/EthCurve.sol";
+import {EthCurve, CurveType, EvaluationType} from "../../../../../src/utils/curves/EthCurve.sol";
+import {generateFlags} from "../../../../../src/utils/Helpers.sol";
 import {CurveBuilder} from "../CurveBuilder.sol";
 import {
     EthReleaseIntentStandard,
@@ -122,7 +123,7 @@ library EthReleaseIntentSegmentBuilder {
         returns (EthReleaseIntentSegment memory)
     {
         segment.release = EthCurve({
-            flags: generateEthFlags(CurveBuilder.getCurveType(curveParams), EvaluationType.ABSOLUTE),
+            flags: generateFlags(CurveBuilder.getCurveType(curveParams), EvaluationType.ABSOLUTE),
             params: curveParams
         });
 

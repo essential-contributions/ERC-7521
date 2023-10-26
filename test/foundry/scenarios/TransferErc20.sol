@@ -5,9 +5,10 @@ pragma solidity ^0.8.13;
 
 import "../utils/ScenarioTestEnvironment.sol";
 import {EthCurveLibHarness} from "../../../src/test/EthCurveLibHarness.sol";
-import {EthCurve, evaluate, generateEthFlags} from "../../../src/utils/curves/EthCurve.sol";
+import {EthCurve, evaluate} from "../../../src/utils/curves/EthCurve.sol";
 import {Erc20CurveLibHarness} from "../../../src/test/Erc20CurveLibHarness.sol";
-import {Erc20Curve, generateErc20Flags, CurveType, EvaluationType} from "../../../src/utils/curves/Erc20Curve.sol";
+import {Erc20Curve, CurveType, EvaluationType} from "../../../src/utils/curves/Erc20Curve.sol";
+import {generateFlags} from "../../../src/utils/Helpers.sol";
 
 contract TransferErc20 is ScenarioTestEnvironment {
     using Erc20ReleaseIntentSegmentBuilder for Erc20ReleaseIntentSegment;
@@ -62,10 +63,8 @@ contract TransferErc20 is ScenarioTestEnvironment {
 
         int256[] memory erc20ReleaseCurveParams =
             CurveBuilder.linearCurve(int256(_accountInitialERC20Balance - erc20TransferAmount) / 3000, 0, 3000, false);
-        EthCurve memory erc20ReleaseCurve = EthCurve({
-            flags: generateErc20Flags(CurveType.LINEAR, EvaluationType.ABSOLUTE),
-            params: erc20ReleaseCurveParams
-        });
+        EthCurve memory erc20ReleaseCurve =
+            EthCurve({flags: generateFlags(CurveType.LINEAR, EvaluationType.ABSOLUTE), params: erc20ReleaseCurveParams});
         uint256 erc20ReleaseEvaluation = uint256(erc20ReleaseCurve.evaluateCurve(timestamp));
 
         int256[] memory erc20RequireCurveParams =

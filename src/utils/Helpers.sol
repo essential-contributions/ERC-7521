@@ -67,6 +67,13 @@ uint256 constant FLAGS_CURVE_TYPE_OFFSET = 2;
 uint16 constant FLAGS_EVAL_TYPE_MASK = 0x0003;
 uint16 constant FLAGS_CURVE_TYPE_MASK = 0x00fc;
 
+/**
+ * Generate flags from curve type and evaluation type.
+ */
+function generateFlags(CurveType curve, EvaluationType eval) pure returns (uint96) {
+    return uint96((uint256(curve) << FLAGS_CURVE_TYPE_OFFSET) | (uint256(eval) << FLAGS_EVAL_TYPE_OFFSET));
+}
+
 function evaluateConstantCurve(int256[] calldata curveParams) pure returns (int256 val) {
     val = curveParams[0];
 }

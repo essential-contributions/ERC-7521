@@ -80,10 +80,3 @@ function parseEvaluationType(Erc20Curve calldata curve) pure returns (Evaluation
 function isRelativeEvaluation(Erc20Curve calldata curve) pure returns (bool) {
     return parseEvaluationType(curve) == EvaluationType.RELATIVE;
 }
-
-/**
- * Generate flags from curve type and evaluation type.
- */
-function generateErc20Flags(CurveType curve, EvaluationType eval) pure returns (uint96) {
-    return uint96((uint256(curve) << FLAGS_CURVE_TYPE_OFFSET) | (uint256(eval) << FLAGS_EVAL_TYPE_OFFSET));
-}

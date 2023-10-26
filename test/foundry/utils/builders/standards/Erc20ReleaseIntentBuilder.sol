@@ -3,10 +3,9 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 import {UserIntent} from "../../../../../src/interfaces/UserIntent.sol";
-import {
-    Erc20Curve, generateErc20Flags, CurveType, EvaluationType
-} from "../../../../../src/utils/curves/Erc20Curve.sol";
+import {Erc20Curve, CurveType, EvaluationType} from "../../../../../src/utils/curves/Erc20Curve.sol";
 import {CurveBuilder} from "../CurveBuilder.sol";
+import {generateFlags} from "../../../../../src/utils/Helpers.sol";
 import {
     Erc20ReleaseIntentStandard,
     Erc20ReleaseIntentSegment
@@ -125,7 +124,7 @@ library Erc20ReleaseIntentSegmentBuilder {
     ) private pure returns (Erc20ReleaseIntentSegment memory) {
         segment.release = Erc20Curve({
             erc20Contract: erc20Contract,
-            flags: generateErc20Flags(CurveBuilder.getCurveType(curveParams), EvaluationType.ABSOLUTE),
+            flags: generateFlags(CurveBuilder.getCurveType(curveParams), EvaluationType.ABSOLUTE),
             params: curveParams
         });
 
