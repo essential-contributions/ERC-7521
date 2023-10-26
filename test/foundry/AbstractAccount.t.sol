@@ -24,7 +24,7 @@ contract AbstractAccountTest is ScenarioTestEnvironment {
 
         // solver's intent
         UserIntent memory solverIntent =
-            _solverIntent(_solverSwapAllERC20ForETH(1 ether, address(_publicAddressSolver)), "", "", 1);
+            _solverIntent(_solverSwapERC20ForETH(1 ether, address(_publicAddressSolver)), "", "", 1);
 
         // handle intents
         _entryPoint.handleIntents(_solution(intent, solverIntent));

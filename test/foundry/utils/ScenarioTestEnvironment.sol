@@ -136,9 +136,9 @@ abstract contract ScenarioTestEnvironment is Test {
      * @param to The address to receive the swapped ETH.
      * @return The array of solution steps for swapping tokens.
      */
-    function _solverSwapAllERC20ForETH(uint256 minETH, address to) internal view returns (bytes memory) {
+    function _solverSwapERC20ForETH(uint256 minETH, address to) internal view returns (bytes memory) {
         return abi.encodeWithSelector(
-            SolverUtils.swapAllERC20ForETH.selector, _testUniswap, _testERC20, _testWrappedNativeToken, minETH, to
+            SolverUtils.swapERC20ForETH.selector, _testUniswap, _testERC20, _testWrappedNativeToken, minETH, to
         );
     }
 
@@ -150,13 +150,13 @@ abstract contract ScenarioTestEnvironment is Test {
      * @param forwardTo The address to forward the ETH to.
      * @return The array of solution steps for swapping tokens and forwarding ETH.
      */
-    function _solverSwapAllERC20ForETHAndForward(uint256 minETH, address to, uint256 forwardAmount, address forwardTo)
+    function _solverSwapERC20ForETHAndForward(uint256 minETH, address to, uint256 forwardAmount, address forwardTo)
         internal
         view
         returns (bytes memory)
     {
         return abi.encodeWithSelector(
-            SolverUtils.swapAllERC20ForETHAndForward.selector,
+            SolverUtils.swapERC20ForETHAndForward.selector,
             _testUniswap,
             _testERC20,
             _testWrappedNativeToken,
@@ -165,6 +165,14 @@ abstract contract ScenarioTestEnvironment is Test {
             forwardAmount,
             forwardTo
         );
+    }
+
+    function _solverTransferERC20(uint256 amount, address recipient) internal view returns (bytes memory) {
+        return abi.encodeWithSelector(SolverUtils.transferERC20.selector, _testERC20, amount, recipient);
+    }
+
+    function _solverTransferETH(address recipient, uint256 amount) internal pure returns (bytes memory) {
+        return abi.encodeWithSelector(SolverUtils.transferETH.selector, recipient, amount);
     }
 
     /**

@@ -41,7 +41,7 @@ contract TokenSwaps is ScenarioTestEnvironment {
         returns (IntentSolution memory)
     {
         UserIntent memory solverIntent = _solverIntent(
-            _solverSwapAllERC20ForETHAndForward(
+            _solverSwapERC20ForETHAndForward(
                 erc20ReleaseAmount, address(_publicAddressSolver), evaluation, address(_account)
             ),
             "",
@@ -57,7 +57,7 @@ contract TokenSwaps is ScenarioTestEnvironment {
         returns (IntentSolution memory)
     {
         UserIntent memory solverIntent = _solverIntent(
-            _solverSwapAllERC20ForETHAndForward(
+            _solverSwapERC20ForETHAndForward(
                 evaluation, address(_publicAddressSolver), ethRequireAmount, address(_account)
             ),
             "",
