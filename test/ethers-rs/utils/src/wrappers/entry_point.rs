@@ -51,7 +51,10 @@ impl EntryPointContract {
         dbg!(tx.estimate_gas().await.unwrap());
 
         match tx.clone().send().await {
-            Ok(_) => Ok(()),
+            Ok(pending_tx) => {
+                dbg!(pending_tx.await.unwrap().unwrap());
+                Ok(())
+            }
             Err(e) => {
                 if let Some(decoded_error) = e.decode_revert::<String>() {
                     panic!("{}", decoded_error);
