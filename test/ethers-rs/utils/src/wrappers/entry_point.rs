@@ -48,11 +48,56 @@ impl EntryPointContract {
 
     pub async fn handle_intents(&self, solution: IntentSolution) -> Result<()> {
         let tx = self.contract.handle_intents(solution);
-        dbg!(tx.estimate_gas().await.unwrap());
 
         match tx.clone().send().await {
             Ok(pending_tx) => {
-                dbg!(pending_tx.await.unwrap().unwrap());
+                let receipt = pending_tx.await.unwrap().unwrap();
+                dbg!("gas used: {:?}", receipt.gas_used.unwrap());
+                Ok(())
+            }
+            Err(e) => {
+                if let Some(decoded_error) = e.decode_revert::<String>() {
+                    panic!("{}", decoded_error);
+                } else {
+                    match e.as_revert() {
+                        Some(revert) => {
+                            if let Ok(decoded_error) =
+                                <crate::abigen::EntryPointErrors as AbiDecode>::decode(revert)
+                            {
+                                match decoded_error {
+                                    crate::abigen::EntryPointErrors::ExecutionResult(_e) => {
+                                        panic!("ExecutionResult({})", e);
+                                    }
+                                    crate::abigen::EntryPointErrors::FailedIntent(e) => {
+                                        panic!("FailedIntent({})", e);
+                                    }
+                                    crate::abigen::EntryPointErrors::ValidationResult(e) => {
+                                        panic!("ValidationResult({})", e);
+                                    }
+                                    crate::abigen::EntryPointErrors::RevertString(e) => {
+                                        panic!("RevertString({})", e);
+                                    }
+                                }
+                            } else {
+                                panic!("{}", revert);
+                            }
+                        }
+                        None => {
+                            panic!("{}", e);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    pub async fn handle_multi_solution_intents(&self, multi_solutions: Vec<IntentSolution>) -> Result<()> {
+        let tx = self.contract.handle_multi_solution_intents(multi_solutions);
+
+        match tx.clone().send().await {
+            Ok(pending_tx) => {
+                let receipt = pending_tx.await.unwrap().unwrap();
+                dbg!("gas used: {:?}", receipt.gas_used.unwrap());
                 Ok(())
             }
             Err(e) => {
