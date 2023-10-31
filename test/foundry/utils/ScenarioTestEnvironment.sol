@@ -85,11 +85,11 @@ abstract contract ScenarioTestEnvironment is Test {
         //deploy contracts
         _entryPoint = new EntryPoint();
         _callIntentStandard = CallIntentStandard(_entryPoint);
-        _userOperation = new UserOperation(_entryPoint);
-        _ethReleaseIntentStandard = new EthReleaseIntentStandard(_entryPoint);
-        _ethRequireIntentStandard = new EthRequireIntentStandard(_entryPoint);
-        _erc20ReleaseIntentStandard = new Erc20ReleaseIntentStandard(_entryPoint);
-        _erc20RequireIntentStandard = new Erc20RequireIntentStandard(_entryPoint);
+        _userOperation = new UserOperation();
+        _ethReleaseIntentStandard = new EthReleaseIntentStandard();
+        _ethRequireIntentStandard = new EthRequireIntentStandard();
+        _erc20ReleaseIntentStandard = new Erc20ReleaseIntentStandard();
+        _erc20RequireIntentStandard = new Erc20RequireIntentStandard();
         _account = new AbstractAccount(_entryPoint, _publicAddress);
 
         //register intent standards to entry point
@@ -219,7 +219,10 @@ abstract contract ScenarioTestEnvironment is Test {
         returns (UserIntent memory)
     {
         return EthReleaseIntentBuilder.addSegment(
-            intent, EthReleaseIntentSegmentBuilder.create(_ethReleaseIntentStandard.standardId()).releaseEth(curve)
+            intent,
+            EthReleaseIntentSegmentBuilder.create(_entryPoint.getIntentStandardId(_ethReleaseIntentStandard)).releaseEth(
+                curve
+            )
         );
     }
 
@@ -230,7 +233,9 @@ abstract contract ScenarioTestEnvironment is Test {
     {
         return EthRequireIntentBuilder.addSegment(
             intent,
-            EthRequireIntentSegmentBuilder.create(_ethRequireIntentStandard.standardId()).requireEth(curve, relative)
+            EthRequireIntentSegmentBuilder.create(_entryPoint.getIntentStandardId(_ethRequireIntentStandard)).requireEth(
+                curve, relative
+            )
         );
     }
 
@@ -241,7 +246,8 @@ abstract contract ScenarioTestEnvironment is Test {
     {
         return Erc20ReleaseIntentBuilder.addSegment(
             intent,
-            Erc20ReleaseIntentSegmentBuilder.create(_erc20ReleaseIntentStandard.standardId()).releaseErc20(addr, curve)
+            Erc20ReleaseIntentSegmentBuilder.create(_entryPoint.getIntentStandardId(_erc20ReleaseIntentStandard))
+                .releaseErc20(addr, curve)
         );
     }
 
@@ -252,9 +258,8 @@ abstract contract ScenarioTestEnvironment is Test {
     {
         return Erc20RequireIntentBuilder.addSegment(
             intent,
-            Erc20RequireIntentSegmentBuilder.create(_erc20RequireIntentStandard.standardId()).requireErc20(
-                addr, curve, relative
-            )
+            Erc20RequireIntentSegmentBuilder.create(_entryPoint.getIntentStandardId(_erc20RequireIntentStandard))
+                .requireErc20(addr, curve, relative)
         );
     }
 
@@ -274,7 +279,7 @@ abstract contract ScenarioTestEnvironment is Test {
         returns (UserIntent memory)
     {
         return UserOperationBuilder.addSegment(
-            intent, UserOperationSegmentBuilder.create(_userOperation.standardId(), callData, txGas)
+            intent, UserOperationSegmentBuilder.create(_entryPoint.getIntentStandardId(_userOperation), callData, txGas)
         );
     }
 
