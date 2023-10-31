@@ -52,7 +52,7 @@ impl EntryPointContract {
         match tx.clone().send().await {
             Ok(pending_tx) => {
                 let receipt = pending_tx.await.unwrap().unwrap();
-                dbg!("gas used: {:?}", receipt.gas_used.unwrap());
+                println!("gas used: {:?}", receipt.gas_used.unwrap());
                 Ok(())
             }
             Err(e) => {
@@ -65,9 +65,6 @@ impl EntryPointContract {
                                 <crate::abigen::EntryPointErrors as AbiDecode>::decode(revert)
                             {
                                 match decoded_error {
-                                    crate::abigen::EntryPointErrors::ExecutionResult(_e) => {
-                                        panic!("ExecutionResult({})", e);
-                                    }
                                     crate::abigen::EntryPointErrors::FailedIntent(e) => {
                                         panic!("FailedIntent({})", e);
                                     }
@@ -100,7 +97,7 @@ impl EntryPointContract {
         match tx.clone().send().await {
             Ok(pending_tx) => {
                 let receipt = pending_tx.await.unwrap().unwrap();
-                dbg!("gas used: {:?}", receipt.gas_used.unwrap());
+                println!("gas used: {:?}", receipt.gas_used.unwrap());
                 Ok(())
             }
             Err(e) => {
@@ -113,52 +110,6 @@ impl EntryPointContract {
                                 <crate::abigen::EntryPointErrors as AbiDecode>::decode(revert)
                             {
                                 match decoded_error {
-                                    crate::abigen::EntryPointErrors::ExecutionResult(_e) => {
-                                        panic!("ExecutionResult({})", e);
-                                    }
-                                    crate::abigen::EntryPointErrors::FailedIntent(e) => {
-                                        panic!("FailedIntent({})", e);
-                                    }
-                                    crate::abigen::EntryPointErrors::ValidationResult(e) => {
-                                        panic!("ValidationResult({})", e);
-                                    }
-                                    crate::abigen::EntryPointErrors::RevertString(e) => {
-                                        panic!("RevertString({})", e);
-                                    }
-                                }
-                            } else {
-                                panic!("{}", revert);
-                            }
-                        }
-                        None => {
-                            panic!("{}", e);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    pub async fn simulate_handle_intents(&self, solution: IntentSolution) -> Result<()> {
-        let tx = self
-            .contract
-            .simulate_handle_intents(solution, Address::zero(), Bytes::default());
-
-        match tx.clone().call().await {
-            Ok(_) => {
-                panic!("simulation should not return successfully");
-            }
-            Err(e) => {
-                if let Some(decoded_error) = e.decode_revert::<String>() {
-                    panic!("{}", decoded_error);
-                } else {
-                    match e.as_revert() {
-                        Some(revert) => {
-                            if let Ok(decoded_error) =
-                                <crate::abigen::EntryPointErrors as AbiDecode>::decode(revert)
-                            {
-                                match decoded_error {
-                                    crate::abigen::EntryPointErrors::ExecutionResult(_e) => Ok(()),
                                     crate::abigen::EntryPointErrors::FailedIntent(e) => {
                                         panic!("FailedIntent({})", e);
                                     }

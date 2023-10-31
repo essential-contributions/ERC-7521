@@ -113,10 +113,6 @@ contract TokenSwaps is ScenarioTestEnvironment {
             //create solution
             IntentSolution memory solution = _constantReleaseSolution(intent, erc20ReleaseAmount, evaluation);
 
-            //simulate execution
-            vm.expectRevert(abi.encodeWithSelector(IEntryPoint.ExecutionResult.selector, true, false, ""));
-            _entryPoint.simulateHandleIntents(solution, address(0), "");
-
             //execute
             _entryPoint.handleIntents(solution);
         }
@@ -184,10 +180,6 @@ contract TokenSwaps is ScenarioTestEnvironment {
 
             //create solution
             IntentSolution memory solution = _constantExpectationSolution(intent, ethRequireAmount, evaluation);
-
-            //simulate execution
-            vm.expectRevert(abi.encodeWithSelector(IEntryPoint.ExecutionResult.selector, true, false, ""));
-            _entryPoint.simulateHandleIntents(solution, address(0), "");
 
             //execute
             _entryPoint.handleIntents(solution);

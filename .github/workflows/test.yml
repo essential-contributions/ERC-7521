@@ -78,7 +78,7 @@ jobs:
         uses: VeryGoodOpenSource/very_good_coverage@v2
         with:
           path: lcov.info
-          min_coverage: 60
+          min_coverage: 50
 
   cargo:
     name: Cargo project

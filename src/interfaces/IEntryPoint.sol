@@ -30,12 +30,6 @@ interface IEntryPoint is INonceManager {
     event UserIntentRevertReason(uint256 solIndex, uint256 intIndex, uint256 segIndex, string revertReason);
 
     /**
-     * an event emitted by handleIntents, before starting the execution loop.
-     * any event emitted before this event, is part of the validation.
-     */
-    event BeforeExecution();
-
-    /**
      * a custom revert error of handleIntents, to identify the offending intent.
      * NOTE: if simulateValidation passes successfully, there should be no reason for handleIntents to fail.
      * @param intIndex - index into the array of intents to the failed one
@@ -55,11 +49,6 @@ interface IEntryPoint is INonceManager {
     error ValidationResult(bool sigFailed, uint48 validAfter, uint48 validUntil);
 
     /**
-     * return value of simulateHandleIntents
-     */
-    error ExecutionResult(bool success, bool targetSuccess, bytes targetResult);
-
-    /**
      * Execute a batch of UserIntents with given solution.
      * @param solution the UserIntents solution.
      */
@@ -70,23 +59,6 @@ interface IEntryPoint is INonceManager {
      * @param solutions list of solutions to execute for intents.
      */
     function handleMultiSolutionIntents(IntentSolution[] calldata solutions) external;
-
-    /**
-     * Simulate full execution of a UserIntent solution (including both validation and target execution).
-     * This method will always revert with "ExecutionResult".
-     * A timestamp must be set on the solution in order to run.
-     * It performs full validation of the UserIntent solution, but ignores signature error.
-     * an optional target address is called after the solution succeeds, and its value is returned
-     * (before the entire call is reverted)
-     * Note that in order to collect the the success/failure of the target call, it must be executed
-     * with trace enabled to track the emitted events.
-     * @param solution the UserIntent solution to simulate.
-     * @param target if nonzero, a target address to call after user intent simulation. If called,
-     *        the targetSuccess and targetResult are set to the return from that call.
-     * @param targetCallData callData to pass to target address.
-     */
-    function simulateHandleIntents(IntentSolution calldata solution, address target, bytes calldata targetCallData)
-        external;
 
     /**
      * Simulate a call to account.validateUserIntent.
@@ -116,11 +88,6 @@ interface IEntryPoint is INonceManager {
      * gets the intent standard ID for the given intent standard contract.
      */
     function getIntentStandardId(IIntentStandard intentStandard) external view returns (bytes32);
-
-    /**
-     * returns if intent validation actions are currently being executed.
-     */
-    function validationExecuting() external view returns (bool);
 
     /**
      * returns true if the given standard is currently executing an intent segment for the msg.sender.

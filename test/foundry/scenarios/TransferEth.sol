@@ -77,10 +77,6 @@ contract TransferEth is ScenarioTestEnvironment {
             IntentSolution memory solution =
                 _solutionForCase(intent, erc20ReleaseEvaluation, ethTransferAmount, address(_publicAddress));
 
-            //simulate execution
-            vm.expectRevert(abi.encodeWithSelector(IEntryPoint.ExecutionResult.selector, true, false, ""));
-            _entryPoint.simulateHandleIntents(solution, address(0), "");
-
             //execute
             _entryPoint.handleIntents(solution);
         }

@@ -151,24 +151,17 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
         require(timestamp > 0, "AA71 invalid timestamp");
 
         unchecked {
-            bytes32[] memory intentHashes = new bytes32[](intsLen);
-
             // validate intents
             for (uint256 i = 0; i < intsLen; i++) {
                 bytes32 intentHash = getUserIntentHash(solution.intents[i]);
                 uint256 validationData = _validateUserIntent(solution.intents[i], intentHash, i);
                 _validateAccountValidationData(validationData, i);
 
-                intentHashes[i] = intentHash;
+                emit UserIntentEvent(intentHash, solution.intents[i].sender, msg.sender, solution.intents[i].nonce);
             }
-
-            emit BeforeExecution();
 
             // execute solution
             _executeSolution(solution);
-            for (uint256 i = 0; i < intsLen; i++) {
-                emit UserIntentEvent(intentHashes[i], solution.intents[i].sender, msg.sender, solution.intents[i].nonce);
-            }
         } //unchecked
     }
 
@@ -187,59 +180,6 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
                 }
             }
         }
-    }
-
-    /**
-     * Simulate full execution of a UserIntent solution (including both validation and target execution).
-     * This method will always revert with "ExecutionResult".
-     * A timestamp must be set on the solution in order to run.
-     * It performs full validation of the UserIntent solution, but ignores signature error.
-     * an optional target address is called after the solution succeeds, and its value is returned
-     * (before the entire call is reverted)
-     * Note that in order to collect the the success/failure of the target call, it must be executed
-     * with trace enabled to track the emitted events.
-     * @param solution the UserIntent solution to simulate.
-     * @param target if nonzero, a target address to call after user intent simulation. If called,
-     *        the targetSuccess and targetResult are set to the return from that call.
-     * @param targetCallData callData to pass to target address.
-     */
-    function simulateHandleIntents(IntentSolution calldata solution, address target, bytes calldata targetCallData)
-        external
-        override
-        nonReentrant
-    {
-        uint256 intsLen = solution.intents.length;
-        require(intsLen > 0, "AA70 no intents");
-
-        // validate timestamp
-        require(solution.timestamp > 0, "AA72 simulation requires timestamp");
-
-        unchecked {
-            // run validation
-            for (uint256 i = 0; i < intsLen; i++) {
-                _simulationOnlyValidations(solution.intents[i], i);
-                bytes32 intentHash = getUserIntentHash(solution.intents[i]);
-                uint256 validationData = _validateUserIntent(solution.intents[i], intentHash, i);
-                _validateAccountValidationData(validationData, i);
-            }
-
-            emit BeforeExecution();
-
-            // execute solution
-            numberMarker();
-            _executeSolution(solution);
-            numberMarker();
-
-            // run target call
-            bool targetSuccess;
-            bytes memory targetResult;
-            if (target != address(0)) {
-                (targetSuccess, targetResult) = target.call(targetCallData);
-            }
-
-            // return results through a custom error
-            revert ExecutionResult(true, targetSuccess, targetResult);
-        } //unchecked
     }
 
     /**
@@ -305,13 +245,6 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
     }
 
     /**
-     * returns if intent validation actions are currently being executed.
-     */
-    function validationExecuting() external view returns (bool) {
-        return _executionStateContext == EX_STATE_VALIDATION_EXECUTING;
-    }
-
-    /**
      * returns true if the given standard is currently executing an intent segment for the msg.sender.
      */
     function verifyExecutingIntentSegmentForStandard(IIntentStandard intentStandard) external view returns (bool) {
@@ -326,21 +259,6 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
         if (intent.sender.code.length == 0) {
             revert FailedIntent(intentIndex, 0, "AA20 account not deployed");
         }
-    }
-
-    /**
-     * validate user intent.
-     * this method is called off-chain (simulateValidation()) and on-chain (from handleIntents)
-     * @param intent the user intent to validate.
-     * @param intentHash hash of the user's intent data.
-     * @param intentIndex the index of this intent.
-     */
-    function _validateUserIntent(UserIntent calldata intent, bytes32 intentHash, uint256 intentIndex)
-        private
-        returns (uint256 validationData)
-    {
-        _executionStateContext = EX_STATE_VALIDATION_EXECUTING;
-        _executionIntentStandard = EX_STANDARD_NOT_ACTIVE;
 
         // validate intent standards are recognized
         for (uint256 i = 0; i < intent.intentData.length; i++) {
@@ -363,6 +281,21 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
                 revert FailedIntent(intentIndex, i, "AA62 reverted (or OOG)");
             }
         }
+    }
+
+    /**
+     * validate user intent.
+     * this method is called off-chain (simulateValidation()) and on-chain (from handleIntents)
+     * @param intent the user intent to validate.
+     * @param intentHash hash of the user's intent data.
+     * @param intentIndex the index of this intent.
+     */
+    function _validateUserIntent(UserIntent calldata intent, bytes32 intentHash, uint256 intentIndex)
+        private
+        returns (uint256 validationData)
+    {
+        _executionStateContext = EX_STATE_VALIDATION_EXECUTING;
+        _executionIntentStandard = EX_STANDARD_NOT_ACTIVE;
 
         // validate intent with account
         try IAccount(intent.sender).validateUserIntent(intent, intentHash) returns (uint256 _validationData) {
@@ -448,14 +381,5 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
      */
     function _generateIntentStandardId(IIntentStandard intentStandard) private view returns (bytes32) {
         return keccak256(abi.encodePacked(intentStandard, address(this), block.chainid));
-    }
-
-    //place the NUMBER opcode in the code.
-    // this is used as a marker during simulation, as this OP is completely banned from the simulated code of the
-    // account.
-    function numberMarker() internal view {
-        assembly {
-            mstore(0, number())
-        }
     }
 }
