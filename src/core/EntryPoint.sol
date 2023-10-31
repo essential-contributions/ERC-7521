@@ -151,13 +151,12 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
         require(timestamp > 0, "AA71 invalid timestamp");
 
         unchecked {
-
             // validate intents
             for (uint256 i = 0; i < intsLen; i++) {
                 bytes32 intentHash = getUserIntentHash(solution.intents[i]);
                 uint256 validationData = _validateUserIntent(solution.intents[i], intentHash, i);
                 _validateAccountValidationData(validationData, i);
-                
+
                 emit UserIntentEvent(intentHash, solution.intents[i].sender, msg.sender, solution.intents[i].nonce);
             }
 
