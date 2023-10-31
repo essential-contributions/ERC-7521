@@ -11,6 +11,7 @@ import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
 import {Exec, RevertReason} from "../utils/Exec.sol";
+import {_balanceOf} from "../utils/wrappers/EthWrapper.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
 
 /**
@@ -51,9 +52,18 @@ contract EthRequireIntentStandard is IIntentStandard {
         uint256 executionIndex,
         uint256 segmentIndex,
         bytes memory context
-    ) external pure returns (bytes memory) {
+    ) external view returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
         if (intent.intentData[segmentIndex].length > 0) {
+            uint256 evaluateAt = 0;
+            if (solution.timestamp > intent.timestamp) {
+                evaluateAt = solution.timestamp - intent.timestamp;
+            }
+            EthRequireIntentSegment calldata segment = parseIntentSegment(intent.intentData[segmentIndex]);
+
+            // check requirement
+            _checkRequirement(segment, evaluateAt, intent.sender);
+
             if (segmentIndex + 1 < intent.intentData.length && intent.intentData[segmentIndex + 1].length > 0) {
                 return context;
             }
@@ -69,6 +79,24 @@ contract EthRequireIntentStandard is IIntentStandard {
         assembly {
             segment := segmentData.offset
         }
+    }
+
+    function _checkRequirement(EthRequireIntentSegment calldata intentSegment, uint256 evaluateAt, address owner)
+        private
+        view
+    {
+        int256 requiredBalance = evaluate(intentSegment.requirement, evaluateAt);
+        uint256 currentBalance = _balanceOf(owner);
+        require(
+            currentBalance >= uint256(requiredBalance),
+            string.concat(
+                "insufficient balance (required: ",
+                Strings.toString(requiredBalance),
+                ", current: ",
+                Strings.toString(currentBalance),
+                ")"
+            )
+        );
     }
 
     function testNothing() public {}
