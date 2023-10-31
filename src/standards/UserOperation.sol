@@ -4,12 +4,10 @@ pragma solidity ^0.8.13;
 /* solhint-disable private-vars-leading-underscore */
 
 import "forge-std/Test.sol";
-import {EntryPointTruster} from "../core/EntryPointTruster.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
-import {BaseStandard} from "../core/BaseStandard.sol";
 import {Exec} from "../utils/Exec.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
 
@@ -25,18 +23,8 @@ struct UserOperationSegment {
     bytes callData;
 }
 
-contract UserOperation is IIntentStandard, BaseStandard {
+contract UserOperation is IIntentStandard {
     using IntentSolutionLib for IntentSolution;
-
-    /**
-     * Contract constructor.
-     * @param entryPointContract the address of the entrypoint contract
-     */
-    constructor(IEntryPoint entryPointContract) BaseStandard(entryPointContract) {}
-
-    function standardId() public view override returns (bytes32) {
-        return _entryPoint.getIntentStandardId(this);
-    }
 
     /**
      * Validate intent segment structure (typically just formatting).
@@ -72,15 +60,6 @@ contract UserOperation is IIntentStandard, BaseStandard {
             }
         }
         return "";
-    }
-
-    /**
-     * Verifies the intent standard is for a given entry point contract (required for registration on the entry point).
-     * @param entryPointContract the entry point contract.
-     * @return flag indicating if the intent standard is for the given entry point.
-     */
-    function isIntentStandardForEntryPoint(IEntryPoint entryPointContract) external view override returns (bool) {
-        return entryPointContract == _entryPoint;
     }
 
     function parseIntentSegment(bytes[] calldata intentData, uint256 segmentIndex)

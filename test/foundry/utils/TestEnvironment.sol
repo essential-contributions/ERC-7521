@@ -38,8 +38,8 @@ abstract contract TestEnvironment is Test {
     function setUp() public virtual {
         _entryPoint = new EntryPoint();
         _callIntentStandard = CallIntentStandard(_entryPoint);
-        _ethReleaseIntentStandard = new EthReleaseIntentStandard(_entryPoint);
-        _ethRequireIntentStandard = new EthRequireIntentStandard(_entryPoint);
+        _ethReleaseIntentStandard = new EthReleaseIntentStandard();
+        _ethRequireIntentStandard = new EthRequireIntentStandard();
         _account = new AbstractAccount(_entryPoint, _publicAddress);
 
         //register intent standards to entry point
@@ -51,13 +51,13 @@ abstract contract TestEnvironment is Test {
         UserIntent memory intent = IntentBuilder.create(address(_account), 0, block.timestamp);
         intent = EthReleaseIntentBuilder.addSegment(
             intent,
-            EthReleaseIntentSegmentBuilder.create(_ethReleaseIntentStandard.standardId()).releaseEth(
+            EthReleaseIntentSegmentBuilder.create(_entryPoint.getIntentStandardId(_ethReleaseIntentStandard)).releaseEth(
                 CurveBuilder.linearCurve(2, 10, 20, false)
             )
         );
         intent = EthRequireIntentBuilder.addSegment(
             intent,
-            EthRequireIntentSegmentBuilder.create(_ethRequireIntentStandard.standardId()).requireEth(
+            EthRequireIntentSegmentBuilder.create(_entryPoint.getIntentStandardId(_ethRequireIntentStandard)).requireEth(
                 CurveBuilder.constantCurve(10), false
             )
         );

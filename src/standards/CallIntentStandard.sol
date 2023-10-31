@@ -4,12 +4,11 @@ pragma solidity ^0.8.13;
 /* solhint-disable private-vars-leading-underscore */
 
 import "forge-std/Test.sol";
-import {EntryPointTruster} from "../core/EntryPointTruster.sol";
+import {EmbeddedStandard} from "../core/EmbeddedStandard.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
-import {BaseStandard} from "../core/BaseStandard.sol";
 import {Exec} from "../utils/Exec.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
 
@@ -23,7 +22,7 @@ struct CallIntentSegment {
     bytes callData;
 }
 
-contract CallIntentStandard is IIntentStandard, BaseStandard {
+contract CallIntentStandard is IIntentStandard, EmbeddedStandard {
     using IntentSolutionLib for IntentSolution;
 
     /**
@@ -31,12 +30,6 @@ contract CallIntentStandard is IIntentStandard, BaseStandard {
      */
     bytes32 internal constant CALL_INTENT_STANDARD_ID = 0;
     uint256 private constant REVERT_REASON_MAX_LEN = 2048;
-
-    /**
-     * Contract constructor.
-     * @param entryPointContract the address of the entrypoint contract
-     */
-    constructor(IEntryPoint entryPointContract) BaseStandard(entryPointContract) {}
 
     function standardId() public pure override returns (bytes32) {
         return CALL_INTENT_STANDARD_ID;
@@ -76,15 +69,6 @@ contract CallIntentStandard is IIntentStandard, BaseStandard {
             }
         }
         return "";
-    }
-
-    /**
-     * Verifies the intent standard is for a given entry point contract (required for registration on the entry point).
-     * @param entryPointContract the entry point contract.
-     * @return flag indicating if the intent standard is for the given entry point.
-     */
-    function isIntentStandardForEntryPoint(IEntryPoint entryPointContract) external view override returns (bool) {
-        return entryPointContract == _entryPoint;
     }
 
     function parseIntentSegment(bytes[] calldata intentData, uint256 segmentIndex)

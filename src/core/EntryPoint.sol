@@ -36,7 +36,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
     address private _executionStateContext;
     address private _executionIntentStandard;
 
-    constructor() CallIntentStandard(this) {}
+    constructor() CallIntentStandard() {}
 
     /**
      * Execute a user intents solution.
@@ -209,7 +209,6 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
      * registers a new intent standard.
      */
     function registerIntentStandard(IIntentStandard intentStandard) external returns (bytes32) {
-        require(intentStandard.isIntentStandardForEntryPoint(this), "AA80 invalid standard");
         if (address(intentStandard) == address(this)) {
             return CALL_INTENT_STANDARD_ID;
         }
