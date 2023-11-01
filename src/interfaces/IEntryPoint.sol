@@ -16,9 +16,8 @@ interface IEntryPoint is INonceManager {
      * @param intentHash - unique identifier for the intent (hash its entire content, except signature).
      * @param sender - the account that generates this intent.
      * @param submitter - the account that submitted the solution for the intent.
-     * @param nonce - the nonce value from the intent.
      */
-    event UserIntentEvent(bytes32 indexed intentHash, address indexed sender, address indexed submitter, uint256 nonce);
+    event UserIntentEvent(bytes32 indexed intentHash, address indexed sender, address indexed submitter);
 
     /**
      * An event emitted if the UserIntent part of the solution reverted

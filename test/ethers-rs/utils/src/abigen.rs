@@ -32,6 +32,10 @@ abigen!(
     "../../../out/Erc20RequireIntentStandard.sol/Erc20RequireIntentStandard.json"
 );
 abigen!(
+    SequentialNonce,
+    "../../../out/SequentialNonce.sol/SequentialNonce.json"
+);
+abigen!(
     UserOperation,
     "../../../out/UserOperation.sol/UserOperation.json"
 );

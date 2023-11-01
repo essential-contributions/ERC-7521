@@ -10,6 +10,7 @@ use utils::{
             call_intent_standard::CallIntentSegment,
             erc20_release_intent_standard::Erc20ReleaseIntentSegment,
             erc20_require_intent_standard::Erc20RequireIntentSegment,
+            sequential_nonce::SequentialNonceSegment,
         },
     },
     deploy::TestContracts,
@@ -113,14 +114,13 @@ fn transfer_erc20_intent(
     erc20_transfer_params: CurveParameters,
     erc20_require_params: CurveParameters,
 ) -> UserIntent {
-    let mut transfer_erc20_intent = UserIntent::create(sender, 0, 0);
+    let mut transfer_erc20_intent = UserIntent::create(sender, 0);
 
     let release_erc20_segment = Erc20ReleaseIntentSegment::new(
         test_contracts.erc20_release_intent_standard.standard_id,
         test_contracts.test_erc20.contract.address(),
         erc20_release_params,
-    )
-    .clone();
+    );
 
     let transfer_erc20_segment = Erc20ReleaseIntentSegment::new(
         test_contracts.erc20_release_intent_standard.standard_id,
@@ -135,9 +135,13 @@ fn transfer_erc20_intent(
         EvaluationType::ABSOLUTE,
     );
 
+    let sequential_nonce_segment =
+        SequentialNonceSegment::new(test_contracts.sequential_nonce.standard_id, U256::from(1));
+
     transfer_erc20_intent.add_segment(IntentSegment::Erc20Release(release_erc20_segment));
     transfer_erc20_intent.add_segment(IntentSegment::Erc20Release(transfer_erc20_segment));
     transfer_erc20_intent.add_segment(IntentSegment::Erc20Require(require_erc20_segment));
+    transfer_erc20_intent.add_segment(IntentSegment::SequentialNonce(sequential_nonce_segment));
 
     transfer_erc20_intent
 }
@@ -149,7 +153,7 @@ fn transfer_erc20_solver_intent(
     erc20_transfer_amount: U256,
     recipient: Address,
 ) -> UserIntent {
-    let mut solution = UserIntent::create(test_contracts.solver_utils.contract.address(), 0, 0);
+    let mut solution = UserIntent::create(test_contracts.solver_utils.contract.address(), 0);
     let swap_erc20_for_eth_segment = CallIntentSegment::new(
         test_contracts.call_intent_standard.standard_id,
         test_contracts.solver_utils.swap_erc20_for_eth_calldata(

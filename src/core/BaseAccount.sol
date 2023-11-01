@@ -5,7 +5,6 @@ pragma solidity ^0.8.13;
 /* solhint-disable no-empty-blocks */
 /* solhint-disable private-vars-leading-underscore */
 
-import {EntryPointTruster} from "./EntryPointTruster.sol";
 import {IAccount} from "../interfaces/IAccount.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 
@@ -14,29 +13,19 @@ import {UserIntent} from "../interfaces/UserIntent.sol";
  * this contract provides the basic logic for implementing the IAccount interface  - validateUserIntent
  * specific account implementation should inherit it and provide the account-specific logic
  */
-abstract contract BaseAccount is EntryPointTruster, IAccount {
+abstract contract BaseAccount is IAccount {
     /**
-     * Return the account nonce.
-     * This method returns the next sequential nonce.
-     * For a nonce of a specific key, use `entrypoint.getNonce(account, key)`
-     */
-    function getNonce() public view virtual returns (uint256) {
-        return entryPoint().getNonce(address(this), 0);
-    }
-
-    /**
-     * Validate user's signature and nonce.
+     * Validate user's signature.
      * subclass doesn't need to override this method. Instead, it should override the specific internal validation methods.
      */
     function validateUserIntent(UserIntent calldata intent, bytes32 intentHash)
         external
+        view
         virtual
         override
-        onlyFromEntryPoint
         returns (uint256 validationData)
     {
-        validationData = _validateSignature(intent, intentHash);
-        _validateNonce(intent.nonce);
+        return _validateSignature(intent, intentHash);
     }
 
     /**
@@ -52,24 +41,7 @@ abstract contract BaseAccount is EntryPointTruster, IAccount {
      */
     function _validateSignature(UserIntent calldata intent, bytes32 intentHash)
         internal
+        view
         virtual
         returns (uint256 validationData);
-
-    /**
-     * Validate the nonce of the UserIntent.
-     * This method may validate the nonce requirement of this account.
-     * e.g.
-     * To limit the nonce to use sequenced UserIntents only (no "out of order" UserIntents):
-     *      `require(nonce < type(uint64).max)`
-     * For a hypothetical account that *requires* the nonce to be out-of-order:
-     *      `require(nonce & type(uint64).max == 0)`
-     *
-     * The actual nonce uniqueness is managed by the EntryPoint, and thus no other
-     * action is needed by the account itself.
-     *
-     * @param nonce to validate
-     *
-     * solhint-disable-next-line no-empty-blocks
-     */
-    function _validateNonce(uint256 nonce) internal view virtual {}
 }

@@ -27,6 +27,7 @@ contract TransferErc20 is ScenarioTestEnvironment {
         intent = _addErc20ReleaseSegment(intent, address(_testERC20), erc20ReleaseCurveParams);
         intent = _addErc20ReleaseSegment(intent, address(_testERC20), erc20TransferCurveParams);
         intent = _addErc20RequireSegment(intent, address(_testERC20), erc20RequireCurveParams, false);
+        intent = _addSequentialNonceSegment(intent, 1);
         return intent;
     }
 

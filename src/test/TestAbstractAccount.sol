@@ -19,6 +19,7 @@ contract TestAbstractAccount is AbstractAccount, Test {
 
     function _validateSignature(UserIntent calldata intent, bytes32 intentHash)
         internal
+        view
         virtual
         override
         returns (uint256 validationData)
