@@ -26,6 +26,7 @@ impl Erc20RequireIntentSegment {
     pub fn new(
         standard: [u8; 32],
         erc20_contract: Address,
+        timestamp: u64,
         curve_parameters: CurveParameters,
         evaluation_type: EvaluationType,
     ) -> Self {
@@ -33,7 +34,7 @@ impl Erc20RequireIntentSegment {
             Erc20CurveFlags::new(curve_parameters.get_curve_type(), evaluation_type).encode(),
         )
         .unwrap();
-        let curve = Erc20Curve::new(erc20_contract, flags, curve_parameters.into());
+        let curve = Erc20Curve::new(erc20_contract, timestamp, flags, curve_parameters.into());
 
         Self {
             standard,

@@ -108,16 +108,18 @@ fn token_swap_intent(
     release_params: CurveParameters,
     require_params: CurveParameters,
 ) -> UserIntent {
-    let mut token_swap_intent = UserIntent::create(sender, 0);
+    let mut token_swap_intent = UserIntent::create(sender);
 
     let release_erc20_segment = Erc20ReleaseIntentSegment::new(
         test_contracts.erc20_release_intent_standard.standard_id,
         test_contracts.test_erc20.contract.address(),
+        0,
         release_params,
     );
 
     let require_eth_segment = EthRequireIntentSegment::new(
         test_contracts.eth_require_intent_standard.standard_id,
+        0,
         require_params,
         EvaluationType::RELATIVE,
     );
@@ -139,7 +141,7 @@ fn token_swap_solver_intent(
     erc20_release_amount: U256,
     evaluation: U256,
 ) -> UserIntent {
-    let mut solution = UserIntent::create(test_contracts.solver_utils.contract.address(), 0);
+    let mut solution = UserIntent::create(test_contracts.solver_utils.contract.address());
     let solver_calldata = test_contracts
         .solver_utils
         .swap_erc20_for_eth_and_forward_calldata(

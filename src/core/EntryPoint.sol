@@ -13,7 +13,6 @@ import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.so
 import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
 import {CallIntentStandard} from "../standards/CallIntentStandard.sol";
 import {Exec, RevertReason} from "../utils/Exec.sol";
-import {ValidationData, _parseValidationData} from "../utils/Helpers.sol";
 import {ReentrancyGuard} from "openzeppelin/security/ReentrancyGuard.sol";
 
 contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentStandard {
@@ -154,8 +153,10 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
             // validate intents
             for (uint256 i = 0; i < intsLen; i++) {
                 bytes32 intentHash = getUserIntentHash(solution.intents[i]);
-                uint256 validationData = _validateUserIntent(solution.intents[i], intentHash, i);
-                _validateAccountValidationData(validationData, i);
+                uint256 validationResult = _validateUserIntent(solution.intents[i], intentHash, i);
+                if (validationResult != 0) {
+                    revert FailedIntent(i, 0, "AA24 signature error");
+                }
 
                 emit UserIntentEvent(intentHash, solution.intents[i].sender, msg.sender);
             }
@@ -183,18 +184,18 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
     }
 
     /**
-     * Simulate a call to account.validateUserIntent.
-     * @dev this method always revert. Successful result is ValidationResult error. other errors are failures.
-     * @dev The node must also verify it doesn't use banned opcodes, and that it doesn't reference storage outside the account's data.
+     * Run validation for the given intent.
+     * @dev This method is view only.
      * @param intent the user intent to validate.
      */
-    function simulateValidation(UserIntent calldata intent) external {
-        _simulationOnlyValidations(intent, 0);
+    function validateIntent(UserIntent calldata intent) external view {
         bytes32 intentHash = getUserIntentHash(intent);
-        uint256 validationData = _validateUserIntent(intent, intentHash, 0);
-        ValidationData memory valData = _parseValidationData(validationData);
+        uint256 validationResult = _validateUserIntent(intent, intentHash, 0);
+        if (validationResult != 0) {
+            revert FailedIntent(0, 0, "AA24 signature error");
+        }
 
-        revert ValidationResult(valData.sigFailed, valData.validAfter, valData.validUntil);
+        _simulationOnlyValidations(intent, 0);
     }
 
     /**
@@ -259,7 +260,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
             revert FailedIntent(intentIndex, 0, "AA20 account not deployed");
         }
 
-        // validate intent standards are recognized
+        // validate intent standards are recognized and formatted correctly
         for (uint256 i = 0; i < intent.intentData.length; i++) {
             bytes32 standardId = abi.decode(intent.intentData[i], (bytes32));
             IIntentStandard standard;
@@ -283,40 +284,23 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
     }
 
     /**
-     * validate user intent.
-     * this method is called off-chain (simulateValidation()) and on-chain (from handleIntents)
+     * Validate user intent.
      * @param intent the user intent to validate.
      * @param intentHash hash of the user's intent data.
      * @param intentIndex the index of this intent.
      */
     function _validateUserIntent(UserIntent calldata intent, bytes32 intentHash, uint256 intentIndex)
         private
-        returns (uint256 validationData)
+        view
+        returns (uint256 result)
     {
         // validate intent with account
-        try IAccount(intent.sender).validateUserIntent(intent, intentHash) returns (uint256 _validationData) {
-            validationData = _validationData;
+        try IAccount(intent.sender).validateUserIntent(intent, intentHash) returns (uint256 _result) {
+            result = _result;
         } catch Error(string memory revertReason) {
             revert FailedIntent(intentIndex, 0, string.concat("AA23 reverted: ", revertReason));
         } catch {
             revert FailedIntent(intentIndex, 0, "AA23 reverted (or OOG)");
-        }
-    }
-
-    /**
-     * revert if account validationData is expired
-     */
-    function _validateAccountValidationData(uint256 validationData, uint256 intentIndex) internal view {
-        if (validationData != 0) {
-            ValidationData memory data = _parseValidationData(validationData);
-            if (data.sigFailed) {
-                revert FailedIntent(intentIndex, 0, "AA24 signature error");
-            }
-            // solhint-disable-next-line not-rely-on-time
-            bool outOfTimeRange = block.timestamp > data.validUntil || block.timestamp < data.validAfter;
-            if (outOfTimeRange) {
-                revert FailedIntent(intentIndex, 0, "AA22 expired or not due");
-            }
         }
     }
 

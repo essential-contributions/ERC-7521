@@ -45,7 +45,6 @@ import {TestERC20} from "../../../src/test/TestERC20.sol";
 import {TestUniswap} from "../../../src/test/TestUniswap.sol";
 import {TestWrappedNativeToken} from "../../../src/test/TestWrappedNativeToken.sol";
 import {SolverUtils} from "../../../src/test/SolverUtils.sol";
-import {ValidationData, _packValidationData, _parseValidationData} from "../../../src/utils/Helpers.sol";
 import {AbstractAccount} from "../../../src/wallet/AbstractAccount.sol";
 import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
@@ -193,7 +192,7 @@ abstract contract ScenarioTestEnvironment is Test {
         view
         returns (UserIntent memory)
     {
-        UserIntent memory intent = IntentBuilder.create(address(_solverUtils), 0);
+        UserIntent memory intent = IntentBuilder.create(address(_solverUtils));
         if (numSegments > 0) {
             intent = _addCallSegment(intent, callData1);
         }
@@ -215,7 +214,7 @@ abstract contract ScenarioTestEnvironment is Test {
      * @return The created UserIntent struct.
      */
     function _intent() internal view returns (UserIntent memory) {
-        return IntentBuilder.create(address(_account), 0);
+        return IntentBuilder.create(address(_account));
     }
 
     function _addEthReleaseSegment(UserIntent memory intent, int256[] memory curve)
@@ -226,7 +225,7 @@ abstract contract ScenarioTestEnvironment is Test {
         return EthReleaseIntentBuilder.addSegment(
             intent,
             EthReleaseIntentSegmentBuilder.create(_entryPoint.getIntentStandardId(_ethReleaseIntentStandard)).releaseEth(
-                curve
+                0, curve
             )
         );
     }
@@ -239,7 +238,7 @@ abstract contract ScenarioTestEnvironment is Test {
         return EthRequireIntentBuilder.addSegment(
             intent,
             EthRequireIntentSegmentBuilder.create(_entryPoint.getIntentStandardId(_ethRequireIntentStandard)).requireEth(
-                curve, relative
+                0, curve, relative
             )
         );
     }
@@ -252,7 +251,7 @@ abstract contract ScenarioTestEnvironment is Test {
         return Erc20ReleaseIntentBuilder.addSegment(
             intent,
             Erc20ReleaseIntentSegmentBuilder.create(_entryPoint.getIntentStandardId(_erc20ReleaseIntentStandard))
-                .releaseErc20(addr, curve)
+                .releaseErc20(addr, 0, curve)
         );
     }
 
@@ -264,7 +263,7 @@ abstract contract ScenarioTestEnvironment is Test {
         return Erc20RequireIntentBuilder.addSegment(
             intent,
             Erc20RequireIntentSegmentBuilder.create(_entryPoint.getIntentStandardId(_erc20RequireIntentStandard))
-                .requireErc20(addr, curve, relative)
+                .requireErc20(addr, 0, curve, relative)
         );
     }
 

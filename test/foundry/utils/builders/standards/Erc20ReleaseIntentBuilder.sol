@@ -106,12 +106,13 @@ library Erc20ReleaseIntentSegmentBuilder {
      * @param curve The curve parameters for the erc20 release.
      * @return The updated user intent segment.
      */
-    function releaseErc20(Erc20ReleaseIntentSegment memory segment, address addr, int256[] memory curve)
-        public
-        pure
-        returns (Erc20ReleaseIntentSegment memory)
-    {
-        return _addErc20RelCurve(segment, addr, curve);
+    function releaseErc20(
+        Erc20ReleaseIntentSegment memory segment,
+        address addr,
+        uint48 timestamp,
+        int256[] memory curve
+    ) public pure returns (Erc20ReleaseIntentSegment memory) {
+        return _addErc20RelCurve(segment, addr, timestamp, curve);
     }
 
     /**
@@ -120,10 +121,12 @@ library Erc20ReleaseIntentSegmentBuilder {
     function _addErc20RelCurve(
         Erc20ReleaseIntentSegment memory segment,
         address erc20Contract,
+        uint48 timestamp,
         int256[] memory curveParams
     ) private pure returns (Erc20ReleaseIntentSegment memory) {
         segment.release = Erc20Curve({
             erc20Contract: erc20Contract,
+            timestamp: timestamp,
             flags: generateFlags(CurveBuilder.getCurveType(curveParams), EvaluationType.ABSOLUTE),
             params: curveParams
         });

@@ -64,8 +64,11 @@ contract TransferErc20 is ScenarioTestEnvironment {
 
         int256[] memory erc20ReleaseCurveParams =
             CurveBuilder.linearCurve(int256(_accountInitialERC20Balance - erc20TransferAmount) / 3000, 0, 3000, false);
-        EthCurve memory erc20ReleaseCurve =
-            EthCurve({flags: generateFlags(CurveType.LINEAR, EvaluationType.ABSOLUTE), params: erc20ReleaseCurveParams});
+        EthCurve memory erc20ReleaseCurve = EthCurve({
+            timestamp: 0,
+            flags: generateFlags(CurveType.LINEAR, EvaluationType.ABSOLUTE),
+            params: erc20ReleaseCurveParams
+        });
         uint256 erc20ReleaseEvaluation = uint256(erc20ReleaseCurve.evaluateCurve(timestamp));
 
         int256[] memory erc20RequireCurveParams =

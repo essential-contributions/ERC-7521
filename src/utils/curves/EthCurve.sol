@@ -17,14 +17,16 @@ import {
 
 /**
  * Eth Curve struct
+ * @param timestamp the starting time of the curve.
  * @param flags flags for asset type, curve type and evaluation type.
- *   The top 8 bytes are unused and the bottom 4 bytes are arranged as follows:
- *   reserved    reserved    reserved    curve/eval type
- *   [xxxx xxxx] [xxxx xxxx] [xxxx xxxx] [cccc ccee]
+ *   The top 4 bytes are unused and the bottom 2 bytes are arranged as follows:
+ *   reserved    curve/eval type
+ *   [xxxx xxxx] [cccc ccee]
  * @param params the parameters for the curve.
  */
 struct EthCurve {
-    uint96 flags;
+    uint48 timestamp;
+    uint48 flags;
     int256[] params;
 }
 

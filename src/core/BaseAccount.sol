@@ -10,7 +10,7 @@ import {UserIntent} from "../interfaces/UserIntent.sol";
 
 /**
  * Basic account implementation.
- * this contract provides the basic logic for implementing the IAccount interface  - validateUserIntent
+ * this contract provides the basic logic for implementing the IAccount interface - validateUserIntent
  * specific account implementation should inherit it and provide the account-specific logic
  */
 abstract contract BaseAccount is IAccount {
@@ -23,7 +23,7 @@ abstract contract BaseAccount is IAccount {
         view
         virtual
         override
-        returns (uint256 validationData)
+        returns (uint256 result)
     {
         return _validateSignature(intent, intentHash);
     }
@@ -33,15 +33,13 @@ abstract contract BaseAccount is IAccount {
      * @param intent validate the intent.signature field
      * @param intentHash convenient field: the hash of the intent, to check the signature against
      *          (also hashes the entrypoint and chain id)
-     * @return validationData signature and time-range of this intent
-     *      <20-byte> sigFailed - 0 for valid signature, 1 to mark signature failure
-     *      <6-byte> validUntil - last timestamp this intent is valid. 0 for "indefinite"
-     *      <6-byte> validAfter - first timestamp this intent is valid
-     *      Note that the validation code cannot use block.timestamp (or block.number) directly.
+     * @return result validation result of this intent
+     *      0 - valid signature
+     *      1 - signature failure
      */
     function _validateSignature(UserIntent calldata intent, bytes32 intentHash)
         internal
         view
         virtual
-        returns (uint256 validationData);
+        returns (uint256 result);
 }

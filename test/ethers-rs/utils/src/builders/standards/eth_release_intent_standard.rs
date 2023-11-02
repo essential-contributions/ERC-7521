@@ -20,13 +20,13 @@ pub struct EthReleaseIntentSegment {
 }
 
 impl EthReleaseIntentSegment {
-    pub fn new(standard: [u8; 32], curve_parameters: CurveParameters) -> Self {
+    pub fn new(standard: [u8; 32], timestamp: u64, curve_parameters: CurveParameters) -> Self {
         let flags: u128 = AbiDecode::decode(
             EthCurveFlags::new(curve_parameters.get_curve_type(), EvaluationType::ABSOLUTE)
                 .encode(),
         )
         .unwrap();
-        let curve = EthCurve::new(flags, curve_parameters.into());
+        let curve = EthCurve::new(timestamp, flags, curve_parameters.into());
 
         Self {
             standard,
