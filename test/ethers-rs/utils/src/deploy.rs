@@ -8,7 +8,7 @@ use crate::wrappers::{
         erc20_require_intent_standard::Erc20RequireIntentStandardContract,
         eth_release_intent_standard::EthReleaseIntentStandardContract,
         eth_require_intent_standard::EthRequireIntentStandardContract,
-        user_operation::UserOperationContract,
+        sequential_nonce::SequentialNonceContract, user_operation::UserOperationContract,
     },
     test_erc20::TestERC20Contract,
     test_uniswap::TestUniswapContract,
@@ -25,6 +25,7 @@ pub struct TestContracts {
     pub eth_require_intent_standard: EthRequireIntentStandardContract,
     pub erc20_release_intent_standard: Erc20ReleaseIntentStandardContract,
     pub erc20_require_intent_standard: Erc20RequireIntentStandardContract,
+    pub sequential_nonce: SequentialNonceContract,
     pub user_operation: UserOperationContract,
     pub user_account: AbstractAccountContract,
     pub test_erc20: TestERC20Contract,
@@ -46,6 +47,7 @@ pub async fn deploy_all(
         Erc20ReleaseIntentStandardContract::deploy(client.clone(), &entry_point).await;
     let erc20_require_intent_standard =
         Erc20RequireIntentStandardContract::deploy(client.clone(), &entry_point).await;
+    let sequential_nonce = SequentialNonceContract::deploy(client.clone(), &entry_point).await;
     let user_operation = UserOperationContract::deploy(client.clone(), &entry_point).await;
     let user_account = AbstractAccountContract::deploy(client.clone(), &entry_point).await;
     let test_erc20 = TestERC20Contract::deploy(client.clone()).await;
@@ -68,6 +70,7 @@ pub async fn deploy_all(
         eth_require_intent_standard,
         erc20_release_intent_standard,
         erc20_require_intent_standard,
+        sequential_nonce,
         user_operation,
         user_account,
         test_erc20,

@@ -157,7 +157,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
                 uint256 validationData = _validateUserIntent(solution.intents[i], intentHash, i);
                 _validateAccountValidationData(validationData, i);
 
-                emit UserIntentEvent(intentHash, solution.intents[i].sender, msg.sender, solution.intents[i].nonce);
+                emit UserIntentEvent(intentHash, solution.intents[i].sender, msg.sender);
             }
 
             // execute solution
@@ -293,9 +293,6 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
         private
         returns (uint256 validationData)
     {
-        _executionStateContext = EX_STATE_VALIDATION_EXECUTING;
-        _executionIntentStandard = EX_STANDARD_NOT_ACTIVE;
-
         // validate intent with account
         try IAccount(intent.sender).validateUserIntent(intent, intentHash) returns (uint256 _validationData) {
             validationData = _validationData;
@@ -304,14 +301,6 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
         } catch {
             revert FailedIntent(intentIndex, 0, "AA23 reverted (or OOG)");
         }
-
-        // validate nonce
-        if (!_validateAndUpdateNonce(intent.sender, intent.nonce)) {
-            revert FailedIntent(intentIndex, 0, "AA25 invalid account nonce");
-        }
-
-        // end validation state
-        _executionStateContext = EX_STATE_NOT_ACTIVE;
     }
 
     /**
@@ -380,5 +369,14 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
      */
     function _generateIntentStandardId(IIntentStandard intentStandard) private view returns (bytes32) {
         return keccak256(abi.encodePacked(intentStandard, address(this), block.chainid));
+    }
+
+    /**
+     * Manually set the nonce of the sender.
+     * @dev this method should only be allowed to be called by the currently executing intent standard contract
+     */
+    function _setNonce(uint256 key, uint256 nonce) internal override {
+        require(msg.sender == _executionIntentStandard, "Invalid nonce access");
+        nonceValues[_executionStateContext][key] = nonce;
     }
 }

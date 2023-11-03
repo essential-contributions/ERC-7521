@@ -39,6 +39,8 @@ import {CallIntentStandard, CallIntentSegment} from "../../../src/standards/Call
 import {CallIntentBuilder, CallIntentSegmentBuilder} from "./builders/standards/CallIntentBuilder.sol";
 import {UserOperation, UserOperationSegment} from "../../../src/standards/UserOperation.sol";
 import {UserOperationBuilder, UserOperationSegmentBuilder} from "./builders/standards/UserOperationBuilder.sol";
+import {SequentialNonce, SequentialNonceSegment} from "../../../src/standards/SequentialNonce.sol";
+import {SequentialNonceBuilder, SequentialNonceSegmentBuilder} from "./builders/standards/SequentialNonceBuilder.sol";
 import {TestERC20} from "../../../src/test/TestERC20.sol";
 import {TestUniswap} from "../../../src/test/TestUniswap.sol";
 import {TestWrappedNativeToken} from "../../../src/test/TestWrappedNativeToken.sol";
@@ -58,6 +60,7 @@ abstract contract ScenarioTestEnvironment is Test {
     EntryPoint internal _entryPoint;
     CallIntentStandard internal _callIntentStandard;
     UserOperation internal _userOperation;
+    SequentialNonce internal _sequentialNonce;
     EthReleaseIntentStandard internal _ethReleaseIntentStandard;
     EthRequireIntentStandard internal _ethRequireIntentStandard;
     Erc20ReleaseIntentStandard internal _erc20ReleaseIntentStandard;
@@ -86,6 +89,7 @@ abstract contract ScenarioTestEnvironment is Test {
         _entryPoint = new EntryPoint();
         _callIntentStandard = CallIntentStandard(_entryPoint);
         _userOperation = new UserOperation();
+        _sequentialNonce = new SequentialNonce();
         _ethReleaseIntentStandard = new EthReleaseIntentStandard();
         _ethRequireIntentStandard = new EthRequireIntentStandard();
         _erc20ReleaseIntentStandard = new Erc20ReleaseIntentStandard();
@@ -94,6 +98,7 @@ abstract contract ScenarioTestEnvironment is Test {
 
         //register intent standards to entry point
         _entryPoint.registerIntentStandard(_userOperation);
+        _entryPoint.registerIntentStandard(_sequentialNonce);
         _entryPoint.registerIntentStandard(_ethReleaseIntentStandard);
         _entryPoint.registerIntentStandard(_ethRequireIntentStandard);
         _entryPoint.registerIntentStandard(_erc20ReleaseIntentStandard);
@@ -188,7 +193,7 @@ abstract contract ScenarioTestEnvironment is Test {
         view
         returns (UserIntent memory)
     {
-        UserIntent memory intent = IntentBuilder.create(address(_solverUtils), 0, 0);
+        UserIntent memory intent = IntentBuilder.create(address(_solverUtils), 0);
         if (numSegments > 0) {
             intent = _addCallSegment(intent, callData1);
         }
@@ -210,7 +215,7 @@ abstract contract ScenarioTestEnvironment is Test {
      * @return The created UserIntent struct.
      */
     function _intent() internal view returns (UserIntent memory) {
-        return IntentBuilder.create(address(_account), 0, 0);
+        return IntentBuilder.create(address(_account), 0);
     }
 
     function _addEthReleaseSegment(UserIntent memory intent, int256[] memory curve)
@@ -280,6 +285,16 @@ abstract contract ScenarioTestEnvironment is Test {
     {
         return UserOperationBuilder.addSegment(
             intent, UserOperationSegmentBuilder.create(_entryPoint.getIntentStandardId(_userOperation), callData, txGas)
+        );
+    }
+
+    function _addSequentialNonceSegment(UserIntent memory intent, uint256 nonce)
+        internal
+        view
+        returns (UserIntent memory)
+    {
+        return SequentialNonceBuilder.addSegment(
+            intent, SequentialNonceSegmentBuilder.create(_entryPoint.getIntentStandardId(_sequentialNonce), nonce)
         );
     }
 

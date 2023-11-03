@@ -7,7 +7,6 @@ interface IIntentDelegate {
      *
      * @dev Must validate entrypoint is currently executing and intent for the owner
      * and caller is the intent standard that the entry point is currently executing for.
-     *      Must validate the signature, nonce, etc.
      * @param data calldata.
      * @return bool delegate call result.
      */

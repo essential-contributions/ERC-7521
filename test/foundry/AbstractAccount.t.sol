@@ -12,27 +12,6 @@ contract AbstractAccountTest is ScenarioTestEnvironment {
         assertEq(address(_account.entryPoint()), address(_entryPoint));
     }
 
-    function test_getNonce() public {
-        // nonce in the beginning
-        assertEq(_account.getNonce(), 0);
-
-        // user's intent
-        UserIntent memory intent = _intent();
-        intent = _addCallSegment(intent, _accountClaimAirdropERC20(2 ether));
-        intent = _addErc20ReleaseSegment(intent, address(_testERC20), CurveBuilder.constantCurve(int256(1 ether)));
-        intent = _signIntent(intent);
-
-        // solver's intent
-        UserIntent memory solverIntent =
-            _solverIntent(_solverSwapERC20ForETH(1 ether, address(_publicAddressSolver)), "", "", 1);
-
-        // handle intents
-        _entryPoint.handleIntents(_solution(intent, solverIntent));
-
-        // nonce after execution
-        assertEq(_account.getNonce(), 1);
-    }
-
     function test_failExecuteMulti_invalidInputs() public {
         // targets.length != values.length
         address[] memory targets = new address[](2);

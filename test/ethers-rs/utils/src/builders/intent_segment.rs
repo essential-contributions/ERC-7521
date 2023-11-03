@@ -3,7 +3,8 @@ use crate::builders::standards::{
     erc20_release_intent_standard::Erc20ReleaseIntentSegment,
     erc20_require_intent_standard::Erc20RequireIntentSegment,
     eth_release_intent_standard::EthReleaseIntentSegment,
-    eth_require_intent_standard::EthRequireIntentSegment, user_operation::UserOperationSegment,
+    eth_require_intent_standard::EthRequireIntentSegment, sequential_nonce::SequentialNonceSegment,
+    user_operation::UserOperationSegment,
 };
 use ethers::abi::AbiEncode;
 
@@ -14,6 +15,7 @@ pub enum IntentSegment {
     EthRelease(EthReleaseIntentSegment),
     Erc20Require(Erc20RequireIntentSegment),
     EthRequire(EthRequireIntentSegment),
+    SequentialNonce(SequentialNonceSegment),
     UserOperation(UserOperationSegment),
 }
 
@@ -25,6 +27,7 @@ impl AbiEncode for IntentSegment {
             IntentSegment::EthRelease(segment) => segment.encode(),
             IntentSegment::Erc20Require(segment) => segment.encode(),
             IntentSegment::EthRequire(segment) => segment.encode(),
+            IntentSegment::SequentialNonce(segment) => segment.encode(),
             IntentSegment::UserOperation(segment) => segment.encode(),
         }
     }

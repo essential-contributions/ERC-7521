@@ -48,7 +48,7 @@ abstract contract TestEnvironment is Test {
     }
 
     function _intent() internal view returns (UserIntent memory) {
-        UserIntent memory intent = IntentBuilder.create(address(_account), 0, block.timestamp);
+        UserIntent memory intent = IntentBuilder.create(address(_account), block.timestamp);
         intent = EthReleaseIntentBuilder.addSegment(
             intent,
             EthReleaseIntentSegmentBuilder.create(_entryPoint.getIntentStandardId(_ethReleaseIntentStandard)).releaseEth(

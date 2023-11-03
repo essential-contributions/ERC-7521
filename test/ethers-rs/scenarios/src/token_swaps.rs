@@ -10,6 +10,7 @@ use utils::{
             call_intent_standard::CallIntentSegment,
             erc20_release_intent_standard::Erc20ReleaseIntentSegment,
             eth_require_intent_standard::EthRequireIntentSegment,
+            sequential_nonce::SequentialNonceSegment,
         },
     },
     deploy::TestContracts,
@@ -107,14 +108,13 @@ fn token_swap_intent(
     release_params: CurveParameters,
     require_params: CurveParameters,
 ) -> UserIntent {
-    let mut token_swap_intent = UserIntent::create(sender, 0, 0);
+    let mut token_swap_intent = UserIntent::create(sender, 0);
 
     let release_erc20_segment = Erc20ReleaseIntentSegment::new(
         test_contracts.erc20_release_intent_standard.standard_id,
         test_contracts.test_erc20.contract.address(),
         release_params,
-    )
-    .clone();
+    );
 
     let require_eth_segment = EthRequireIntentSegment::new(
         test_contracts.eth_require_intent_standard.standard_id,
@@ -122,8 +122,12 @@ fn token_swap_intent(
         EvaluationType::RELATIVE,
     );
 
+    let sequential_nonce_segment =
+        SequentialNonceSegment::new(test_contracts.sequential_nonce.standard_id, U256::from(1));
+
     token_swap_intent.add_segment(IntentSegment::Erc20Release(release_erc20_segment));
     token_swap_intent.add_segment(IntentSegment::EthRequire(require_eth_segment));
+    token_swap_intent.add_segment(IntentSegment::SequentialNonce(sequential_nonce_segment));
 
     token_swap_intent
 }
@@ -135,7 +139,7 @@ fn token_swap_solver_intent(
     erc20_release_amount: U256,
     evaluation: U256,
 ) -> UserIntent {
-    let mut solution = UserIntent::create(test_contracts.solver_utils.contract.address(), 0, 0);
+    let mut solution = UserIntent::create(test_contracts.solver_utils.contract.address(), 0);
     let solver_calldata = test_contracts
         .solver_utils
         .swap_erc20_for_eth_and_forward_calldata(

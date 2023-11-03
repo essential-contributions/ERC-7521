@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 /* solhint-disable private-vars-leading-underscore */
 
 import {BaseAccount} from "../core/BaseAccount.sol";
+import {EntryPointTruster} from "../core/EntryPointTruster.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {IIntentDelegate} from "../interfaces/IIntentDelegate.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
@@ -12,7 +13,7 @@ import {Exec} from "../utils/Exec.sol";
 import {_packValidationData} from "../utils/Helpers.sol";
 import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 
-contract AbstractAccount is BaseAccount, IIntentDelegate {
+contract AbstractAccount is BaseAccount, EntryPointTruster, IIntentDelegate {
     using ECDSA for bytes32;
 
     uint256 private constant REVERT_REASON_MAX_LEN = 2048;
@@ -84,6 +85,7 @@ contract AbstractAccount is BaseAccount, IIntentDelegate {
     /// implement template method of BaseAccount
     function _validateSignature(UserIntent calldata intent, bytes32 intentHash)
         internal
+        view
         virtual
         override
         returns (uint256 validationData)

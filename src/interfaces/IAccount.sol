@@ -5,13 +5,11 @@ import {UserIntent} from "./UserIntent.sol";
 
 interface IAccount {
     /**
-     * Validate user's intent (typically a signature and nonce)
+     * Validate user's intent (typically a signature)
      * the entryPoint will continue to execute an intent solution only if this validation call returns successfully.
      * This allows making a "simulation call" without a valid signature
-     * Other failures (e.g. nonce mismatch, or invalid signature format) should still revert to signal failure.
+     * Other failures (e.g. invalid signature format) should still revert to signal failure.
      *
-     * @dev Must validate caller is the entryPoint and that it is currently in the validation state.
-     *      Must validate the signature, nonce, etc.
      * @param intent the intent that is about to be solved.
      * @param intentHash hash of the user's intent data. can be used as the basis for signature.
      * @return validationData packaged ValidationData structure. use `_packValidationData` and `_unpackValidationData` to encode and decode
@@ -22,5 +20,6 @@ interface IAccount {
      */
     function validateUserIntent(UserIntent calldata intent, bytes32 intentHash)
         external
+        view
         returns (uint256 validationData);
 }

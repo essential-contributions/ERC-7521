@@ -28,6 +28,7 @@ contract TransferEth is ScenarioTestEnvironment {
         intent = _addErc20ReleaseSegment(intent, address(_testERC20), erc20ReleaseCurveParams);
         intent = _addEthReleaseSegment(intent, ethTransferCurveParams);
         intent = _addEthRequireSegment(intent, CurveBuilder.constantCurve(int256(0)), false);
+        intent = _addSequentialNonceSegment(intent, 1);
         return intent;
     }
 
