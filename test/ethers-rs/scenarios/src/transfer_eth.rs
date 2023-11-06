@@ -124,21 +124,24 @@ fn transfer_eth_intent(
     erc20_release_params: CurveParameters,
     eth_transfer_params: CurveParameters,
 ) -> UserIntent {
-    let mut transfer_eth_intent = UserIntent::create(sender, 0);
+    let mut transfer_eth_intent = UserIntent::create(sender);
 
     let release_erc20_segment = Erc20ReleaseIntentSegment::new(
         test_contracts.erc20_release_intent_standard.standard_id,
         test_contracts.test_erc20.contract.address(),
+        0,
         erc20_release_params,
     );
 
     let release_eth_segment = EthReleaseIntentSegment::new(
         test_contracts.eth_release_intent_standard.standard_id,
+        0,
         eth_transfer_params,
     );
 
     let require_eth_segment = EthRequireIntentSegment::new(
         test_contracts.eth_require_intent_standard.standard_id,
+        0,
         CurveParameters::Constant(ConstantCurveParameters::new(I256::from(0))),
         EvaluationType::ABSOLUTE,
     );
@@ -161,7 +164,7 @@ fn transfer_eth_solver_intent(
     eth_transfer_amount: U256,
     recipient: Address,
 ) -> UserIntent {
-    let mut solution = UserIntent::create(test_contracts.solver_utils.contract.address(), 0);
+    let mut solution = UserIntent::create(test_contracts.solver_utils.contract.address());
     let swap_erc20_for_eth_segment = CallIntentSegment::new(
         test_contracts.call_intent_standard.standard_id,
         test_contracts.solver_utils.swap_erc20_for_eth_calldata(

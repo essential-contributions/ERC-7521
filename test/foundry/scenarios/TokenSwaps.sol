@@ -100,8 +100,11 @@ contract TokenSwaps is ScenarioTestEnvironment {
         int256[] memory erc20ReleaseCurveParams = CurveBuilder.constantCurve(int256(uint256(erc20ReleaseAmount)));
         int256[] memory ethRequireCurveParams = CurveBuilder.linearCurve(m / int256(uint256(max)), b, max, flipY);
 
-        EthCurve memory ethRequireCurve =
-            EthCurve({flags: generateFlags(CurveType.LINEAR, EvaluationType.RELATIVE), params: ethRequireCurveParams});
+        EthCurve memory ethRequireCurve = EthCurve({
+            timestamp: 0,
+            flags: generateFlags(CurveType.LINEAR, EvaluationType.RELATIVE),
+            params: ethRequireCurveParams
+        });
 
         uint256 evaluation = uint256(ethRequireCurve.evaluateCurve(timestamp));
 
@@ -160,12 +163,13 @@ contract TokenSwaps is ScenarioTestEnvironment {
 
         int256[] memory erc20ReleaseCurveParams = CurveBuilder.exponentialCurve(m, b, int256(uint256(e)), max, flipY);
 
-        uint96 erc20ReleaseCurveFlags = generateFlags(CurveType.EXPONENTIAL, EvaluationType.RELATIVE);
+        uint48 erc20ReleaseCurveFlags = generateFlags(CurveType.EXPONENTIAL, EvaluationType.RELATIVE);
 
         int256[] memory ethRequireCurveParams = CurveBuilder.constantCurve(int256(uint256(ethRequireAmount)));
 
         erc20ReleaseCurve = Erc20Curve({
             erc20Contract: address(_testERC20),
+            timestamp: 0,
             flags: erc20ReleaseCurveFlags,
             params: erc20ReleaseCurveParams
         });
@@ -215,8 +219,11 @@ contract TokenSwaps is ScenarioTestEnvironment {
         int256[] memory erc20ReleaseCurveParams = CurveBuilder.constantCurve(int256(uint256(erc20ReleaseAmount)));
         int256[] memory ethRequireCurveParams = CurveBuilder.linearCurve(3 ether / 3000, 7 ether, 3000, false);
 
-        EthCurve memory ethRequireCurve =
-            EthCurve({flags: generateFlags(CurveType.LINEAR, EvaluationType.RELATIVE), params: ethRequireCurveParams});
+        EthCurve memory ethRequireCurve = EthCurve({
+            timestamp: 0,
+            flags: generateFlags(CurveType.LINEAR, EvaluationType.RELATIVE),
+            params: ethRequireCurveParams
+        });
 
         //create intent
         UserIntent memory intent = _intentForCase(erc20ReleaseCurveParams, ethRequireCurveParams);

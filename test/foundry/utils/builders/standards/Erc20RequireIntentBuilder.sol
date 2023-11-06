@@ -107,12 +107,14 @@ library Erc20RequireIntentSegmentBuilder {
      * @param relative Boolean flag to indicate if the curve is relative.
      * @return The updated user intent segment.
      */
-    function requireErc20(Erc20RequireIntentSegment memory segment, address addr, int256[] memory curve, bool relative)
-        public
-        pure
-        returns (Erc20RequireIntentSegment memory)
-    {
-        return _addErc20ReqCurve(segment, addr, curve, relative);
+    function requireErc20(
+        Erc20RequireIntentSegment memory segment,
+        address addr,
+        uint48 timestamp,
+        int256[] memory curve,
+        bool relative
+    ) public pure returns (Erc20RequireIntentSegment memory) {
+        return _addErc20ReqCurve(segment, addr, timestamp, curve, relative);
     }
 
     /**
@@ -121,6 +123,7 @@ library Erc20RequireIntentSegmentBuilder {
     function _addErc20ReqCurve(
         Erc20RequireIntentSegment memory segment,
         address erc20Contract,
+        uint48 timestamp,
         int256[] memory curveParams,
         bool isRelative
     ) private pure returns (Erc20RequireIntentSegment memory) {
@@ -129,6 +132,7 @@ library Erc20RequireIntentSegmentBuilder {
         if (isRelative) evalType = EvaluationType.RELATIVE;
         segment.requirement = Erc20Curve({
             erc20Contract: erc20Contract,
+            timestamp: timestamp,
             flags: generateFlags(CurveBuilder.getCurveType(curveParams), evalType),
             params: curveParams
         });

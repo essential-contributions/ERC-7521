@@ -55,11 +55,11 @@ contract Erc20RequireIntentStandard is IIntentStandard {
     ) external view returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
         if (intent.intentData[segmentIndex].length > 0) {
-            uint256 evaluateAt = 0;
-            if (solution.timestamp > intent.timestamp) {
-                evaluateAt = solution.timestamp - intent.timestamp;
-            }
             Erc20RequireIntentSegment calldata segment = parseIntentSegment(intent.intentData[segmentIndex]);
+            uint256 evaluateAt = 0;
+            if (solution.timestamp > segment.requirement.timestamp) {
+                evaluateAt = solution.timestamp - segment.requirement.timestamp;
+            }
 
             // check requirement
             _checkRequirement(segment, evaluateAt, intent.sender);

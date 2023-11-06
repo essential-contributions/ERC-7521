@@ -106,23 +106,24 @@ library EthReleaseIntentSegmentBuilder {
      * @param curve The curve parameters for the asset release.
      * @return The updated user intent segment.
      */
-    function releaseEth(EthReleaseIntentSegment memory segment, int256[] memory curve)
+    function releaseEth(EthReleaseIntentSegment memory segment, uint48 timestamp, int256[] memory curve)
         public
         pure
         returns (EthReleaseIntentSegment memory)
     {
-        return _addEthRelCurve(segment, curve);
+        return _addEthRelCurve(segment, timestamp, curve);
     }
 
     /**
      * Private helper function to add an eth release curve to a user intent segment.
      */
-    function _addEthRelCurve(EthReleaseIntentSegment memory segment, int256[] memory curveParams)
+    function _addEthRelCurve(EthReleaseIntentSegment memory segment, uint48 timestamp, int256[] memory curveParams)
         private
         pure
         returns (EthReleaseIntentSegment memory)
     {
         segment.release = EthCurve({
+            timestamp: timestamp,
             flags: generateFlags(CurveBuilder.getCurveType(curveParams), EvaluationType.ABSOLUTE),
             params: curveParams
         });

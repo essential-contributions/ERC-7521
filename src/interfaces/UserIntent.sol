@@ -10,7 +10,6 @@ pragma solidity ^0.8.13;
  */
 struct UserIntent {
     address sender;
-    uint256 timestamp;
     bytes[] intentData;
     bytes signature;
 }
@@ -25,9 +24,8 @@ library UserIntentLib {
 
     function _pack(UserIntent calldata intent) private pure returns (bytes memory ret) {
         address sender = intent.sender;
-        uint256 timestamp = intent.timestamp;
         bytes32 intentDataHash = keccak256(abi.encode(intent.intentData));
 
-        return abi.encode(sender, timestamp, intentDataHash);
+        return abi.encode(sender, intentDataHash);
     }
 }

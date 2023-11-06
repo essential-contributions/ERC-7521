@@ -5,7 +5,6 @@ import "forge-std/Test.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
-import {_packValidationData} from "../utils/Helpers.sol";
 import {AbstractAccount} from "../wallet/AbstractAccount.sol";
 import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 
@@ -22,13 +21,13 @@ contract TestAbstractAccount is AbstractAccount, Test {
         view
         virtual
         override
-        returns (uint256 validationData)
+        returns (uint256 result)
     {
         bytes32 hash = intentHash.toEthSignedMessageHash();
         if (owner != hash.recover(intent.signature)) {
-            return _packValidationData(true, uint48(intent.timestamp), uint48(block.timestamp + 10));
+            return 1;
         }
-        return _packValidationData(false, uint48(intent.timestamp), uint48(block.timestamp + 10));
+        return 0; //sig failed
     }
 
     function testNothing() public {}

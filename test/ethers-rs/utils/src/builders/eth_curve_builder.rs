@@ -11,13 +11,18 @@ use ethers::{abi::AbiEncode, prelude::*};
     Hash,
 )]
 pub struct EthCurve {
+    pub timestamp: u64,
     pub flags: u128,
     pub params: Vec<I256>,
 }
 
 impl EthCurve {
-    pub fn new(flags: u128, params: Vec<I256>) -> Self {
-        Self { flags, params }
+    pub fn new(timestamp: u64, flags: u128, params: Vec<I256>) -> Self {
+        Self {
+            timestamp,
+            flags,
+            params,
+        }
     }
 }
 

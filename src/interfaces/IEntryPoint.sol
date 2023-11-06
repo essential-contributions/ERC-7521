@@ -21,7 +21,7 @@ interface IEntryPoint is INonceManager {
 
     /**
      * An event emitted if the UserIntent part of the solution reverted
-     * @param solIndex - index into the array of solutions to the failed one (in simulateValidation, this is always zero).
+     * @param solIndex - index into the array of solutions to the failed one.
      * @param intIndex - index into the array of intents to the failed one.
      * @param segIndex - index into the array of intent segments to the failed one.
      * @param revertReason - the return bytes from the (reverted) call.
@@ -30,7 +30,6 @@ interface IEntryPoint is INonceManager {
 
     /**
      * a custom revert error of handleIntents, to identify the offending intent.
-     * NOTE: if simulateValidation passes successfully, there should be no reason for handleIntents to fail.
      * @param intIndex - index into the array of intents to the failed one
      * @param segIndex - index into the array of intent segments to the failed one
      * @param reason - revert reason
@@ -38,14 +37,6 @@ interface IEntryPoint is INonceManager {
      *  Useful for mitigating DoS attempts against solvers or for troubleshooting of solution/intent reverts.
      */
     error FailedIntent(uint256 intIndex, uint256 segIndex, string reason);
-
-    /**
-     * Successful result from simulateValidation.
-     * @param sigFailed - UserIntent signature check failed
-     * @param validAfter - first timestamp this UserIntent is valid
-     * @param validUntil - last timestamp this UserIntent is valid
-     */
-    error ValidationResult(bool sigFailed, uint48 validAfter, uint48 validUntil);
 
     /**
      * Execute a batch of UserIntents with given solution.
@@ -60,12 +51,11 @@ interface IEntryPoint is INonceManager {
     function handleMultiSolutionIntents(IntentSolution[] calldata solutions) external;
 
     /**
-     * Simulate a call to account.validateUserIntent.
-     * @dev this method always revert. Successful result is ValidationResult error. other errors are failures.
-     * @dev The node must also verify it doesn't use banned opcodes, and that it doesn't reference storage outside the account's data.
+     * Run validation for the given intent.
+     * @dev This method is view only.
      * @param intent the user intent to validate.
      */
-    function simulateValidation(UserIntent calldata intent) external;
+    function validateIntent(UserIntent calldata intent) external view;
 
     /**
      * generate an intent Id - unique identifier for this intent.

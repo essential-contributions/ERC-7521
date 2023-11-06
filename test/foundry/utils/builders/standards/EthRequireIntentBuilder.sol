@@ -106,27 +106,31 @@ library EthRequireIntentSegmentBuilder {
      * @param relative Boolean flag to indicate if the curve is relative.
      * @return The updated user intent segment.
      */
-    function requireEth(EthRequireIntentSegment memory segment, int256[] memory curve, bool relative)
+    function requireEth(EthRequireIntentSegment memory segment, uint48 timestamp, int256[] memory curve, bool relative)
         public
         pure
         returns (EthRequireIntentSegment memory)
     {
-        return _addEthReqCurve(segment, curve, relative);
+        return _addEthReqCurve(segment, timestamp, curve, relative);
     }
 
     /**
      * Private helper function to add an eth release curve to a user intent segment.
      */
-    function _addEthReqCurve(EthRequireIntentSegment memory segment, int256[] memory curveParams, bool isRelative)
-        private
-        pure
-        returns (EthRequireIntentSegment memory)
-    {
+    function _addEthReqCurve(
+        EthRequireIntentSegment memory segment,
+        uint48 timestamp,
+        int256[] memory curveParams,
+        bool isRelative
+    ) private pure returns (EthRequireIntentSegment memory) {
         //create new curve element
         EvaluationType evalType = EvaluationType.ABSOLUTE;
         if (isRelative) evalType = EvaluationType.RELATIVE;
-        segment.requirement =
-            EthCurve({flags: generateFlags(CurveBuilder.getCurveType(curveParams), evalType), params: curveParams});
+        segment.requirement = EthCurve({
+            timestamp: timestamp,
+            flags: generateFlags(CurveBuilder.getCurveType(curveParams), evalType),
+            params: curveParams
+        });
 
         return segment;
     }

@@ -48,17 +48,17 @@ abstract contract TestEnvironment is Test {
     }
 
     function _intent() internal view returns (UserIntent memory) {
-        UserIntent memory intent = IntentBuilder.create(address(_account), block.timestamp);
+        UserIntent memory intent = IntentBuilder.create(address(_account));
         intent = EthReleaseIntentBuilder.addSegment(
             intent,
             EthReleaseIntentSegmentBuilder.create(_entryPoint.getIntentStandardId(_ethReleaseIntentStandard)).releaseEth(
-                CurveBuilder.linearCurve(2, 10, 20, false)
+                uint48(block.timestamp), CurveBuilder.linearCurve(2, 10, 20, false)
             )
         );
         intent = EthRequireIntentBuilder.addSegment(
             intent,
             EthRequireIntentSegmentBuilder.create(_entryPoint.getIntentStandardId(_ethRequireIntentStandard)).requireEth(
-                CurveBuilder.constantCurve(10), false
+                uint48(block.timestamp), CurveBuilder.constantCurve(10), false
             )
         );
 

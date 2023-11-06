@@ -55,11 +55,11 @@ contract EthReleaseIntentStandard is IIntentStandard, EthReleaseIntentDelegate {
     ) external returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
         if (intent.intentData[segmentIndex].length > 0) {
-            uint256 evaluateAt = 0;
-            if (solution.timestamp > intent.timestamp) {
-                evaluateAt = solution.timestamp - intent.timestamp;
-            }
             EthReleaseIntentSegment calldata segment = parseIntentSegment(intent.intentData[segmentIndex]);
+            uint256 evaluateAt = 0;
+            if (solution.timestamp > segment.release.timestamp) {
+                evaluateAt = solution.timestamp - segment.release.timestamp;
+            }
 
             //release tokens
             address nextExecutingIntentSender = solution.intents[solution.getIntentIndex(executionIndex + 1)].sender;

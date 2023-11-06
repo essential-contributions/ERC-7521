@@ -12,14 +12,16 @@ use ethers::{abi::AbiEncode, prelude::*};
 )]
 pub struct Erc20Curve {
     pub asset_contract: Address,
+    pub timestamp: u64,
     pub flags: u128,
     pub params: Vec<I256>,
 }
 
 impl Erc20Curve {
-    pub fn new(asset_contract: Address, flags: u128, params: Vec<I256>) -> Self {
+    pub fn new(asset_contract: Address, timestamp: u64, flags: u128, params: Vec<I256>) -> Self {
         Self {
             asset_contract,
+            timestamp,
             flags,
             params,
         }

@@ -1,5 +1,5 @@
 use crate::abigen::{entry_point::IntentSolution, EntryPoint};
-use ethers::{abi::AbiDecode, prelude::*};
+use ethers::prelude::*;
 use eyre::Result;
 use k256::ecdsa::SigningKey;
 use std::sync::Arc;
@@ -61,23 +61,7 @@ impl EntryPointContract {
                 } else {
                     match e.as_revert() {
                         Some(revert) => {
-                            if let Ok(decoded_error) =
-                                <crate::abigen::EntryPointErrors as AbiDecode>::decode(revert)
-                            {
-                                match decoded_error {
-                                    crate::abigen::EntryPointErrors::FailedIntent(e) => {
-                                        panic!("FailedIntent({})", e);
-                                    }
-                                    crate::abigen::EntryPointErrors::ValidationResult(e) => {
-                                        panic!("ValidationResult({})", e);
-                                    }
-                                    crate::abigen::EntryPointErrors::RevertString(e) => {
-                                        panic!("RevertString({})", e);
-                                    }
-                                }
-                            } else {
-                                panic!("{}", revert);
-                            }
+                            panic!("{}", revert);
                         }
                         None => {
                             panic!("{}", e);
@@ -106,23 +90,7 @@ impl EntryPointContract {
                 } else {
                     match e.as_revert() {
                         Some(revert) => {
-                            if let Ok(decoded_error) =
-                                <crate::abigen::EntryPointErrors as AbiDecode>::decode(revert)
-                            {
-                                match decoded_error {
-                                    crate::abigen::EntryPointErrors::FailedIntent(e) => {
-                                        panic!("FailedIntent({})", e);
-                                    }
-                                    crate::abigen::EntryPointErrors::ValidationResult(e) => {
-                                        panic!("ValidationResult({})", e);
-                                    }
-                                    crate::abigen::EntryPointErrors::RevertString(e) => {
-                                        panic!("RevertString({})", e);
-                                    }
-                                }
-                            } else {
-                                panic!("{}", revert);
-                            }
+                            panic!("{}", revert);
                         }
                         None => {
                             panic!("{}", e);

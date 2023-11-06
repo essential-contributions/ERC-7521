@@ -10,7 +10,6 @@ import {IIntentDelegate} from "../interfaces/IIntentDelegate.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {Exec} from "../utils/Exec.sol";
-import {_packValidationData} from "../utils/Helpers.sol";
 import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 
 contract AbstractAccount is BaseAccount, EntryPointTruster, IIntentDelegate {
@@ -88,13 +87,13 @@ contract AbstractAccount is BaseAccount, EntryPointTruster, IIntentDelegate {
         view
         virtual
         override
-        returns (uint256 validationData)
+        returns (uint256 result)
     {
         bytes32 hash = intentHash.toEthSignedMessageHash();
         if (owner != hash.recover(intent.signature)) {
-            return _packValidationData(true, uint48(intent.timestamp), 0);
+            return 1;
         }
-        return _packValidationData(false, uint48(intent.timestamp), 0);
+        return 0; //sig failed
     }
 
     /**
