@@ -1,13 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-/* solhint-disable avoid-low-level-calls */
-/* solhint-disable no-inline-assembly */
-/* solhint-disable reason-string */
-
 import {IIntentStandard} from "./IIntentStandard.sol";
 import {INonceManager} from "./INonceManager.sol";
 import {IntentSolution} from "./IntentSolution.sol";
+import {IAggregator} from "./IAggregator.sol";
 import {UserIntent} from "./UserIntent.sol";
 
 interface IEntryPoint is INonceManager {
@@ -18,15 +15,6 @@ interface IEntryPoint is INonceManager {
      * @param submitter - the account that submitted the solution for the intent.
      */
     event UserIntentEvent(bytes32 indexed intentHash, address indexed sender, address indexed submitter);
-
-    /**
-     * An event emitted if the UserIntent part of the solution reverted
-     * @param solIndex - index into the array of solutions to the failed one.
-     * @param intIndex - index into the array of intents to the failed one.
-     * @param segIndex - index into the array of intent segments to the failed one.
-     * @param revertReason - the return bytes from the (reverted) call.
-     */
-    event UserIntentRevertReason(uint256 solIndex, uint256 intIndex, uint256 segIndex, string revertReason);
 
     /**
      * a custom revert error of handleIntents, to identify the offending intent.
@@ -48,7 +36,21 @@ interface IEntryPoint is INonceManager {
      * Execute a batch of UserIntents using multiple solutions.
      * @param solutions list of solutions to execute for intents.
      */
-    function handleMultiSolutionIntents(IntentSolution[] calldata solutions) external;
+    function handleIntentsMulti(IntentSolution[] calldata solutions) external;
+
+    /**
+     * Execute a batch of UserIntents with an aggregated signature.
+     * @param solutions list of solutions to execute for intents.
+     * @param aggregator address of aggregator.
+     * @param intentsToAggregate bit field signaling which intents are part of the aggregated signature.
+     * @param signature aggregated signature.
+     */
+    function handleIntentsAggregated(
+        IntentSolution[] calldata solutions,
+        IAggregator aggregator,
+        bytes32 intentsToAggregate,
+        bytes calldata signature
+    ) external;
 
     /**
      * Run validation for the given intent.

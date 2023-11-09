@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
+import {IAggregator} from "../interfaces/IAggregator.sol";
 import {IAccount} from "../interfaces/IAccount.sol";
 import {ExactInputSingleParams, TestUniswap} from "./TestUniswap.sol";
 import {TestWrappedNativeToken} from "./TestWrappedNativeToken.sol";
@@ -22,8 +23,8 @@ contract SolverUtils is Test, IAccount {
      * Always returns successful.
      * @dev This contract is extremely unsafe as a wallet, but is useful as a temporary playground for solvers.
      */
-    function validateUserIntent(UserIntent calldata, bytes32) external pure returns (uint256) {
-        return 0;
+    function validateUserIntent(UserIntent calldata, bytes32) external pure returns (IAggregator) {
+        return IAggregator(address(0));
     }
 
     /**
