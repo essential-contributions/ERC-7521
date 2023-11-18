@@ -10,14 +10,14 @@ describe('Gass Overhead Test', () => {
   });
 
   it('Should run successfully', async () => {
-    // standard mint (68bytes, 51845gas)
+    // standard mint (68bytes, 51136gas)
     const tx = env.test.erc20.mint(env.deployerAddress, ethers.parseEther('1000'));
     await expect(tx).to.not.be.reverted;
 
     console.log('data: ' + (await tx).data);
     console.log('gasUsed: ' + (await (await tx).wait())?.gasUsed);
 
-    // intent mint (1028bytes, 161562gas)
+    // intent mint (1028bytes, 146356gas)
     const account = env.abstractAccounts[0];
     const executeMintTx = account.contract.interface.encodeFunctionData('execute', [
       env.test.erc20Address,
