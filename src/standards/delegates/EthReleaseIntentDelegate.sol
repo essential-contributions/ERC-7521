@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.23;
 
 import {EthCurve} from "../../utils/curves/EthCurve.sol";
 import {_balanceOf, _transfer} from "../../utils/wrappers/EthWrapper.sol";
