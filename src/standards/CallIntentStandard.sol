@@ -3,7 +3,6 @@ pragma solidity ^0.8.13;
 
 /* solhint-disable private-vars-leading-underscore */
 
-import "forge-std/Test.sol";
 import {EmbeddedStandard} from "../core/EmbeddedStandard.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
@@ -81,6 +80,4 @@ contract CallIntentStandard is IIntentStandard, EmbeddedStandard {
             segment := data.offset
         }
     }
-
-    function testNothing() public {}
 }

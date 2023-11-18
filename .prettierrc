@@ -1,0 +1,22 @@
+{
+  "overrides": [
+    {
+      "files": ["*.js", "*.ts"],
+      "options": {
+        "printWidth": 120,
+        "semi": true,
+        "tabWidth": 2,
+        "useTabs": false,
+        "singleQuote": true,
+        "bracketSpacing": true,
+        "quoteProps": "preserve"
+      }
+    },
+    {
+      "files": ["*.js", "*.ts", "*.json"],
+      "options": {
+        "useTabs": false
+      }
+    }
+  ]
+}

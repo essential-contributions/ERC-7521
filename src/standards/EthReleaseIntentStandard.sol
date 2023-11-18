@@ -3,7 +3,6 @@ pragma solidity ^0.8.13;
 
 /* solhint-disable private-vars-leading-underscore */
 
-import "forge-std/Test.sol";
 import {EthCurve, isRelativeEvaluation, validate, evaluate} from "../utils/curves/EthCurve.sol";
 import {EthReleaseIntentDelegate} from "./delegates/EthReleaseIntentDelegate.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
@@ -96,6 +95,4 @@ contract EthReleaseIntentStandard is IIntentStandard, EthReleaseIntentDelegate {
             IIntentDelegate(address(from)).generalizedIntentDelegateCall(data);
         }
     }
-
-    function testNothingAtAll() public {}
 }

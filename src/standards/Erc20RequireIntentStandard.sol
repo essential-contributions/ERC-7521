@@ -3,7 +3,6 @@ pragma solidity ^0.8.13;
 
 /* solhint-disable private-vars-leading-underscore */
 
-import "forge-std/Test.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {IIntentDelegate} from "../interfaces/IIntentDelegate.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
@@ -98,6 +97,4 @@ contract Erc20RequireIntentStandard is IIntentStandard {
             )
         );
     }
-
-    function testNothing() public {}
 }

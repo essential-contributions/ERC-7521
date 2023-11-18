@@ -3,7 +3,6 @@ pragma solidity ^0.8.13;
 
 /* solhint-disable private-vars-leading-underscore */
 
-import "forge-std/Test.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
@@ -72,6 +71,4 @@ contract UserOperation is IIntentStandard {
             segment := data.offset
         }
     }
-
-    function testNothing() public {}
 }
