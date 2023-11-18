@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.23;
+pragma solidity ^0.8.22;
 
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";

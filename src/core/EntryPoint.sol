@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.23;
+pragma solidity ^0.8.22;
 
 /* solhint-disable avoid-low-level-calls */
 /* solhint-disable no-inline-assembly */

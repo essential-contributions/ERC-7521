@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.23;
+pragma solidity ^0.8.22;
 
 import {TestWrappedNativeToken} from "./TestWrappedNativeToken.sol";
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
