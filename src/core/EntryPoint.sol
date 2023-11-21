@@ -7,6 +7,7 @@ pragma solidity ^0.8.13;
 
 import {NonceManager} from "./NonceManager.sol";
 import {IAccount} from "../interfaces/IAccount.sol";
+import {IAggregator} from "../interfaces/IAggregator.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
@@ -35,19 +36,40 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
     address private _executionStateContext;
     address private _executionIntentStandard;
 
-    constructor() CallIntentStandard() {}
-
     /**
-     * Execute a user intents solution.
-     * @param solution the user intent solution to execute
+     * Execute a batch of UserIntents with given solution.
+     * @param solution the UserIntents solution.
+     * @param signatureAggregator the allowed signature aggregator.
+     * @param validatedIntents the intents that were validated with the signature aggregator.
      */
-    function _executeSolution(IntentSolution calldata solution) private {
-        bytes[] memory contextData = new bytes[](solution.intents.length);
-        uint256[] memory intentDataIndexes = new uint256[](solution.intents.length);
-        uint256 executionIndex = 0;
+    function _handleIntents(IntentSolution calldata solution, IAggregator signatureAggregator, bytes32 validatedIntents)
+        private
+        nonReentrant
+    {
+        uint256 intsLen = solution.intents.length;
+        require(intsLen > 0, "AA70 no intents");
+
+        // validate timestamp
+        uint256 timestamp = solution.getTimestamp();
+        require(timestamp > 0, "AA71 invalid timestamp");
 
         unchecked {
-            //first loop through the order specified by the solution
+            // validate intents
+            for (uint256 i = 0; i < intsLen; i++) {
+                bytes32 intentHash = _generateUserIntentHash(solution.intents[i]);
+                _validateUserIntentWithAccount(
+                    solution.intents[i], intentHash, i, signatureAggregator, validatedIntents
+                );
+
+                emit UserIntentEvent(intentHash, solution.intents[i].sender, msg.sender);
+            }
+
+            // execute solution
+            bytes[] memory contextData = new bytes[](solution.intents.length);
+            uint256[] memory intentDataIndexes = new uint256[](solution.intents.length);
+            uint256 executionIndex = 0;
+
+            // first loop through the order specified by the solution
             for (; executionIndex < solution.order.length; executionIndex++) {
                 uint256 intentIndex = solution.order[executionIndex];
                 if (intentDataIndexes[intentIndex] < solution.intents[intentIndex].intentData.length) {
@@ -58,7 +80,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
                 }
             }
 
-            //continue looping until all intents have finished executing
+            // continue looping until all intents have finished executing
             while (true) {
                 bool finished = true;
                 for (uint256 i = 0; i < solution.intents.length; i++) {
@@ -73,7 +95,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
                 if (finished) break;
             }
 
-            //Intents no longer executing
+            // no longer executing
             _executionStateContext = EX_STATE_NOT_ACTIVE;
             _executionIntentStandard = EX_STANDARD_NOT_ACTIVE;
         } //unchecked
@@ -140,45 +162,62 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
      * Execute a batch of UserIntents with given solution.
      * @param solution the UserIntents solution.
      */
-    function handleIntents(IntentSolution calldata solution) public nonReentrant {
-        // solhint-disable-next-line not-rely-on-time
-        uint256 intsLen = solution.intents.length;
-        require(intsLen > 0, "AA70 no intents");
-
-        // validate timestamp
-        uint256 timestamp = solution.getTimestamp();
-        require(timestamp > 0, "AA71 invalid timestamp");
-
-        unchecked {
-            // validate intents
-            for (uint256 i = 0; i < intsLen; i++) {
-                bytes32 intentHash = getUserIntentHash(solution.intents[i]);
-                uint256 validationResult = _validateUserIntent(solution.intents[i], intentHash, i);
-                if (validationResult != 0) {
-                    revert FailedIntent(i, 0, "AA24 signature error");
-                }
-
-                emit UserIntentEvent(intentHash, solution.intents[i].sender, msg.sender);
-            }
-
-            // execute solution
-            _executeSolution(solution);
-        } //unchecked
+    function handleIntents(IntentSolution calldata solution) external {
+        _handleIntents(solution, IAggregator(address(0)), bytes32(0));
     }
-
     /**
      * Execute a batch of UserIntents using multiple solutions.
      * @param solutions list of solutions to execute for intents.
      */
-    function handleMultiSolutionIntents(IntentSolution[] calldata solutions) public {
+
+    function handleIntentsMulti(IntentSolution[] calldata solutions) external {
         unchecked {
-            // loop through solutions and try to solve them individually
+            // loop through solutions and solve
             uint256 solsLen = solutions.length;
             for (uint256 i = 0; i < solsLen; i++) {
-                try this.handleIntents(solutions[i]) {}
-                catch (bytes memory reason) {
-                    _emitRevertReason(reason, i);
-                }
+                _handleIntents(solutions[i], IAggregator(address(0)), bytes32(0));
+            }
+        }
+    }
+
+    /**
+     * Execute a batch of UserIntents with an aggregated signature.
+     * @param solutions list of solutions to execute for intents.
+     * @param aggregator address of aggregator.
+     * @param intentsToAggregate bit field signaling which intents are part of the aggregated signature.
+     * @param signature aggregated signature.
+     */
+    function handleIntentsAggregated(
+        IntentSolution[] calldata solutions,
+        IAggregator aggregator,
+        bytes32 intentsToAggregate,
+        bytes calldata signature
+    ) external {
+        require(address(aggregator) != address(0), "AA96 invalid aggregator");
+
+        unchecked {
+            // get number of intents
+            uint256 solsLen = solutions.length;
+            uint256 totalIntents = 0;
+            for (uint256 i = 0; i < solsLen; i++) {
+                totalIntents += solutions[0].intents.length;
+            }
+            uint256 aggregatedIntentTotal = 0;
+            for (uint256 i = 0; i < totalIntents; i++) {
+                if ((uint256(intentsToAggregate) & (1 << i)) > 0) aggregatedIntentTotal++;
+            }
+
+            // validate aggregated intent signature
+            UserIntent[] memory aggregatedIntents = new UserIntent[](aggregatedIntentTotal);
+            for (uint256 i = 0; i < solsLen; i++) {
+                for (uint256 j = 0; j < solutions[0].intents.length; j++) {}
+            }
+            aggregator.validateSignatures(aggregatedIntents, signature);
+
+            // loop through solutions and solve
+            for (uint256 i = 0; i < solsLen; i++) {
+                _handleIntents(solutions[i], aggregator, intentsToAggregate);
+                intentsToAggregate = intentsToAggregate << solutions[i].intents.length;
             }
         }
     }
@@ -189,21 +228,44 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
      * @param intent the user intent to validate.
      */
     function validateIntent(UserIntent calldata intent) external view {
-        bytes32 intentHash = getUserIntentHash(intent);
-        uint256 validationResult = _validateUserIntent(intent, intentHash, 0);
-        if (validationResult != 0) {
-            revert FailedIntent(0, 0, "AA24 signature error");
+        // make sure sender is a deployed contract
+        if (intent.sender.code.length == 0) {
+            revert FailedIntent(0, 0, "AA20 account not deployed");
         }
 
-        _simulationOnlyValidations(intent, 0);
+        // validate intent standards are recognized and formatted correctly
+        for (uint256 i = 0; i < intent.intentData.length; i++) {
+            bytes32 standardId = abi.decode(intent.intentData[i], (bytes32));
+            IIntentStandard standard;
+            if (standardId == CALL_INTENT_STANDARD_ID) {
+                standard = this;
+            } else {
+                standard = _registeredStandards[standardId];
+                if (standard == IIntentStandard(address(0))) {
+                    revert FailedIntent(0, i, "AA82 unknown standard");
+                }
+            }
+
+            // validate the intent segment itself
+            try standard.validateIntentSegment(intent.intentData[i]) {}
+            catch Error(string memory revertReason) {
+                revert FailedIntent(0, i, string.concat("AA62 reverted: ", revertReason));
+            } catch {
+                revert FailedIntent(0, i, "AA62 reverted (or OOG)");
+            }
+        }
+
+        // validate signature
+        bytes32 intentHash = _generateUserIntentHash(intent);
+        _validateUserIntentWithAccount(intent, intentHash, 0, IAggregator(address(0)), bytes32(0));
     }
 
     /**
      * generate an intent Id - unique identifier for this intent.
      * the intent ID is a hash over the content of the intent (except the signature), the entrypoint and the chainid.
      */
-    function getUserIntentHash(UserIntent calldata intent) public view returns (bytes32) {
-        return keccak256(abi.encode(intent.hash(), address(this), block.chainid));
+    function getUserIntentHash(UserIntent calldata intent) external view returns (bytes32) {
+        return _generateUserIntentHash(intent);
     }
 
     /**
@@ -252,100 +314,40 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
     }
 
     /**
-     * Called only during simulation.
-     */
-    function _simulationOnlyValidations(UserIntent calldata intent, uint256 intentIndex) internal view {
-        // make sure sender is a deployed contract
-        if (intent.sender.code.length == 0) {
-            revert FailedIntent(intentIndex, 0, "AA20 account not deployed");
-        }
-
-        // validate intent standards are recognized and formatted correctly
-        for (uint256 i = 0; i < intent.intentData.length; i++) {
-            bytes32 standardId = abi.decode(intent.intentData[i], (bytes32));
-            IIntentStandard standard;
-            if (standardId == CALL_INTENT_STANDARD_ID) {
-                standard = this;
-            } else {
-                standard = _registeredStandards[standardId];
-                if (standard == IIntentStandard(address(0))) {
-                    revert FailedIntent(intentIndex, i, "AA82 unknown standard");
-                }
-            }
-
-            // validate the intent segment itself
-            try standard.validateIntentSegment(intent.intentData[i]) {}
-            catch Error(string memory revertReason) {
-                revert FailedIntent(intentIndex, i, string.concat("AA62 reverted: ", revertReason));
-            } catch {
-                revert FailedIntent(intentIndex, i, "AA62 reverted (or OOG)");
-            }
-        }
-    }
-
-    /**
      * Validate user intent.
      * @param intent the user intent to validate.
      * @param intentHash hash of the user's intent data.
      * @param intentIndex the index of this intent.
+     * @param signatureAggregator the allowed signature aggregator.
+     * @param validatedIntents the intents that were validated with the signature aggregator.
      */
-    function _validateUserIntent(UserIntent calldata intent, bytes32 intentHash, uint256 intentIndex)
-        private
-        view
-        returns (uint256 result)
-    {
+    function _validateUserIntentWithAccount(
+        UserIntent calldata intent,
+        bytes32 intentHash,
+        uint256 intentIndex,
+        IAggregator signatureAggregator,
+        bytes32 validatedIntents
+    ) private view {
         // validate intent with account
-        try IAccount(intent.sender).validateUserIntent(intent, intentHash) returns (uint256 _result) {
-            result = _result;
+        try IAccount(intent.sender).validateUserIntent(intent, intentHash) returns (IAggregator aggregator) {
+            //check if intent is to be verified by aggregator
+            if (aggregator != IAggregator(address(0))) {
+                if (aggregator != signatureAggregator) {
+                    revert FailedIntent(
+                        intentIndex, 0, string.concat("AA24 signature error: invalid signature aggregator")
+                    );
+                }
+                if ((uint256(validatedIntents) & (1 << intentIndex)) == 0) {
+                    revert FailedIntent(
+                        intentIndex, 0, string.concat("AA24 signature error: intent not part of aggregate")
+                    );
+                }
+            }
         } catch Error(string memory revertReason) {
-            revert FailedIntent(intentIndex, 0, string.concat("AA23 reverted: ", revertReason));
+            revert FailedIntent(intentIndex, 0, string.concat("AA24 signature error: ", revertReason));
         } catch {
-            revert FailedIntent(intentIndex, 0, "AA23 reverted (or OOG)");
+            revert FailedIntent(intentIndex, 0, "AA24 signature error (or OOG)");
         }
-    }
-
-    /**
-     * emits an event based on the revert reason
-     */
-    function _emitRevertReason(bytes memory reason, uint256 solIndex) private {
-        // get error selector
-        bytes4 selector = 0x00000000;
-        if (reason.length >= 4) {
-            assembly {
-                selector := mload(add(0x20, reason))
-            }
-        }
-
-        // convert error to event to emit
-        if (selector == FailedIntent.selector) {
-            // revert was due to a FailedIntent error
-            uint256 intIndex;
-            uint256 segIndex;
-            assembly {
-                intIndex := mload(add(0x24, reason))
-                segIndex := mload(add(0x44, reason))
-                reason := add(reason, 0x84)
-            }
-            emit UserIntentRevertReason(solIndex, intIndex, segIndex, string(reason));
-        } else if (_checkErrorCode(selector)) {
-            //revert was due to a certain error code
-            emit UserIntentRevertReason(solIndex, 0, 0, string(reason));
-        } else if (reason.length > 0) {
-            //revert was due to some unknown with a reason string
-            emit UserIntentRevertReason(solIndex, 0, 0, string.concat("AA62 reverted: ", string(reason)));
-        } else {
-            //revert was due to some unknown
-            emit UserIntentRevertReason(solIndex, 0, 0, "AA62 reverted (or OOG)");
-        }
-    }
-
-    /**
-     * checks if the given bytes are an error code (follows pattern AAxx where x is a digit from 0-9)
-     */
-    function _checkErrorCode(bytes4 selector) private pure returns (bool) {
-        return (selector & 0xFFFF0000) == 0x41410000 && (selector & 0x0000FF00) >= 0x00003000
-            && (selector & 0x0000FF00) <= 0x00003900 && (selector & 0x000000FF) >= 0x00000030
-            && (selector & 0x000000FF) <= 0x00000039;
     }
 
     /**
@@ -353,6 +355,13 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
      */
     function _generateIntentStandardId(IIntentStandard intentStandard) private view returns (bytes32) {
         return keccak256(abi.encodePacked(intentStandard, address(this), block.chainid));
+    }
+
+    /**
+     * generates an intent standard ID for an intent standard contract.
+     */
+    function _generateUserIntentHash(UserIntent calldata intent) private view returns (bytes32) {
+        return keccak256(abi.encode(intent.hash(), address(this), block.chainid));
     }
 
     /**

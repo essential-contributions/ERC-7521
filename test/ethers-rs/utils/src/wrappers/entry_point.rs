@@ -72,11 +72,8 @@ impl EntryPointContract {
         }
     }
 
-    pub async fn handle_multi_solution_intents(
-        &self,
-        multi_solutions: Vec<IntentSolution>,
-    ) -> Result<()> {
-        let tx = self.contract.handle_multi_solution_intents(multi_solutions);
+    pub async fn handle_intents_multi(&self, multi_solutions: Vec<IntentSolution>) -> Result<()> {
+        let tx = self.contract.handle_intents_multi(multi_solutions);
 
         match tx.clone().send().await {
             Ok(pending_tx) => {
