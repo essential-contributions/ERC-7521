@@ -30,13 +30,13 @@ impl SolverUtilsContract {
         }
     }
 
-    pub fn swap_all_erc20_for_eth_calldata(
+    pub fn swap_erc20_for_eth_calldata(
         &self,
         test_contracts: &TestContracts,
         solver_address: Address,
         min_eth: U256,
     ) -> Bytes {
-        let method = self.contract.swap_all_erc20_for_eth(
+        let method = self.contract.swap_erc20_for_eth(
             test_contracts.test_uniswap.contract.address(),
             test_contracts.test_erc20.contract.address(),
             test_contracts.test_wrapped_native_token.contract.address(),
@@ -47,7 +47,7 @@ impl SolverUtilsContract {
         method.calldata().unwrap()
     }
 
-    pub fn swap_all_erc20_for_eth_and_forward_calldata(
+    pub fn swap_erc20_for_eth_and_forward_calldata(
         &self,
         test_contracts: &TestContracts,
         solver_address: Address,
@@ -55,7 +55,7 @@ impl SolverUtilsContract {
         min_eth: U256,
         forward_amount: U256,
     ) -> Bytes {
-        let method = self.contract.swap_all_erc20_for_eth_and_forward(
+        let method = self.contract.swap_erc20_for_eth_and_forward(
             test_contracts.test_uniswap.contract.address(),
             test_contracts.test_erc20.contract.address(),
             test_contracts.test_wrapped_native_token.contract.address(),
@@ -68,54 +68,23 @@ impl SolverUtilsContract {
         method.calldata().unwrap()
     }
 
-    pub fn swap_all_erc20_for_eth_buy_nft_and_forward_calldata(
+    pub fn transfer_erc20_calldata(
         &self,
         test_contracts: &TestContracts,
-        user_address: Address,
-        min_eth: U256,
-        forward_amount: U256,
-        nft_price: U256,
+        recipient: Address,
+        amount: U256,
     ) -> Bytes {
-        let method = self.contract.swap_all_erc20_for_eth_buy_nft_and_forward(
-            test_contracts.test_uniswap.contract.address(),
-            test_contracts.test_erc721.contract.address(),
+        let method = self.contract.transfer_erc20(
             test_contracts.test_erc20.contract.address(),
-            test_contracts.test_wrapped_native_token.contract.address(),
-            min_eth,
-            nft_price,
-            forward_amount,
-            user_address,
+            recipient,
+            amount,
         );
 
         method.calldata().unwrap()
     }
 
-    pub fn buy_erc721_calldata(
-        &self,
-        test_contracts: &TestContracts,
-        price: U256,
-        forward_to: Address,
-    ) -> Bytes {
-        let method = self.contract.buy_erc721(
-            test_contracts.test_erc721.contract.address(),
-            price,
-            forward_to,
-        );
-
-        method.calldata().unwrap()
-    }
-
-    pub fn sell_erc721_and_forward_all_calldata(
-        &self,
-        test_contracts: &TestContracts,
-        token_id: U256,
-        to: Address,
-    ) -> Bytes {
-        let method = self.contract.sell_erc721_and_forward_all(
-            test_contracts.test_erc721.contract.address(),
-            token_id,
-            to,
-        );
+    pub fn transfer_eth_calldata(&self, recipient: Address, amount: U256) -> Bytes {
+        let method = self.contract.transfer_eth(recipient, amount);
 
         method.calldata().unwrap()
     }

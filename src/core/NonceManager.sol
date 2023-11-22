@@ -6,31 +6,36 @@ import {INonceManager} from "../interfaces/INonceManager.sol";
 /**
  * nonce management functionality
  */
-contract NonceManager is INonceManager {
+abstract contract NonceManager is INonceManager {
     /**
      * The next valid sequence number for a given nonce key.
      */
-    mapping(address => mapping(uint192 => uint256)) public nonceSequenceNumber;
+    mapping(address => mapping(uint256 => uint256)) public nonceValues;
 
-    function getNonce(address sender, uint192 key) public view override returns (uint256 nonce) {
-        return nonceSequenceNumber[sender][key] | (uint256(key) << 64);
-    }
-
-    // allow an account to manually increment its own nonce.
-    // (mainly so that during construction nonce can be made non-zero,
-    // to "absorb" the gas cost of first nonce increment to 1st transaction (construction),
-    // not to 2nd transaction)
-    function incrementNonce(uint192 key) public override {
-        nonceSequenceNumber[msg.sender][key]++;
+    /**
+     * Return the nonce for this sender and key.
+     *
+     * @param sender the account address
+     * @param key the unique key that points to the nonce
+     * @return nonce the nonce value
+     */
+    function getNonce(address sender, uint256 key) public view override returns (uint256 nonce) {
+        return nonceValues[sender][key];
     }
 
     /**
-     * validate nonce uniqueness for this account.
-     * called just after validateUserIntent()
+     * Manually set the nonce of the sender.
+     * @dev this method should only be allowed to be called by the currently executing intent standard contract
+     *
+     * @param key the unique key that points to the nonce
      */
-    function _validateAndUpdateNonce(address sender, uint256 nonce) internal returns (bool) {
-        uint192 key = uint192(nonce >> 64);
-        uint64 seq = uint64(nonce);
-        return nonceSequenceNumber[sender][key]++ == seq;
+    function setNonce(uint256 key, uint256 nonce) public override {
+        _setNonce(key, nonce);
     }
+
+    /**
+     * Manually set the nonce of the sender.
+     * @dev this method should only be allowed to be called by the currently executing intent standard contract
+     */
+    function _setNonce(uint256 key, uint256 nonce) internal virtual;
 }

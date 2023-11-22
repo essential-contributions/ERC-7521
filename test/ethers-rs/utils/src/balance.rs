@@ -10,12 +10,11 @@ pub struct Chronology {
 pub struct Balance {
     pub eth: Chronology,
     pub erc20: Chronology,
-    pub erc721: Chronology,
-    pub erc1155: Chronology,
 }
 
 #[derive(Default)]
 pub struct TestBalances {
     pub user: Balance,
     pub solver: Balance,
+    pub recipient: Balance,
 }

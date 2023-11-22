@@ -3,17 +3,17 @@ pragma solidity ^0.8.13;
 
 /* solhint-disable private-vars-leading-underscore */
 
-import {TokenCallbackHandler} from "./TokenCallbackHandler.sol";
-import {BaseAccount} from "../core/BaseAccount.sol";
+import {EntryPointTruster} from "../core/EntryPointTruster.sol";
+import {IAccount} from "../interfaces/IAccount.sol";
+import {IAggregator} from "../interfaces/IAggregator.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {IIntentDelegate} from "../interfaces/IIntentDelegate.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {Exec} from "../utils/Exec.sol";
-import {_packValidationData} from "../utils/Helpers.sol";
 import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 
-contract AbstractAccount is BaseAccount, TokenCallbackHandler, IIntentDelegate {
+contract AbstractAccount is EntryPointTruster, IAccount, IIntentDelegate {
     using ECDSA for bytes32;
 
     uint256 private constant REVERT_REASON_MAX_LEN = 2048;
@@ -82,18 +82,26 @@ contract AbstractAccount is BaseAccount, TokenCallbackHandler, IIntentDelegate {
         return success;
     }
 
-    /// implement template method of BaseAccount
-    function _validateSignature(UserIntent calldata intent, bytes32 intentHash)
-        internal
-        virtual
+    /**
+     * Validate user's intent (typically a signature)
+     * the entryPoint will continue to execute an intent solution only if this validation call returns successfully.
+     * @dev returning 0 indicates signature validated successfully.
+     *
+     * @param intent validate the intent.signature field
+     * @param intentHash convenient field: the hash of the intent, to check the signature against
+     *          (also hashes the entrypoint and chain id)
+     * @return aggregator (optional) trusted signature aggregator to return if signature fails
+     */
+    function validateUserIntent(UserIntent calldata intent, bytes32 intentHash)
+        external
+        view
         override
-        returns (uint256 validationData)
+        returns (IAggregator)
     {
         bytes32 hash = intentHash.toEthSignedMessageHash();
-        if (owner != hash.recover(intent.signature)) {
-            return _packValidationData(true, uint48(intent.timestamp), 0);
-        }
-        return _packValidationData(false, uint48(intent.timestamp), 0);
+        require(owner == hash.recover(intent.signature), "Invalid signature");
+
+        return IAggregator(address(0));
     }
 
     /**

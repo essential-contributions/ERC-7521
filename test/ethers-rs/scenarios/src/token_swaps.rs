@@ -3,11 +3,15 @@ use utils::{
     abigen::entry_point::{IntentSolution, UserIntent},
     balance::TestBalances,
     builders::{
-        asset_based_intent_standard::{
-            curve_builder::{AssetType, CurveParameters, EvaluationType},
-            segment_builder::AssetBasedIntentSegment,
+        curve_type::CurveParameters,
+        evaluation_type::EvaluationType,
+        intent_segment::IntentSegment,
+        standards::{
+            call_intent_standard::CallIntentSegment,
+            erc20_release_intent_standard::Erc20ReleaseIntentSegment,
+            eth_require_intent_standard::EthRequireIntentSegment,
+            sequential_nonce::SequentialNonceSegment,
         },
-        default_intent_standard::segment_builder::DefaultIntentSegment,
     },
     deploy::TestContracts,
     setup::{setup, sign_intent, PROVIDER, SOLVER_WALLET, USER_WALLET},
@@ -104,36 +108,28 @@ fn token_swap_intent(
     release_params: CurveParameters,
     require_params: CurveParameters,
 ) -> UserIntent {
-    let mut token_swap_intent = UserIntent::create_asset_based(
-        test_contracts
-            .asset_based_intent_standard
-            .standard_id
-            .clone(),
-        sender,
+    let mut token_swap_intent = UserIntent::create(sender);
+
+    let release_erc20_segment = Erc20ReleaseIntentSegment::new(
+        test_contracts.erc20_release_intent_standard.standard_id,
+        test_contracts.test_erc20.contract.address(),
         0,
-        0,
+        release_params,
     );
 
-    let release_erc20_segment = AssetBasedIntentSegment::new(Bytes::default())
-        .add_asset_release_curve(
-            test_contracts.test_erc20.contract.address(),
-            U256::zero(),
-            AssetType::ERC20,
-            release_params,
-        )
-        .clone();
-    let require_eth_segment = AssetBasedIntentSegment::new(Bytes::default())
-        .add_asset_requirement_curve(
-            Address::default(),
-            U256::zero(),
-            AssetType::ETH,
-            require_params,
-            EvaluationType::RELATIVE,
-        )
-        .clone();
+    let require_eth_segment = EthRequireIntentSegment::new(
+        test_contracts.eth_require_intent_standard.standard_id,
+        0,
+        require_params,
+        EvaluationType::RELATIVE,
+    );
 
-    token_swap_intent.add_segment_asset_based(release_erc20_segment);
-    token_swap_intent.add_segment_asset_based(require_eth_segment);
+    let sequential_nonce_segment =
+        SequentialNonceSegment::new(test_contracts.sequential_nonce.standard_id, U256::from(1));
+
+    token_swap_intent.add_segment(IntentSegment::Erc20Release(release_erc20_segment));
+    token_swap_intent.add_segment(IntentSegment::EthRequire(require_eth_segment));
+    token_swap_intent.add_segment(IntentSegment::SequentialNonce(sequential_nonce_segment));
 
     token_swap_intent
 }
@@ -145,15 +141,10 @@ fn token_swap_solver_intent(
     erc20_release_amount: U256,
     evaluation: U256,
 ) -> UserIntent {
-    let mut solution = UserIntent::create_default(
-        test_contracts.entry_point.default_standard_id.clone(),
-        test_contracts.solver_utils.contract.address(),
-        0,
-        0,
-    );
+    let mut solution = UserIntent::create(test_contracts.solver_utils.contract.address());
     let solver_calldata = test_contracts
         .solver_utils
-        .swap_all_erc20_for_eth_and_forward_calldata(
+        .swap_erc20_for_eth_and_forward_calldata(
             test_contracts,
             sender,
             other,
@@ -161,8 +152,11 @@ fn token_swap_solver_intent(
             evaluation,
         );
 
-    let solver_segment = DefaultIntentSegment::new(solver_calldata);
-    solution.add_segment_default(solver_segment);
+    let solver_segment = CallIntentSegment::new(
+        test_contracts.call_intent_standard.standard_id,
+        solver_calldata,
+    );
+    solution.add_segment(IntentSegment::Call(solver_segment));
 
     solution
 }

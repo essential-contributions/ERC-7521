@@ -4,93 +4,65 @@ pragma solidity ^0.8.13;
 /* solhint-disable func-name-mixedcase */
 
 import "forge-std/Test.sol";
+import {IntentBuilder} from "./builders/IntentBuilder.sol";
+import {CurveBuilder} from "./builders/CurveBuilder.sol";
 import {
-    AssetBasedIntentBuilder,
-    AssetBasedIntentCurveBuilder,
-    AssetBasedIntentSegmentBuilder
-} from "./AssetBasedIntentBuilder.sol";
+    EthReleaseIntentBuilder, EthReleaseIntentSegmentBuilder
+} from "./builders/standards/EthReleaseIntentBuilder.sol";
+import {
+    EthRequireIntentBuilder, EthRequireIntentSegmentBuilder
+} from "./builders/standards/EthRequireIntentBuilder.sol";
 import {EntryPoint} from "../../../src/core/EntryPoint.sol";
+import {IIntentStandard} from "../../../src/interfaces/IIntentStandard.sol";
 import {UserIntent, UserIntentLib} from "../../../src/interfaces/UserIntent.sol";
-import {
-    AssetBasedIntentCurve,
-    generateFlags,
-    CurveType,
-    EvaluationType
-} from "../../../src/standards/assetbased/AssetBasedIntentCurve.sol";
-import {AssetBasedIntentSegment} from "../../../src/standards/assetbased/AssetBasedIntentSegment.sol";
-import {AssetBasedIntentStandard} from "../../../src/standards/assetbased/AssetBasedIntentStandard.sol";
-import {AssetType} from "../../../src/standards/assetbased/utils/AssetWrapper.sol";
+import {CallIntentStandard, CallIntentSegment} from "../../../src/standards/CallIntentStandard.sol";
+import {EthReleaseIntentStandard, EthReleaseIntentSegment} from "../../../src/standards/EthReleaseIntentStandard.sol";
+import {EthRequireIntentStandard, EthRequireIntentSegment} from "../../../src/standards/EthRequireIntentStandard.sol";
 import {AbstractAccount} from "../../../src/wallet/AbstractAccount.sol";
 import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 
 abstract contract TestEnvironment is Test {
     using UserIntentLib for UserIntent;
+    using EthReleaseIntentSegmentBuilder for EthReleaseIntentSegment;
+    using EthRequireIntentSegmentBuilder for EthRequireIntentSegment;
     using ECDSA for bytes32;
 
     EntryPoint internal _entryPoint;
-    AssetBasedIntentStandard internal _assetBasedIntentStandard;
+    CallIntentStandard internal _callIntentStandard;
+    EthReleaseIntentStandard internal _ethReleaseIntentStandard;
+    EthRequireIntentStandard internal _ethRequireIntentStandard;
     AbstractAccount internal _account;
 
     address internal _publicAddress = _getPublicAddress(uint256(keccak256("account_private_key")));
 
     function setUp() public virtual {
         _entryPoint = new EntryPoint();
-        _assetBasedIntentStandard = new AssetBasedIntentStandard(_entryPoint);
+        _callIntentStandard = CallIntentStandard(_entryPoint);
+        _ethReleaseIntentStandard = new EthReleaseIntentStandard();
+        _ethRequireIntentStandard = new EthRequireIntentStandard();
         _account = new AbstractAccount(_entryPoint, _publicAddress);
 
-        //register asset based intent standard to entry point
-        _entryPoint.registerIntentStandard(_assetBasedIntentStandard);
-    }
-
-    function _curveETH(int256[] memory curveParams, EvaluationType evaluation)
-        internal
-        pure
-        returns (AssetBasedIntentCurve memory)
-    {
-        AssetBasedIntentCurve memory curve = AssetBasedIntentCurve({
-            assetContract: address(0),
-            assetId: 0,
-            flags: generateFlags(AssetType.ETH, AssetBasedIntentSegmentBuilder.getCurveType(curveParams), evaluation),
-            params: curveParams
-        });
-        return curve;
-    }
-
-    function _data() internal pure returns (AssetBasedIntentSegment[] memory) {
-        AssetBasedIntentSegment[] memory intentSegments = new AssetBasedIntentSegment[](2);
-
-        AssetBasedIntentCurve memory constantETHCurve =
-            _curveETH(AssetBasedIntentCurveBuilder.constantCurve(10), EvaluationType.ABSOLUTE);
-        AssetBasedIntentCurve memory linearETHCurve =
-            _curveETH(AssetBasedIntentCurveBuilder.linearCurve(2, 10, 20, false), EvaluationType.ABSOLUTE);
-
-        AssetBasedIntentCurve[] memory assetReleases = new AssetBasedIntentCurve[](2);
-        AssetBasedIntentCurve[] memory assetRequirements = new AssetBasedIntentCurve[](2);
-
-        assetReleases[0] = constantETHCurve;
-        assetReleases[1] = linearETHCurve;
-        assetRequirements[0] = linearETHCurve;
-        assetRequirements[1] = constantETHCurve;
-
-        intentSegments[0].callData = "call data";
-        intentSegments[0].callGasLimit = 100000;
-        intentSegments[0].assetReleases = assetReleases;
-        intentSegments[1].assetRequirements = assetRequirements;
-
-        return intentSegments;
+        //register intent standards to entry point
+        _entryPoint.registerIntentStandard(_ethReleaseIntentStandard);
+        _entryPoint.registerIntentStandard(_ethRequireIntentStandard);
     }
 
     function _intent() internal view returns (UserIntent memory) {
-        bytes[] memory data;
-        UserIntent memory intent = UserIntent({
-            standard: _assetBasedIntentStandard.standardId(),
-            sender: address(_account),
-            nonce: 123,
-            timestamp: block.timestamp,
-            intentData: data,
-            signature: ""
-        });
-        return AssetBasedIntentBuilder.encodeData(intent, _data());
+        UserIntent memory intent = IntentBuilder.create(address(_account));
+        intent = EthReleaseIntentBuilder.addSegment(
+            intent,
+            EthReleaseIntentSegmentBuilder.create(_entryPoint.getIntentStandardId(_ethReleaseIntentStandard)).releaseEth(
+                uint48(block.timestamp), CurveBuilder.linearCurve(2, 10, 20, false)
+            )
+        );
+        intent = EthRequireIntentBuilder.addSegment(
+            intent,
+            EthRequireIntentSegmentBuilder.create(_entryPoint.getIntentStandardId(_ethRequireIntentStandard)).requireEth(
+                uint48(block.timestamp), CurveBuilder.constantCurve(10), false
+            )
+        );
+
+        return intent;
     }
 
     function _getPublicAddress(uint256 privateKey) internal pure returns (address) {

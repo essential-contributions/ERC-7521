@@ -7,21 +7,16 @@ import "./utils/TestEnvironment.sol";
 import "../../src/interfaces/IIntentStandard.sol";
 
 contract EntryPointTest is TestEnvironment {
-    using AssetBasedIntentBuilder for UserIntent;
-    using AssetBasedIntentSegmentBuilder for AssetBasedIntentSegment;
-    using UserIntentLib for UserIntent;
-    using ECDSA for bytes32;
-
     function test_getUserIntentHash() public {
         UserIntent memory intent = _intent();
-        bytes32 expectedHash = 0xd60f2773f8fb224b929056ff3e0fab1b70152d7348c2cf4edd4956abb6929bcf;
+        bytes32 expectedHash = 0x98388f9bdf6efbafe8f9801b7f597f83ca502cf7eab190766594fcd1a29f8afa;
         bytes32 intentHash = _entryPoint.getUserIntentHash(intent);
         assertEq(intentHash, expectedHash);
     }
 
     function test_registerIntentStandard() public {
         EntryPoint newEntryPoint = new EntryPoint();
-        AssetBasedIntentStandard newIntentStandard = new AssetBasedIntentStandard(newEntryPoint);
+        EthReleaseIntentStandard newIntentStandard = new EthReleaseIntentStandard();
         newEntryPoint.registerIntentStandard(newIntentStandard);
         bytes32 registeredStandardId =
             keccak256(abi.encodePacked(newIntentStandard, address(newEntryPoint), block.chainid));
@@ -31,41 +26,34 @@ contract EntryPointTest is TestEnvironment {
         assertEq(registeredHash, expectedHash);
     }
 
-    function test_failRegisterIntentStandard_invalidStandard() public {
-        EntryPoint newEntryPoint = new EntryPoint();
-        AssetBasedIntentStandard newIntentStandard = new AssetBasedIntentStandard(newEntryPoint);
-        vm.expectRevert("AA80 invalid standard");
-        _entryPoint.registerIntentStandard(newIntentStandard);
-    }
-
     function test_failRegisterIntentStandard_alreadyRegistered() public {
         vm.expectRevert("AA81 already registered");
-        _entryPoint.registerIntentStandard(_assetBasedIntentStandard);
+        _entryPoint.registerIntentStandard(_ethReleaseIntentStandard);
     }
 
     function test_getIntentStandardContract() public {
-        bytes32 standardId = _assetBasedIntentStandard.standardId();
+        bytes32 standardId = _entryPoint.getIntentStandardId(_ethReleaseIntentStandard);
         IIntentStandard registeredStandard = _entryPoint.getIntentStandardContract(standardId);
-        bytes32 expectedHash = keccak256(abi.encode(IIntentStandard(_assetBasedIntentStandard)));
+        bytes32 expectedHash = keccak256(abi.encode(IIntentStandard(_ethReleaseIntentStandard)));
         bytes32 registeredHash = keccak256(abi.encode(registeredStandard));
         assertEq(registeredHash, expectedHash);
     }
 
     function test_failGetIntentStandardContract_unknownStandard() public {
-        bytes32 standardId = _assetBasedIntentStandard.standardId();
+        bytes32 standardId = _entryPoint.getIntentStandardId(_ethReleaseIntentStandard);
         vm.expectRevert("AA82 unknown standard");
         _entryPoint.getIntentStandardContract(standardId << 1);
     }
 
     function test_getIntentStandardId() public {
-        bytes32 standardId = _entryPoint.getIntentStandardId(_assetBasedIntentStandard);
-        bytes32 expectedStandardId = _assetBasedIntentStandard.standardId();
+        bytes32 standardId = _entryPoint.getIntentStandardId(_ethReleaseIntentStandard);
+        bytes32 expectedStandardId = _entryPoint.getIntentStandardId(_ethReleaseIntentStandard);
         assertEq(standardId, expectedStandardId);
     }
 
     function test_failGetIntentStandardId_unknownStandard() public {
         EntryPoint newEntryPoint = new EntryPoint();
-        AssetBasedIntentStandard newIntentStandard = new AssetBasedIntentStandard(newEntryPoint);
+        EthReleaseIntentStandard newIntentStandard = new EthReleaseIntentStandard();
         vm.expectRevert("AA82 unknown standard");
         newEntryPoint.getIntentStandardId(newIntentStandard);
     }

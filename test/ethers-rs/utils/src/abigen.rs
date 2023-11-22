@@ -12,12 +12,32 @@ abigen!(RevertReason, "../../../out/Exec.sol/RevertReason.json");
 abigen!(EntryPoint, "../../../out/EntryPoint.sol/EntryPoint.json");
 
 abigen!(
-    AssetBasedIntentStandard,
-    "../../../out/AssetBasedIntentStandard.sol/AssetBasedIntentStandard.json"
+    CallIntentStandard,
+    "../../../out/CallIntentStandard.sol/CallIntentStandard.json"
 );
 abigen!(
-    AssetBasedIntentSegment,
-    "../../../out/AssetBasedIntentSegment.sol/AssetBasedIntentSegment.json"
+    EthReleaseIntentStandard,
+    "../../../out/EthReleaseIntentStandard.sol/EthReleaseIntentStandard.json"
+);
+abigen!(
+    EthRequireIntentStandard,
+    "../../../out/EthRequireIntentStandard.sol/EthRequireIntentStandard.json"
+);
+abigen!(
+    Erc20ReleaseIntentStandard,
+    "../../../out/Erc20ReleaseIntentStandard.sol/Erc20ReleaseIntentStandard.json"
+);
+abigen!(
+    Erc20RequireIntentStandard,
+    "../../../out/Erc20RequireIntentStandard.sol/Erc20RequireIntentStandard.json"
+);
+abigen!(
+    SequentialNonce,
+    "../../../out/SequentialNonce.sol/SequentialNonce.json"
+);
+abigen!(
+    UserOperation,
+    "../../../out/UserOperation.sol/UserOperation.json"
 );
 
 abigen!(
@@ -25,8 +45,6 @@ abigen!(
     "../../../out/AbstractAccount.sol/AbstractAccount.json"
 );
 abigen!(TestERC20, "../../../out/TestERC20.sol/TestERC20.json");
-abigen!(TestERC721, "../../../out/TestERC721.sol/TestERC721.json");
-abigen!(TestERC1155, "../../../out/TestERC1155.sol/TestERC1155.json");
 abigen!(
     TestWrappedNativeToken,
     "../../../out/TestWrappedNativeToken.sol/TestWrappedNativeToken.json"
