@@ -33,8 +33,8 @@ library Erc20CurveLibHarness {
     function isCurveRelativeEvaluation(Erc20Curve calldata curve) public pure returns (bool) {
         return isRelativeEvaluation(curve);
     }
-    
-    /** 
+
+    /**
      * Add a test to exclude this contract from coverage report
      * note: there is currently an open ticket to resolve this more gracefully
      * https://github.com/foundry-rs/foundry/issues/2988

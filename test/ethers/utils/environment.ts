@@ -35,14 +35,14 @@ export type Environment = {
       timeStart: number,
       timeEnd: number,
       amountStart: bigint,
-      amountEnd: bigint
+      amountEnd: bigint,
     ) => Erc20ReleaseSegment;
     erc20Require: (
       contract: string,
       timeStart: number,
       timeEnd: number,
       amountStart: bigint,
-      amountEnd: bigint
+      amountEnd: bigint,
     ) => Erc20RequireSegment;
   };
   test: {
@@ -71,7 +71,7 @@ export type DeployConfiguration = {
 
 // Deploy the testing environment
 export async function deployTestEnvironment(
-  config: DeployConfiguration = { numAbstractAccounts: 4 }
+  config: DeployConfiguration = { numAbstractAccounts: 4 },
 ): Promise<Environment> {
   const provider = ethers.provider;
   const network = await provider.getNetwork();
@@ -123,7 +123,7 @@ export async function deployTestEnvironment(
   const solverUtils = await ethers.deployContract(
     'SolverUtils',
     [testUniswapAddress, testERC20Address, testWrappedNativeTokenAddress],
-    deployer
+    deployer,
   );
   const solverUtilsAddress = await testUniswap.getAddress();
 
@@ -134,7 +134,7 @@ export async function deployTestEnvironment(
     const account = await ethers.deployContract(
       'AbstractAccount',
       [entrypointAddress, await signer.getAddress()],
-      deployer
+      deployer,
     );
     abstractAccounts.push({
       contract: account,
