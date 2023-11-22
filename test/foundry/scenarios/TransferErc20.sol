@@ -4,45 +4,51 @@ pragma solidity ^0.8.13;
 /* solhint-disable func-name-mixedcase */
 
 import "../utils/ScenarioTestEnvironment.sol";
-import {EthCurveLibHarness} from "../utils/harness/EthCurveLibHarness.sol";
-import {EthCurve, evaluate} from "../../../src/utils/curves/EthCurve.sol";
-import {Erc20CurveLibHarness} from "../utils/harness/Erc20CurveLibHarness.sol";
-import {Erc20Curve, CurveType, EvaluationType} from "../../../src/utils/curves/Erc20Curve.sol";
-import {generateFlags} from "../../../src/utils/Helpers.sol";
 
-contract TransferErc20 is ScenarioTestEnvironment {
-    using Erc20ReleaseIntentSegmentBuilder for Erc20ReleaseIntentSegment;
-    using Erc20CurveLibHarness for Erc20Curve;
-    using EthRequireIntentSegmentBuilder for EthRequireIntentSegment;
-    using EthCurveLibHarness for EthCurve;
+/*
+ * In this scenario, a user wants to transfer ERC-20 tokens and compensate for gas with the same tokens
+ *
+ * Solution:
+ * 1. the solver executes the operation and pockets the released tokens
+ */
+contract TransferEth is ScenarioTestEnvironment {
+    uint256 private _accountInitialERC20Balance = 10 ether;
 
-    uint256 private _accountInitialERC20Balance = 0.11 ether;
+    function _intentForCase(uint256 erc20ReleaseAmount, address transferRecipient, uint256 transferAmount)
+        private
+        view
+        returns (UserIntent memory)
+    {
+        uint256 releaseDuration = 3000;
+        uint256 releaseAt = 1000;
+        int256 releaseStartAmount = 0;
+        int256 releaseEndAmount = int256(erc20ReleaseAmount * (releaseDuration / releaseAt));
+        uint256 callGasLimit = 100_000;
 
-    function _intentForCase(
-        int256[] memory erc20ReleaseCurveParams,
-        int256[] memory erc20TransferCurveParams,
-        int256[] memory erc20RequireCurveParams
-    ) private view returns (UserIntent memory) {
+        //build intent
         UserIntent memory intent = _intent();
-        intent = _addErc20ReleaseSegment(intent, address(_testERC20), erc20ReleaseCurveParams);
-        intent = _addErc20ReleaseSegment(intent, address(_testERC20), erc20TransferCurveParams);
-        intent = _addErc20RequireSegment(intent, address(_testERC20), erc20RequireCurveParams, false);
-        intent = _addSequentialNonceSegment(intent, 1);
+        intent = _addErc20ReleaseLinear(
+            intent,
+            uint48(block.timestamp - releaseAt),
+            uint24(releaseDuration),
+            releaseStartAmount,
+            releaseEndAmount - releaseStartAmount
+        );
+        bytes memory transferErc20 =
+            abi.encodeWithSelector(_testERC20.transfer.selector, transferRecipient, transferAmount);
+        bytes memory executeTransferErc20 =
+            abi.encodeWithSelector(_account.execute.selector, _testERC20, 0, transferErc20);
+        intent = _addUserOp(intent, callGasLimit, executeTransferErc20);
+        intent = _addSequentialNonce(intent, 1);
         return intent;
     }
 
-    function _solutionForCase(
-        UserIntent memory intent,
-        uint256 erc20ReleaseAmount,
-        uint256 erc20transferAmount,
-        address erc20transferTo
-    ) private view returns (IntentSolution memory) {
-        UserIntent memory solverIntent = _solverIntent(
-            _solverSwapERC20ForETH(erc20ReleaseAmount, address(_publicAddressSolver)),
-            _solverTransferERC20(erc20transferTo, erc20transferAmount),
-            "",
-            2
-        );
+    function _solutionForCase(UserIntent memory intent, address erc20Recipient)
+        private
+        view
+        returns (IntentSolution memory)
+    {
+        UserIntent memory solverIntent = IntentBuilder.create(erc20Recipient);
         return _solution(intent, solverIntent);
     }
 
@@ -51,62 +57,37 @@ contract TransferErc20 is ScenarioTestEnvironment {
 
         //fund account
         _testERC20.mint(address(_account), _accountInitialERC20Balance);
-
-        //set specific block.timestamp
-        vm.warp(1000);
     }
 
     function test_transferERC20() public {
-        uint256 timestamp = 1000;
+        uint256 erc20ReleaseAmount = 0.1 ether;
+        address erc20Recipient = _publicAddressSolver;
+        uint256 transferAmount = 1 ether;
+        address transferRecipient = _publicAddress;
 
-        uint256 erc20TransferAmount = 0.1 ether;
-        int256[] memory erc20TransferCurveParams = CurveBuilder.constantCurve(int256(erc20TransferAmount));
-
-        int256[] memory erc20ReleaseCurveParams =
-            CurveBuilder.linearCurve(int256(_accountInitialERC20Balance - erc20TransferAmount) / 3000, 0, 3000, false);
-        EthCurve memory erc20ReleaseCurve = EthCurve({
-            timestamp: 0,
-            flags: generateFlags(CurveType.LINEAR, EvaluationType.ABSOLUTE),
-            params: erc20ReleaseCurveParams
-        });
-        uint256 erc20ReleaseEvaluation = uint256(erc20ReleaseCurve.evaluateCurve(timestamp));
-
-        int256[] memory erc20RequireCurveParams =
-            CurveBuilder.linearCurve(int256(_accountInitialERC20Balance - erc20TransferAmount) / 3000, 0, 3000, true);
-
+        //build intent, solution and execute
         {
-            UserIntent memory intent =
-                _intentForCase(erc20ReleaseCurveParams, erc20TransferCurveParams, erc20RequireCurveParams);
+            UserIntent memory intent = _intentForCase(erc20ReleaseAmount, transferRecipient, transferAmount);
             intent = _signIntent(intent);
 
-            //create solution
-            IntentSolution memory solution =
-                _solutionForCase(intent, erc20ReleaseEvaluation, erc20TransferAmount, address(_publicAddress));
+            IntentSolution memory solution = _solutionForCase(intent, erc20Recipient);
 
-            //execute
             _entryPoint.handleIntents(solution);
         }
 
         //verify end state
         {
-            uint256 solverBalance = address(_publicAddressSolver).balance;
-            uint256 expectedSolverBalance = erc20ReleaseEvaluation + 5;
-            assertEq(solverBalance, expectedSolverBalance, "The solver ended up with incorrect balance");
+            uint256 solverBalance = _testERC20.balanceOf(_publicAddressSolver);
+            assertEq(solverBalance, erc20ReleaseAmount, "The solver ended up with incorrect token balance");
         }
         {
-            uint256 userERC20Tokens = _testERC20.balanceOf(address(_account));
-            uint256 expectedUserERC20Balance =
-                _accountInitialERC20Balance - erc20TransferAmount - erc20ReleaseEvaluation;
-            assertEq(userERC20Tokens, expectedUserERC20Balance, "The user released more ERC20 tokens than expected");
+            uint256 solverBalance = _testERC20.balanceOf(address(_account));
+            uint256 expectedUserBalance = _accountInitialERC20Balance - (erc20ReleaseAmount + transferAmount);
+            assertEq(solverBalance, expectedUserBalance, "The user ended up with incorrect token balance");
         }
         {
-            uint256 recipientERC20Balance = _testERC20.balanceOf(address(_publicAddress));
-            uint256 expectedRecipientERC20Balance = erc20TransferAmount;
-            assertEq(
-                recipientERC20Balance,
-                expectedRecipientERC20Balance,
-                "The recipient received less ERC20 tokens than expected"
-            );
+            uint256 recipientBalance = _testERC20.balanceOf(address(_publicAddress));
+            assertEq(recipientBalance, transferAmount, "The recipient didn't get the expected tokens");
         }
     }
 }

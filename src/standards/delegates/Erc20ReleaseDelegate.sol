@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.22;
 
-import {Erc20Curve} from "../../utils/curves/Erc20Curve.sol";
-import {_balanceOf, _transfer} from "../../utils/wrappers/Erc20Wrapper.sol";
+import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
-contract Erc20ReleaseIntentDelegate {
+contract Erc20ReleaseDelegate {
     /**
      * Basic state and constants.
      */
@@ -26,15 +25,14 @@ contract Erc20ReleaseIntentDelegate {
      */
     function releaseErc20(address erc20Contract, address to, uint256 amount) external {
         require(address(this) != _this, "must be delegate call");
-        require(_balanceOf(erc20Contract, address(this)) >= amount, "insufficient release balance");
-        _transfer(erc20Contract, to, amount);
+        IERC20(erc20Contract).transfer(to, amount);
     }
 
-    function _encodeReleaseErc20(Erc20Curve calldata erc20Release, address to, uint256 amount)
+    function _encodeReleaseErc20(address erc20Contract, address to, uint256 amount)
         internal
         pure
         returns (bytes memory)
     {
-        return abi.encodeWithSelector(this.releaseErc20.selector, erc20Release.erc20Contract, to, amount);
+        return abi.encodeWithSelector(this.releaseErc20.selector, erc20Contract, to, amount);
     }
 }

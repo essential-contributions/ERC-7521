@@ -16,7 +16,7 @@ contract EntryPointTest is TestEnvironment {
 
     function test_registerIntentStandard() public {
         EntryPoint newEntryPoint = new EntryPoint();
-        EthReleaseIntentStandard newIntentStandard = new EthReleaseIntentStandard();
+        EthReleaseLinear newIntentStandard = new EthReleaseLinear();
         newEntryPoint.registerIntentStandard(newIntentStandard);
         bytes32 registeredStandardId =
             keccak256(abi.encodePacked(newIntentStandard, address(newEntryPoint), block.chainid));
@@ -28,32 +28,32 @@ contract EntryPointTest is TestEnvironment {
 
     function test_failRegisterIntentStandard_alreadyRegistered() public {
         vm.expectRevert("AA81 already registered");
-        _entryPoint.registerIntentStandard(_ethReleaseIntentStandard);
+        _entryPoint.registerIntentStandard(_ethReleaseLinear);
     }
 
     function test_getIntentStandardContract() public {
-        bytes32 standardId = _entryPoint.getIntentStandardId(_ethReleaseIntentStandard);
+        bytes32 standardId = _entryPoint.getIntentStandardId(_ethReleaseLinear);
         IIntentStandard registeredStandard = _entryPoint.getIntentStandardContract(standardId);
-        bytes32 expectedHash = keccak256(abi.encode(IIntentStandard(_ethReleaseIntentStandard)));
+        bytes32 expectedHash = keccak256(abi.encode(IIntentStandard(_ethReleaseLinear)));
         bytes32 registeredHash = keccak256(abi.encode(registeredStandard));
         assertEq(registeredHash, expectedHash);
     }
 
     function test_failGetIntentStandardContract_unknownStandard() public {
-        bytes32 standardId = _entryPoint.getIntentStandardId(_ethReleaseIntentStandard);
+        bytes32 standardId = _entryPoint.getIntentStandardId(_ethReleaseLinear);
         vm.expectRevert("AA82 unknown standard");
         _entryPoint.getIntentStandardContract(standardId << 1);
     }
 
     function test_getIntentStandardId() public {
-        bytes32 standardId = _entryPoint.getIntentStandardId(_ethReleaseIntentStandard);
-        bytes32 expectedStandardId = _entryPoint.getIntentStandardId(_ethReleaseIntentStandard);
+        bytes32 standardId = _entryPoint.getIntentStandardId(_ethReleaseLinear);
+        bytes32 expectedStandardId = _entryPoint.getIntentStandardId(_ethReleaseLinear);
         assertEq(standardId, expectedStandardId);
     }
 
     function test_failGetIntentStandardId_unknownStandard() public {
         EntryPoint newEntryPoint = new EntryPoint();
-        EthReleaseIntentStandard newIntentStandard = new EthReleaseIntentStandard();
+        EthReleaseLinear newIntentStandard = new EthReleaseLinear();
         vm.expectRevert("AA82 unknown standard");
         newEntryPoint.getIntentStandardId(newIntentStandard);
     }

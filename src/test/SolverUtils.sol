@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.22;
 
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {IAggregator} from "../interfaces/IAggregator.sol";
@@ -24,37 +24,6 @@ contract SolverUtils is IAccount {
      */
     function validateUserIntent(UserIntent calldata, bytes32) external pure returns (IAggregator) {
         return IAggregator(address(0));
-    }
-
-    /**
-     * Swap ERC20 tokens for ETH using Uniswap.
-     * @param uniswap The address of the Uniswap router contract.
-     * @param erc20 The address of the ERC20 token to be swapped.
-     * @param weth The address of the Wrapped Ether (WETH) token on Uniswap.
-     * @param amountOutMinimum The minimum amount of ETH expected after the swap.
-     * @param recipient The address to receive the swapped ETH.
-     */
-    function swapERC20ForETH(address uniswap, address erc20, address weth, uint256 amountOutMinimum, address recipient)
-        external
-    {
-        // swap tokens
-        ExactInputSingleParams memory swapParams = ExactInputSingleParams({
-            tokenIn: erc20,
-            tokenOut: weth,
-            fee: uint24(0),
-            recipient: address(this),
-            deadline: uint256(0),
-            amountIn: IERC20(erc20).balanceOf(address(this)),
-            amountOutMinimum: amountOutMinimum,
-            sqrtPriceLimitX96: uint160(0)
-        });
-        uint256 amount = TestUniswap(payable(uniswap)).exactInputSingle(swapParams);
-
-        // unwrap
-        TestWrappedNativeToken(payable(weth)).withdraw(amount);
-
-        // send to recipient
-        payable(recipient).transfer(amount);
     }
 
     /**
@@ -120,8 +89,8 @@ contract SolverUtils is IAccount {
      * Default receive function.
      */
     receive() external payable {}
-    
-    /** 
+
+    /**
      * Add a test to exclude this contract from coverage report
      * note: there is currently an open ticket to resolve this more gracefully
      * https://github.com/foundry-rs/foundry/issues/2988

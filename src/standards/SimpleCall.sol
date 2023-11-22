@@ -1,27 +1,22 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.22;
 
 /* solhint-disable private-vars-leading-underscore */
 
 import {EmbeddedStandard} from "../core/EmbeddedStandard.sol";
-import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
 import {Exec} from "../utils/Exec.sol";
-import {Strings} from "openzeppelin/utils/Strings.sol";
+import {getSegmentBytes} from "./utils/SegmentData.sol";
 
 /**
- * Call Intent Segment struct
- * @param standard intent standard id for segment.
- * @param callData the intents desired call data.
+ * Simple Call Intent Standard
+ * @dev data
+ *   [bytes32] standard - the intent standard identifier
+ *   [bytes]   callData - the calldata to call on the intent sender
  */
-struct CallIntentSegment {
-    bytes32 standard;
-    bytes callData;
-}
-
-contract CallIntentStandard is IIntentStandard, EmbeddedStandard {
+contract SimpleCall is IIntentStandard, EmbeddedStandard {
     using IntentSolutionLib for IntentSolution;
 
     /**
@@ -30,7 +25,7 @@ contract CallIntentStandard is IIntentStandard, EmbeddedStandard {
     bytes32 internal constant CALL_INTENT_STANDARD_ID = 0;
     uint256 private constant REVERT_REASON_MAX_LEN = 2048;
 
-    function standardId() public pure override returns (bytes32) {
+    function getStandardId() public pure override returns (bytes32) {
         return CALL_INTENT_STANDARD_ID;
     }
 
@@ -38,7 +33,9 @@ contract CallIntentStandard is IIntentStandard, EmbeddedStandard {
      * Validate intent segment structure (typically just formatting).
      * @param segmentData the intent segment that is about to be solved.
      */
-    function validateIntentSegment(bytes calldata segmentData) external pure {}
+    function validateIntentSegment(bytes calldata segmentData) external pure {
+        require(segmentData.length >= 32, "Simple Call data is too small");
+    }
 
     /**
      * Performs part or all of the execution for an intent.
@@ -52,32 +49,28 @@ contract CallIntentStandard is IIntentStandard, EmbeddedStandard {
         IntentSolution calldata solution,
         uint256 executionIndex,
         uint256 segmentIndex,
-        bytes memory context
+        bytes calldata context
     ) external returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
-
-        if (intent.intentData[segmentIndex].length > 0) {
-            CallIntentSegment calldata dataSegment = parseIntentSegment(intent.intentData, segmentIndex);
-
-            //execute calldata
-            if (dataSegment.callData.length > 0) {
-                Exec.callAndRevert(intent.sender, dataSegment.callData, REVERT_REASON_MAX_LEN);
-                if (segmentIndex + 1 < intent.intentData.length && intent.intentData[segmentIndex + 1].length > 0) {
-                    return context;
-                }
+        uint256 segmentDataLength = intent.intentData[segmentIndex].length;
+        if (segmentDataLength > 32) {
+            unchecked {
+                bytes memory callData = getSegmentBytes(context, 32, segmentDataLength - 32);
+                Exec.callAndRevert(intent.sender, callData, REVERT_REASON_MAX_LEN);
             }
         }
-        return "";
+
+        //return context unchanged
+        return context;
     }
 
-    function parseIntentSegment(bytes[] calldata intentData, uint256 segmentIndex)
-        internal
-        pure
-        returns (CallIntentSegment calldata segment)
-    {
-        bytes calldata data = intentData[segmentIndex];
-        assembly {
-            segment := data.offset
-        }
+    /**
+     * Helper function to encode intent standard segment data.
+     * @param standardId the entry point identifier for this standard
+     * @param callData the calldata to call on the intent sender
+     * @return the fully encoded intent standard segment data
+     */
+    function encodeData(bytes32 standardId, bytes memory callData) external pure returns (bytes memory) {
+        return abi.encodePacked(standardId, callData);
     }
 }

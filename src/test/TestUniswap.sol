@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.22;
 
 import {TestWrappedNativeToken} from "./TestWrappedNativeToken.sol";
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
@@ -69,8 +69,8 @@ contract TestUniswap {
 
     // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
-    
-    /** 
+
+    /**
      * Add a test to exclude this contract from coverage report
      * note: there is currently an open ticket to resolve this more gracefully
      * https://github.com/foundry-rs/foundry/issues/2988

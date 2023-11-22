@@ -81,7 +81,7 @@ export async function deployTestEnvironment(
   //deploy the entrypoint contract and register intent standards
   const entrypoint = await ethers.deployContract('EntryPoint', [], deployer);
   const entrypointAddress = await entrypoint.getAddress();
-  const callStdId = await entrypoint.standardId();
+  const callStdId = await entrypoint.getStandardId();
 
   const userOperation = await ethers.deployContract('UserOperation', [], deployer);
   const userOperationAddress = await userOperation.getAddress();

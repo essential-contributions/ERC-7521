@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.22;
 
 import {IEntryPoint} from "./IEntryPoint.sol";
 import {IntentSolution} from "./IntentSolution.sol";
@@ -24,6 +24,6 @@ interface IIntentStandard {
         IntentSolution calldata solution,
         uint256 executionIndex,
         uint256 segmentIndex,
-        bytes memory context
+        bytes calldata context
     ) external returns (bytes memory);
 }

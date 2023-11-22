@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.22;
 
 import {ERC20} from "openzeppelin/token/ERC20/ERC20.sol";
 
@@ -24,8 +24,8 @@ contract TestWrappedNativeToken is ERC20 {
         (bool success,) = msg.sender.call{value: amount}("");
         require(success, "Transfer failed");
     }
-    
-    /** 
+
+    /**
      * Add a test to exclude this contract from coverage report
      * note: there is currently an open ticket to resolve this more gracefully
      * https://github.com/foundry-rs/foundry/issues/2988
