@@ -12,8 +12,8 @@ contract TestERC20 is ERC20 {
     function mint(address to, uint256 amount) external {
         _mint(to, amount);
     }
-    
-    /** 
+
+    /**
      * Add a test to exclude this contract from coverage report
      * note: there is currently an open ticket to resolve this more gracefully
      * https://github.com/foundry-rs/foundry/issues/2988
