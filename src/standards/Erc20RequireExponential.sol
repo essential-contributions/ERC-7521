@@ -9,7 +9,9 @@ import {popFromCalldata} from "./utils/ContextData.sol";
 import {getSegmentWord} from "./utils/SegmentData.sol";
 import {
     evaluateExponentialCurve,
-    encodeExponentialCurve,
+    encodeExponentialCurve1,
+    encodeExponentialCurve2,
+    encodeExponentialCurve3,
     isExponentialCurveRelative,
     encodeAsUint96,
     encodeAsUint64
@@ -118,21 +120,15 @@ contract Erc20RequireExponential is IIntentStandard {
         bool flipYAxis,
         bool isRelative
     ) external pure returns (bytes memory) {
-        (uint96 adjustedStartAmount, uint8 startMult, bool startNegative) = encodeAsUint96(startAmount);
-        (uint64 adjustedDeltaAmount, uint8 deltaMult, bool deltaNegative) = encodeAsUint64(deltaAmount);
-        bytes32 data = encodeExponentialCurve(
-            startTime,
-            deltaTime,
-            adjustedStartAmount,
-            startMult,
-            startNegative,
-            adjustedDeltaAmount,
-            deltaMult,
-            deltaNegative,
-            exponent,
-            flipYAxis,
-            isRelative
-        );
+        bytes32 data = encodeExponentialCurve1(bytes32(0), startTime, deltaTime, exponent, flipYAxis, isRelative);
+        {
+            (uint96 adjStartAmount, uint8 startMult, bool startNegative) = encodeAsUint96(startAmount);
+            data = encodeExponentialCurve2(data, adjStartAmount, startMult, startNegative);
+        }
+        {
+            (uint64 adjDeltaAmount, uint8 deltaMult, bool deltaNegative) = encodeAsUint64(deltaAmount);
+            data = encodeExponentialCurve3(data, adjDeltaAmount, deltaMult, deltaNegative);
+        }
         return abi.encodePacked(standardId, token, bytes32(data));
     }
 }

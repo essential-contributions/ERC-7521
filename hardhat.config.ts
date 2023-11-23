@@ -3,7 +3,7 @@ import '@nomicfoundation/hardhat-foundry';
 import '@nomicfoundation/hardhat-toolbox';
 
 const config: HardhatUserConfig = {
-  solidity: '0.8.13',
+  solidity: '0.8.22',
   paths: {
     tests: './test/ethers',
   },

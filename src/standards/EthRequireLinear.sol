@@ -9,7 +9,8 @@ import {popFromCalldata} from "./utils/ContextData.sol";
 import {getSegmentWord} from "./utils/SegmentData.sol";
 import {
     evaluateLinearCurve,
-    encodeLinearCurve,
+    encodeLinearCurve1,
+    encodeLinearCurve2,
     isLinearCurveRelative,
     encodeAsUint96,
     encodeAsUint64
@@ -101,19 +102,15 @@ contract EthRequireLinear is IIntentStandard {
         int256 deltaAmount,
         bool isRelative
     ) external pure returns (bytes memory) {
-        (uint96 adjustedStartAmount, uint8 startMult, bool startNegative) = encodeAsUint96(startAmount);
-        (uint64 adjustedDeltaAmount, uint8 deltaMult, bool deltaNegative) = encodeAsUint64(deltaAmount);
-        bytes32 data = encodeLinearCurve(
-            startTime,
-            deltaTime,
-            adjustedStartAmount,
-            startMult,
-            startNegative,
-            adjustedDeltaAmount,
-            deltaMult,
-            deltaNegative,
-            isRelative
-        );
+        bytes32 data;
+        {
+            (uint96 adjustedStartAmount, uint8 startMult, bool startNegative) = encodeAsUint96(startAmount);
+            data = encodeLinearCurve1(data, startTime, deltaTime, adjustedStartAmount, startMult, startNegative);
+        }
+        {
+            (uint64 adjustedDeltaAmount, uint8 deltaMult, bool deltaNegative) = encodeAsUint64(deltaAmount);
+            data = encodeLinearCurve2(data, adjustedDeltaAmount, deltaMult, deltaNegative, isRelative);
+        }
         return abi.encodePacked(standardId, bytes32(data));
     }
 }

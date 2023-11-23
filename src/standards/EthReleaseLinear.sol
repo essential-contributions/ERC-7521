@@ -9,7 +9,13 @@ import {Strings} from "openzeppelin/utils/Strings.sol";
 import {EthReleaseDelegate} from "./delegates/EthReleaseDelegate.sol";
 import {popFromCalldata} from "./utils/ContextData.sol";
 import {getSegmentWord} from "./utils/SegmentData.sol";
-import {evaluateLinearCurve, encodeLinearCurve, encodeAsUint96, encodeAsUint64} from "./utils/CurveCoder.sol";
+import {
+    evaluateLinearCurve,
+    encodeLinearCurve1,
+    encodeLinearCurve2,
+    encodeAsUint96,
+    encodeAsUint64
+} from "./utils/CurveCoder.sol";
 
 /**
  * Eth Require with Linear Curve Intent Standard
@@ -79,19 +85,15 @@ contract EthReleaseLinear is IIntentStandard, EthReleaseDelegate {
         pure
         returns (bytes memory)
     {
-        (uint96 adjustedStartAmount, uint8 startMult, bool startNegative) = encodeAsUint96(startAmount);
-        (uint64 adjustedDeltaAmount, uint8 deltaMult, bool deltaNegative) = encodeAsUint64(deltaAmount);
-        bytes32 data = encodeLinearCurve(
-            startTime,
-            deltaTime,
-            adjustedStartAmount,
-            startMult,
-            startNegative,
-            adjustedDeltaAmount,
-            deltaMult,
-            deltaNegative,
-            false
-        );
+        bytes32 data;
+        {
+            (uint96 adjustedStartAmount, uint8 startMult, bool startNegative) = encodeAsUint96(startAmount);
+            data = encodeLinearCurve1(data, startTime, deltaTime, adjustedStartAmount, startMult, startNegative);
+        }
+        {
+            (uint64 adjustedDeltaAmount, uint8 deltaMult, bool deltaNegative) = encodeAsUint64(deltaAmount);
+            data = encodeLinearCurve2(data, adjustedDeltaAmount, deltaMult, deltaNegative, false);
+        }
         return abi.encodePacked(standardId, bytes32(data));
     }
 }

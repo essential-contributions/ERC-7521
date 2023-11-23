@@ -53,35 +53,46 @@ function isConstantCurveRelative(bytes32 data) pure returns (bool isRelative) {
 }
 
 /**
- * Encodes the given fileds into the linear curve parameter encoding
+ * Encodes the given fileds into the linear curve parameter encoding (1 of 2 parts)
+ * @param encoding current encoding from previous steps
  * @param startTime start time of the curve (in seconds)
  * @param deltaTime amount of time from start until curve caps (in seconds)
  * @param startAmount starting amount
  * @param startMult starting amount multiplier (final_amount = amount << amountMult)
  * @param startNegative indicates that start amount is negative
+ * @return encoding the parameter encoding
+ */
+function encodeLinearCurve1(
+    bytes32 encoding,
+    uint48 startTime,
+    uint24 deltaTime,
+    uint96 startAmount,
+    uint8 startMult,
+    bool startNegative
+) pure returns (bytes32) {
+    encoding = encoding | (bytes32(uint256(startTime)) << 208) | (bytes32(uint256(deltaTime)) << 184)
+        | (bytes32(uint256(startAmount)) << 88) | (bytes32(uint256(startMult)) << 80);
+    if (startNegative) encoding = encoding | 0x0000000000000000000000000000000000000000000000000000000000000080;
+    return encoding;
+}
+
+/**
+ * Encodes the given fileds into the linear curve parameter encoding (1 of 2 parts)
+ * @param encoding current encoding from previous steps
  * @param deltaAmount amount of change after each second
  * @param deltaMult delta amount multiplier (final_amount = amount << amountMult)
  * @param deltaNegative indicates that start amount is negative
  * @param isRelative indicate the curve is to be evaluated relatively
  * @return encoding the parameter encoding
  */
-function encodeLinearCurve(
-    uint48 startTime,
-    uint24 deltaTime,
-    uint96 startAmount,
-    uint8 startMult,
-    bool startNegative,
-    uint64 deltaAmount,
-    uint8 deltaMult,
-    bool deltaNegative,
-    bool isRelative
-) pure returns (bytes32 encoding) {
-    encoding = (bytes32(uint256(startTime)) << 208) | (bytes32(uint256(deltaTime)) << 184)
-        | (bytes32(uint256(startAmount)) << 88) | (bytes32(uint256(startMult)) << 80)
-        | (bytes32(uint256(deltaAmount)) << 16) | (bytes32(uint256(deltaMult)) << 8);
-    if (startNegative) encoding = encoding | 0x0000000000000000000000000000000000000000000000000000000000000080;
+function encodeLinearCurve2(bytes32 encoding, uint64 deltaAmount, uint8 deltaMult, bool deltaNegative, bool isRelative)
+    pure
+    returns (bytes32)
+{
+    encoding = encoding | (bytes32(uint256(deltaAmount)) << 16) | (bytes32(uint256(deltaMult)) << 8);
     if (deltaNegative) encoding = encoding | 0x0000000000000000000000000000000000000000000000000000000000000040;
     if (isRelative) encoding = encoding | 0x0000000000000000000000000000000000000000000000000000000000000020;
+    return encoding;
 }
 
 /**
@@ -149,42 +160,63 @@ function isLinearCurveRelative(bytes32 data) pure returns (bool isRelative) {
 }
 
 /**
- * Encodes the given fileds into the exponential curve parameter encoding
+ * Encodes the given fileds into the exponential curve parameter encoding (1 of 3 parts)
+ * @param encoding current encoding from previous steps
  * @param startTime start time of the curve (in seconds)
  * @param deltaTime amount of time from start until curve caps (in seconds)
- * @param startAmount starting amount
- * @param startMult starting amount multiplier (final_amount = amount << amountMult)
- * @param startNegative indicates that start amount is negative
- * @param deltaAmount amount of change after each second
- * @param deltaMult delta amount multiplier (final_amount = amount << amountMult)
- * @param deltaNegative indicates that start amount is negative
  * @param exponent the exponent order of the curve
  * @param flipYAxis evaluate curve from right to left
  * @param isRelative indicate the curve is to be evaluated relatively
  * @return encoding the parameter encoding
  */
-function encodeExponentialCurve(
+function encodeExponentialCurve1(
+    bytes32 encoding,
     uint48 startTime,
     uint24 deltaTime,
-    uint96 startAmount,
-    uint8 startMult,
-    bool startNegative,
-    uint64 deltaAmount,
-    uint8 deltaMult,
-    bool deltaNegative,
     uint8 exponent,
     bool flipYAxis,
     bool isRelative
-) pure returns (bytes32 encoding) {
-    encoding = (bytes32(uint256(startTime)) << 208) | (bytes32(uint256(deltaTime)) << 184)
-        | (bytes32(uint256(startAmount)) << 88) | (bytes32(uint256(startMult)) << 80)
-        | (bytes32(uint256(deltaAmount)) << 16) | (bytes32(uint256(deltaMult)) << 8);
+) pure returns (bytes32) {
+    encoding = encoding | (bytes32(uint256(startTime)) << 208) | (bytes32(uint256(deltaTime)) << 184);
     if (flipYAxis) encoding = encoding | 0x0000000000000000000000000000000000000000000000000000000000000080;
-    if (startNegative) encoding = encoding | 0x0000000000000000000000000000000000000000000000000000000000000040;
-    if (deltaNegative) encoding = encoding | 0x0000000000000000000000000000000000000000000000000000000000000020;
     if (isRelative) encoding = encoding | 0x0000000000000000000000000000000000000000000000000000000000000010;
     if (exponent > uint8(0x0f)) exponent = uint8(0x0f);
     encoding = encoding | bytes32(uint256(exponent));
+    return encoding;
+}
+
+/**
+ * Encodes the given fileds into the exponential curve parameter encoding (1 of 3 parts)
+ * @param encoding current encoding from previous steps
+ * @param startAmount starting amount
+ * @param startMult starting amount multiplier (final_amount = amount << amountMult)
+ * @param startNegative indicates that start amount is negative
+ * @return encoding the parameter encoding
+ */
+function encodeExponentialCurve2(bytes32 encoding, uint96 startAmount, uint8 startMult, bool startNegative)
+    pure
+    returns (bytes32)
+{
+    encoding = encoding | (bytes32(uint256(startAmount)) << 88) | (bytes32(uint256(startMult)) << 80);
+    if (startNegative) encoding = encoding | 0x0000000000000000000000000000000000000000000000000000000000000040;
+    return encoding;
+}
+
+/**
+ * Encodes the given fileds into the exponential curve parameter encoding (1 of 3 parts)
+ * @param encoding current encoding from previous steps
+ * @param deltaAmount amount of change after each second
+ * @param deltaMult delta amount multiplier (final_amount = amount << amountMult)
+ * @param deltaNegative indicates that start amount is negative
+ * @return encoding the parameter encoding
+ */
+function encodeExponentialCurve3(bytes32 encoding, uint64 deltaAmount, uint8 deltaMult, bool deltaNegative)
+    pure
+    returns (bytes32)
+{
+    encoding = encoding | (bytes32(uint256(deltaAmount)) << 16) | (bytes32(uint256(deltaMult)) << 8);
+    if (deltaNegative) encoding = encoding | 0x0000000000000000000000000000000000000000000000000000000000000020;
+    return encoding;
 }
 
 /**
