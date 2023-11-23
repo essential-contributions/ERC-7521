@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.22;
 
 /* solhint-disable private-vars-leading-underscore */
 
-import "forge-std/Test.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {INonceManager} from "../interfaces/INonceManager.sol";
@@ -11,9 +10,9 @@ import {UserIntent} from "../interfaces/UserIntent.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
 
 /**
- * Erc20 Release Intent Segment struct
+ * Sequential Nonce Segment struct
  * @param standard intent standard id for segment.
- * @param release release curve.
+ * @param nonce the nonce.
  */
 struct SequentialNonceSegment {
     bytes32 standard;
@@ -65,6 +64,4 @@ contract SequentialNonce is IIntentStandard {
             segment := segmentData.offset
         }
     }
-
-    function testNothingAtAll() public {}
 }

@@ -1,0 +1,33 @@
+{
+  "name": "erc-7521",
+  "version": "1.0.0",
+  "description": "General intents for smart contract wallets",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "npx hardhat test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/essential-contributions/ERC-7521.git"
+  },
+  "author": "",
+  "bugs": {
+    "url": "https://github.com/essential-contributions/ERC-7521/issues"
+  },
+  "homepage": "https://github.com/essential-contributions/ERC-7521#readme",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-foundry": "^1.1.1",
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@types/chai": "^4.3.10",
+    "@types/mocha": "^10.0.4",
+    "@types/node": "^20.9.0",
+    "chai": "^4.3.10",
+    "hardhat": "^2.19.1",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.2.2"
+  }
+}

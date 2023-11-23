@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.22;
 
-import "forge-std/Test.sol";
 import {TestWrappedNativeToken} from "./TestWrappedNativeToken.sol";
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
@@ -31,7 +30,7 @@ struct ExactOutputSingleParams {
 
 /// @notice Very basic simulation of what Uniswap does with the swaps for the unit tests on the TokenPaymaster
 /// @dev Do not use to test any actual Uniswap interaction logic as this is way too simplistic
-contract TestUniswap is Test {
+contract TestUniswap {
     TestWrappedNativeToken public weth;
 
     constructor(TestWrappedNativeToken _weth) {
@@ -71,5 +70,10 @@ contract TestUniswap is Test {
     // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
 
-    function testNothing() public {}
+    /**
+     * Add a test to exclude this contract from coverage report
+     * note: there is currently an open ticket to resolve this more gracefully
+     * https://github.com/foundry-rs/foundry/issues/2988
+     */
+    function test() public {}
 }

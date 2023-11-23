@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.22;
 
-import "forge-std/Test.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {IAggregator} from "../interfaces/IAggregator.sol";
 import {IAccount} from "../interfaces/IAccount.sol";
@@ -12,7 +11,7 @@ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 /**
  * Library with util actions to streamline intent solving.
  */
-contract SolverUtils is Test, IAccount {
+contract SolverUtils is IAccount {
     constructor(TestUniswap testUniswap, IERC20 erc20Token, IERC20 wrappedNativeToken) {
         // set token approvals
         IERC20(erc20Token).approve(address(testUniswap), type(uint256).max);
@@ -122,5 +121,10 @@ contract SolverUtils is Test, IAccount {
      */
     receive() external payable {}
 
-    function testNothing() public {}
+    /**
+     * Add a test to exclude this contract from coverage report
+     * note: there is currently an open ticket to resolve this more gracefully
+     * https://github.com/foundry-rs/foundry/issues/2988
+     */
+    function test() public {}
 }

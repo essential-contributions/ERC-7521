@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.22;
 
-import "forge-std/Test.sol";
 import {Erc20Curve} from "../../utils/curves/Erc20Curve.sol";
 import {_balanceOf, _transfer} from "../../utils/wrappers/Erc20Wrapper.sol";
 
@@ -38,6 +37,4 @@ contract Erc20ReleaseIntentDelegate {
     {
         return abi.encodeWithSelector(this.releaseErc20.selector, erc20Release.erc20Contract, to, amount);
     }
-
-    function testNothing() public {}
 }

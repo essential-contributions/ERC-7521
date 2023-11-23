@@ -1,6 +1,9 @@
 # Compiler files
 cache/
+cache_hardhat/
 out/
+artifacts/
+typechain/
 
 # Ignores development broadcast logs
 !/broadcast
@@ -19,6 +22,8 @@ lcov.info
 # Environment config
 .vscode/
 
-# Added by cargo
+# Node
+node_modules
 
+# Added by cargo
 /target

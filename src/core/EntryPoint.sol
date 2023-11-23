@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.22;
 
 /* solhint-disable avoid-low-level-calls */
 /* solhint-disable no-inline-assembly */
@@ -76,7 +76,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
                     contextData[intentIndex] = _executeIntent(
                         solution, executionIndex, intentIndex, intentDataIndexes[intentIndex], contextData[intentIndex]
                     );
-                    intentDataIndexes[intentIndex] = intentDataIndexes[intentIndex] + 1;
+                    intentDataIndexes[intentIndex]++;
                 }
             }
 
@@ -88,9 +88,9 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
                         finished = false;
                         contextData[i] =
                             _executeIntent(solution, executionIndex, i, intentDataIndexes[i], contextData[i]);
-                        intentDataIndexes[i] = intentDataIndexes[i] + 1;
+                        intentDataIndexes[i]++;
                     }
-                    executionIndex = executionIndex + 1;
+                    executionIndex++;
                 }
                 if (finished) break;
             }
@@ -171,12 +171,10 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
      */
 
     function handleIntentsMulti(IntentSolution[] calldata solutions) external {
-        unchecked {
-            // loop through solutions and solve
-            uint256 solsLen = solutions.length;
-            for (uint256 i = 0; i < solsLen; i++) {
-                _handleIntents(solutions[i], IAggregator(address(0)), bytes32(0));
-            }
+        // loop through solutions and solve
+        uint256 solsLen = solutions.length;
+        for (uint256 i = 0; i < solsLen; i++) {
+            _handleIntents(solutions[i], IAggregator(address(0)), bytes32(0));
         }
     }
 
@@ -195,30 +193,30 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
     ) external {
         require(address(aggregator) != address(0), "AA96 invalid aggregator");
 
+        // get number of intents
+        uint256 solsLen = solutions.length;
+        uint256 totalIntents = 0;
         unchecked {
-            // get number of intents
-            uint256 solsLen = solutions.length;
-            uint256 totalIntents = 0;
             for (uint256 i = 0; i < solsLen; i++) {
                 totalIntents += solutions[0].intents.length;
             }
-            uint256 aggregatedIntentTotal = 0;
-            for (uint256 i = 0; i < totalIntents; i++) {
-                if ((uint256(intentsToAggregate) & (1 << i)) > 0) aggregatedIntentTotal++;
-            }
+        }
+        uint256 aggregatedIntentTotal = 0;
+        for (uint256 i = 0; i < totalIntents; i++) {
+            if ((uint256(intentsToAggregate) & (1 << i)) > 0) aggregatedIntentTotal++;
+        }
 
-            // validate aggregated intent signature
-            UserIntent[] memory aggregatedIntents = new UserIntent[](aggregatedIntentTotal);
-            for (uint256 i = 0; i < solsLen; i++) {
-                for (uint256 j = 0; j < solutions[0].intents.length; j++) {}
-            }
-            aggregator.validateSignatures(aggregatedIntents, signature);
+        // validate aggregated intent signature
+        UserIntent[] memory aggregatedIntents = new UserIntent[](aggregatedIntentTotal);
+        for (uint256 i = 0; i < solsLen; i++) {
+            for (uint256 j = 0; j < solutions[0].intents.length; j++) {}
+        }
+        aggregator.validateSignatures(aggregatedIntents, signature);
 
-            // loop through solutions and solve
-            for (uint256 i = 0; i < solsLen; i++) {
-                _handleIntents(solutions[i], aggregator, intentsToAggregate);
-                intentsToAggregate = intentsToAggregate << solutions[i].intents.length;
-            }
+        // loop through solutions and solve
+        for (uint256 i = 0; i < solsLen; i++) {
+            _handleIntents(solutions[i], aggregator, intentsToAggregate);
+            intentsToAggregate = intentsToAggregate << solutions[i].intents.length;
         }
     }
 

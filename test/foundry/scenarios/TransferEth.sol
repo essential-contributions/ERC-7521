@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.22;
 
 /* solhint-disable func-name-mixedcase */
 
 import "../utils/ScenarioTestEnvironment.sol";
-import {EthCurveLibHarness} from "../../../src/test/EthCurveLibHarness.sol";
+import {EthCurveLibHarness} from "../utils/harness/EthCurveLibHarness.sol";
 import {EthCurve, evaluate} from "../../../src/utils/curves/EthCurve.sol";
-import {Erc20CurveLibHarness} from "../../../src/test/Erc20CurveLibHarness.sol";
+import {Erc20CurveLibHarness} from "../utils/harness/Erc20CurveLibHarness.sol";
 import {Erc20Curve, CurveType, EvaluationType} from "../../../src/utils/curves/Erc20Curve.sol";
 import {generateFlags} from "../../../src/utils/Helpers.sol";
 
