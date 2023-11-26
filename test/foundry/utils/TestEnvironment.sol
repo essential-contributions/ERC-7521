@@ -40,7 +40,7 @@ abstract contract TestEnvironment is Test {
 
     function _intent() internal view returns (UserIntent memory) {
         UserIntent memory intent = IntentBuilder.create(address(_account));
-        intent = _addEthReleaseLinear(intent, uint48(block.timestamp), uint24(20), 10, 2);
+        intent = _addEthReleaseLinear(intent, uint40(block.timestamp), uint32(20), 10, 2);
         intent = _addEthRequire(intent, 10, false);
 
         return intent;
@@ -48,8 +48,8 @@ abstract contract TestEnvironment is Test {
 
     function _addEthReleaseLinear(
         UserIntent memory intent,
-        uint48 startTime,
-        uint24 deltaTime,
+        uint40 startTime,
+        uint32 deltaTime,
         int256 startAmount,
         int256 deltaAmount
     ) internal view returns (UserIntent memory) {

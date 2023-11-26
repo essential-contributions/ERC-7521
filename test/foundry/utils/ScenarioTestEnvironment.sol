@@ -251,8 +251,8 @@ abstract contract ScenarioTestEnvironment is Test {
 
     function _addErc20ReleaseExponential(
         UserIntent memory intent,
-        uint48 startTime,
-        uint24 deltaTime,
+        uint40 startTime,
+        uint32 deltaTime,
         int256 startAmount,
         int256 deltaAmount,
         uint8 exponent,
@@ -268,8 +268,8 @@ abstract contract ScenarioTestEnvironment is Test {
 
     function _addErc20ReleaseLinear(
         UserIntent memory intent,
-        uint48 startTime,
-        uint24 deltaTime,
+        uint40 startTime,
+        uint32 deltaTime,
         int256 startAmount,
         int256 deltaAmount
     ) internal view returns (UserIntent memory) {
@@ -290,8 +290,8 @@ abstract contract ScenarioTestEnvironment is Test {
 
     function _addErc20RequireExponential(
         UserIntent memory intent,
-        uint48 startTime,
-        uint24 deltaTime,
+        uint40 startTime,
+        uint32 deltaTime,
         int256 startAmount,
         int256 deltaAmount,
         uint8 exponent,
@@ -308,8 +308,8 @@ abstract contract ScenarioTestEnvironment is Test {
 
     function _addErc20RequireLinear(
         UserIntent memory intent,
-        uint48 startTime,
-        uint24 deltaTime,
+        uint40 startTime,
+        uint32 deltaTime,
         int256 startAmount,
         int256 deltaAmount,
         bool isRelative
@@ -334,8 +334,8 @@ abstract contract ScenarioTestEnvironment is Test {
 
     function _addEthReleaseExponential(
         UserIntent memory intent,
-        uint48 startTime,
-        uint24 deltaTime,
+        uint40 startTime,
+        uint32 deltaTime,
         int256 startAmount,
         int256 deltaAmount,
         uint8 exponent,
@@ -351,8 +351,8 @@ abstract contract ScenarioTestEnvironment is Test {
 
     function _addEthReleaseLinear(
         UserIntent memory intent,
-        uint48 startTime,
-        uint24 deltaTime,
+        uint40 startTime,
+        uint32 deltaTime,
         int256 startAmount,
         int256 deltaAmount
     ) internal view returns (UserIntent memory) {
@@ -372,8 +372,8 @@ abstract contract ScenarioTestEnvironment is Test {
 
     function _addEthRequireExponential(
         UserIntent memory intent,
-        uint48 startTime,
-        uint24 deltaTime,
+        uint40 startTime,
+        uint32 deltaTime,
         int256 startAmount,
         int256 deltaAmount,
         uint8 exponent,
@@ -390,8 +390,8 @@ abstract contract ScenarioTestEnvironment is Test {
 
     function _addEthRequireLinear(
         UserIntent memory intent,
-        uint48 startTime,
-        uint24 deltaTime,
+        uint40 startTime,
+        uint32 deltaTime,
         int256 startAmount,
         int256 deltaAmount,
         bool isRelative

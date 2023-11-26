@@ -64,13 +64,13 @@ function isConstantCurveRelative(bytes32 data) pure returns (bool isRelative) {
  */
 function encodeLinearCurve1(
     bytes32 encoding,
-    uint48 startTime,
-    uint24 deltaTime,
+    uint40 startTime,
+    uint32 deltaTime,
     uint96 startAmount,
     uint8 startMult,
     bool startNegative
 ) pure returns (bytes32) {
-    encoding = encoding | (bytes32(uint256(startTime)) << 208) | (bytes32(uint256(deltaTime)) << 184)
+    encoding = encoding | (bytes32(uint256(startTime)) << 216) | (bytes32(uint256(deltaTime)) << 184)
         | (bytes32(uint256(startAmount)) << 88) | (bytes32(uint256(startMult)) << 80);
     if (startNegative) encoding = encoding | 0x0000000000000000000000000000000000000000000000000000000000000080;
     return encoding;
@@ -99,8 +99,8 @@ function encodeLinearCurve2(bytes32 encoding, uint64 deltaAmount, uint8 deltaMul
  * Decodes the given linear curve parameter encoding and evaluates it
  * @param data the encoded parameters
  * @dev data
- *   [uint48]  startTime - start time of the curve (in seconds)
- *   [uint24]  deltaTime - amount of time from start until curve caps (in seconds)
+ *   [uint40]  startTime - start time of the curve (in seconds)
+ *   [uint32]  deltaTime - amount of time from start until curve caps (in seconds)
  *   [uint96]  startAmount - starting amount
  *   [uint8]   startAmountMult - starting amount multiplier (final_amount = amount << amountMult)
  *   [uint64]  deltaAmount - amount of change after each second
@@ -113,9 +113,9 @@ function evaluateLinearCurve(bytes32 data, uint256 solutionTimestamp) pure retur
     unchecked {
         //time parameters
         uint48 startTime =
-            uint48(uint256((data & 0xffffffffffff0000000000000000000000000000000000000000000000000000) >> 208));
+            uint48(uint256((data & 0xffffffffff000000000000000000000000000000000000000000000000000000) >> 216));
         uint48 deltaTime =
-            uint48(uint256((data & 0x000000000000ffffff0000000000000000000000000000000000000000000000) >> 184));
+            uint48(uint256((data & 0x0000000000ffffffff0000000000000000000000000000000000000000000000) >> 184));
         uint48 endTime = startTime + deltaTime;
         uint256 evaluateAt = 0;
         if (solutionTimestamp > startTime) {
@@ -171,13 +171,13 @@ function isLinearCurveRelative(bytes32 data) pure returns (bool isRelative) {
  */
 function encodeExponentialCurve1(
     bytes32 encoding,
-    uint48 startTime,
-    uint24 deltaTime,
+    uint40 startTime,
+    uint32 deltaTime,
     uint8 exponent,
     bool flipYAxis,
     bool isRelative
 ) pure returns (bytes32) {
-    encoding = encoding | (bytes32(uint256(startTime)) << 208) | (bytes32(uint256(deltaTime)) << 184);
+    encoding = encoding | (bytes32(uint256(startTime)) << 216) | (bytes32(uint256(deltaTime)) << 184);
     if (flipYAxis) encoding = encoding | 0x0000000000000000000000000000000000000000000000000000000000000080;
     if (isRelative) encoding = encoding | 0x0000000000000000000000000000000000000000000000000000000000000010;
     if (exponent > uint8(0x0f)) exponent = uint8(0x0f);
@@ -223,8 +223,8 @@ function encodeExponentialCurve3(bytes32 encoding, uint64 deltaAmount, uint8 del
  * Decodes the given exponential curve parameter encoding and evaluates it
  * @param data the encoded parameters
  * @dev data
- *   [uint48]  startTime - start time of the curve (in seconds)
- *   [uint24]  deltaTime - amount of time from start until curve caps (in seconds)
+ *   [uint40]  startTime - start time of the curve (in seconds)
+ *   [uint32]  deltaTime - amount of time from start until curve caps (in seconds)
  *   [uint96]  startAmount - starting amount
  *   [uint8]   startAmountMult - starting amount multiplier (final_amount = amount * (amountMult * 10))
  *   [uint64]  deltaAmount - amount of change after each second
@@ -237,9 +237,9 @@ function evaluateExponentialCurve(bytes32 data, uint256 solutionTimestamp) pure 
     unchecked {
         //time parameters
         uint48 startTime =
-            uint48(uint256((data & 0xffffffffffff0000000000000000000000000000000000000000000000000000) >> 208));
+            uint48(uint256((data & 0xffffffffff000000000000000000000000000000000000000000000000000000) >> 216));
         uint48 deltaTime =
-            uint48(uint256((data & 0x000000000000ffffff0000000000000000000000000000000000000000000000) >> 184));
+            uint48(uint256((data & 0x0000000000ffffffff0000000000000000000000000000000000000000000000) >> 184));
         uint48 endTime = startTime + deltaTime;
         uint256 evaluateAt = 0;
         if (solutionTimestamp > startTime) {

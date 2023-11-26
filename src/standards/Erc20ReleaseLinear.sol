@@ -23,8 +23,8 @@ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
  * @dev data
  *   [bytes32] standard - the intent standard identifier
  *   [address] token - the ERC20 token contract address
- *   [uint48]  startTime - start time of the curve (in seconds)
- *   [uint24]  deltaTime - amount of time from start until curve caps (in seconds)
+ *   [uint40]  startTime - start time of the curve (in seconds)
+ *   [uint32]  deltaTime - amount of time from start until curve caps (in seconds)
  *   [uint96]  startAmount - starting amount
  *   [uint8]   startAmountMult - starting amount multiplier (final_amount = amount << amountMult)
  *   [uint64]  deltaAmount - amount of change after each second
@@ -91,8 +91,8 @@ contract Erc20ReleaseLinear is IIntentStandard, Erc20ReleaseDelegate {
     function encodeData(
         bytes32 standardId,
         address token,
-        uint48 startTime,
-        uint24 deltaTime,
+        uint40 startTime,
+        uint32 deltaTime,
         int256 startAmount,
         int256 deltaAmount
     ) external pure returns (bytes memory) {

@@ -29,8 +29,8 @@ contract TransferErc20 is ScenarioTestEnvironment {
         UserIntent memory intent = _intent();
         intent = _addErc20ReleaseLinear(
             intent,
-            uint48(block.timestamp - releaseAt),
-            uint24(releaseDuration),
+            uint40(block.timestamp - releaseAt),
+            uint32(releaseDuration),
             releaseStartAmount,
             (releaseEndAmount - releaseStartAmount) / int256(releaseDuration)
         );

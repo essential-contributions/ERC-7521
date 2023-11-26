@@ -28,8 +28,8 @@ contract TokenSwaps is ScenarioTestEnvironment {
         UserIntent memory intent = _intent();
         intent = _addErc20ReleaseLinear(
             intent,
-            uint48(block.timestamp - releaseAt),
-            uint24(releaseDuration),
+            uint40(block.timestamp - releaseAt),
+            uint32(releaseDuration),
             releaseStartAmount,
             (releaseEndAmount - releaseStartAmount) / int256(releaseDuration)
         );
@@ -54,8 +54,8 @@ contract TokenSwaps is ScenarioTestEnvironment {
         intent = _addEthRecord(intent);
         intent = _addEthRequireLinear(
             intent,
-            uint48(block.timestamp - requireAt),
-            uint24(requireDuration),
+            uint40(block.timestamp - requireAt),
+            uint32(requireDuration),
             requireStartAmount,
             (requireEndAmount - requireStartAmount) / int256(requireDuration),
             true
