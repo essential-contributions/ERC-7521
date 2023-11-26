@@ -165,7 +165,7 @@ function isLinearCurveRelative(bytes32 data) pure returns (bool isRelative) {
  * @param startTime start time of the curve (in seconds)
  * @param deltaTime amount of time from start until curve caps (in seconds)
  * @param exponent the exponent order of the curve
- * @param flipYAxis evaluate curve from right to left
+ * @param backwards evaluate curve from right to left
  * @param isRelative indicate the curve is to be evaluated relatively
  * @return encoding the parameter encoding
  */
@@ -174,11 +174,11 @@ function encodeExponentialCurve1(
     uint40 startTime,
     uint32 deltaTime,
     uint8 exponent,
-    bool flipYAxis,
+    bool backwards,
     bool isRelative
 ) pure returns (bytes32) {
     encoding = encoding | (bytes32(uint256(startTime)) << 216) | (bytes32(uint256(deltaTime)) << 184);
-    if (flipYAxis) encoding = encoding | 0x0000000000000000000000000000000000000000000000000000000000000080;
+    if (backwards) encoding = encoding | 0x0000000000000000000000000000000000000000000000000000000000000080;
     if (isRelative) encoding = encoding | 0x0000000000000000000000000000000000000000000000000000000000000010;
     if (exponent > uint8(0x0f)) exponent = uint8(0x0f);
     encoding = encoding | bytes32(uint256(exponent));
@@ -229,7 +229,7 @@ function encodeExponentialCurve3(bytes32 encoding, uint64 deltaAmount, uint8 del
  *   [uint8]   startAmountMult - starting amount multiplier (final_amount = amount * (amountMult * 10))
  *   [uint64]  deltaAmount - amount of change after each second
  *   [uint8]   deltaAmountMult - delta amount multiplier (final_amount = amount * (amountMult * 10))
- *   [bytes1]  flags/exponent - flip y, negatives, relative or absolute, exponent [fnnr eeee]
+ *   [bytes1]  flags/exponent - evaluate backwards, negatives, relative or absolute, exponent [bnnr eeee]
  * @param solutionTimestamp the time of evaluation specified by the solution
  * @return value the evaluated value
  */
@@ -247,7 +247,7 @@ function evaluateExponentialCurve(bytes32 data, uint256 solutionTimestamp) pure 
             else evaluateAt = deltaTime;
         }
 
-        //flip y-axis
+        //evaluate backwards
         if (uint256(data & 0x0000000000000000000000000000000000000000000000000000000000000080) > 0) {
             evaluateAt = deltaTime - evaluateAt;
         }
@@ -263,7 +263,7 @@ function evaluateExponentialCurve(bytes32 data, uint256 solutionTimestamp) pure 
         if (deltaMult > 0) deltaAmount = deltaAmount << (deltaMult >> 8);
 
         //evaluate curve
-        uint256 exponent = uint256(data & 0x000000000000000000000000000000000000000000000000000000000000001f);
+        uint256 exponent = uint256(data & 0x000000000000000000000000000000000000000000000000000000000000000f);
         if (uint256(data & 0x0000000000000000000000000000000000000000000000000000000000000040) > 0) {
             if (uint256(data & 0x0000000000000000000000000000000000000000000000000000000000000020) > 0) {
                 return (0 - int256(startAmount)) - int256((evaluateAt ** exponent) * deltaAmount);

@@ -256,12 +256,12 @@ abstract contract ScenarioTestEnvironment is Test {
         int256 startAmount,
         int256 deltaAmount,
         uint8 exponent,
-        bool flipYAxis
+        bool backwards
     ) internal view returns (UserIntent memory) {
         bytes32 standardId = _entryPoint.getIntentStandardId(_erc20ReleaseExponential);
         return intent.addSegment(
             _erc20ReleaseExponential.encodeData(
-                standardId, _token, startTime, deltaTime, startAmount, deltaAmount, exponent, flipYAxis
+                standardId, _token, startTime, deltaTime, startAmount, deltaAmount, exponent, backwards
             )
         );
     }
@@ -295,13 +295,13 @@ abstract contract ScenarioTestEnvironment is Test {
         int256 startAmount,
         int256 deltaAmount,
         uint8 exponent,
-        bool flipYAxis,
+        bool backwards,
         bool isRelative
     ) internal view returns (UserIntent memory) {
         bytes32 standardId = _entryPoint.getIntentStandardId(_erc20RequireExponential);
         return intent.addSegment(
             _erc20RequireExponential.encodeData(
-                standardId, _token, startTime, deltaTime, startAmount, deltaAmount, exponent, flipYAxis, isRelative
+                standardId, _token, startTime, deltaTime, startAmount, deltaAmount, exponent, backwards, isRelative
             )
         );
     }
@@ -339,12 +339,12 @@ abstract contract ScenarioTestEnvironment is Test {
         int256 startAmount,
         int256 deltaAmount,
         uint8 exponent,
-        bool flipYAxis
+        bool backwards
     ) internal view returns (UserIntent memory) {
         bytes32 standardId = _entryPoint.getIntentStandardId(_ethReleaseExponential);
         return intent.addSegment(
             _ethReleaseExponential.encodeData(
-                standardId, startTime, deltaTime, startAmount, deltaAmount, exponent, flipYAxis
+                standardId, startTime, deltaTime, startAmount, deltaAmount, exponent, backwards
             )
         );
     }
@@ -377,13 +377,13 @@ abstract contract ScenarioTestEnvironment is Test {
         int256 startAmount,
         int256 deltaAmount,
         uint8 exponent,
-        bool flipYAxis,
+        bool backwards,
         bool isRelative
     ) internal view returns (UserIntent memory) {
         bytes32 standardId = _entryPoint.getIntentStandardId(_ethRequireExponential);
         return intent.addSegment(
             _ethRequireExponential.encodeData(
-                standardId, startTime, deltaTime, startAmount, deltaAmount, exponent, flipYAxis, isRelative
+                standardId, startTime, deltaTime, startAmount, deltaAmount, exponent, backwards, isRelative
             )
         );
     }

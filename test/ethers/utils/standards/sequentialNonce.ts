@@ -17,7 +17,6 @@ export class SequentialNonceSegment extends IntentSegment {
 
   //gets the bytes abi encoding of the segment
   asBytes(): string {
-    const abi = new ethers.AbiCoder();
-    return abi.encode(['bytes32', 'uint256'], [this.standard, this.nonce]);
+    return ethers.solidityPacked(['bytes32', 'uint256'], [this.standard, this.nonce]);
   }
 }

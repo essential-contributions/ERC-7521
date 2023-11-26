@@ -33,7 +33,7 @@ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 contract Erc20RequireLinear is IIntentStandard {
     using IntentSolutionLib for IntentSolution;
 
-    bytes32 private constant TOKEN_ADDRESS_MASK = 0x000000000000000000000000ffffffffffffffffffffffffffffffffffffffff;
+    bytes32 private constant _TOKEN_ADDRESS_MASK = 0x000000000000000000000000ffffffffffffffffffffffffffffffffffffffff;
 
     /**
      * Validate intent segment structure (typically just formatting).
@@ -59,7 +59,7 @@ contract Erc20RequireLinear is IIntentStandard {
     ) external view returns (bytes memory newContext) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
         bytes calldata segment = intent.intentData[segmentIndex];
-        address token = address(uint160(uint256(getSegmentWord(segment, 20) & TOKEN_ADDRESS_MASK)));
+        address token = address(uint160(uint256(getSegmentWord(segment, 20) & _TOKEN_ADDRESS_MASK)));
 
         //evaluate data
         bytes32 data = getSegmentWord(segment, 52);

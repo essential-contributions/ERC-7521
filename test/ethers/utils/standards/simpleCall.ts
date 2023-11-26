@@ -2,7 +2,7 @@ import { ethers } from 'ethers';
 import { IntentSegment } from '../intent';
 
 // The intent object
-export class CallSegment extends IntentSegment {
+export class SimpleCallSegment extends IntentSegment {
   private standard: string;
   private callData: string;
 
@@ -16,7 +16,6 @@ export class CallSegment extends IntentSegment {
 
   //gets the bytes abi encoding of the segment
   asBytes(): string {
-    const abi = new ethers.AbiCoder();
-    return abi.encode(['bytes32', 'bytes'], [this.standard, this.callData]);
+    return ethers.solidityPacked(['bytes32', 'bytes'], [this.standard, this.callData]);
   }
 }

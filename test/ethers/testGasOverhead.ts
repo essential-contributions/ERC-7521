@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { deployTestEnvironment, Environment } from './utils/environment';
 import { buildSolutionForNextBlock, UserIntent } from './utils/intent';
+import { ConstantCurve } from './utils/curveCoder';
 
 describe('Gass Overhead Test', () => {
   let env: Environment;

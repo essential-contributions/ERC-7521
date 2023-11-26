@@ -29,12 +29,12 @@ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
  *   [uint8]   startAmountMult - starting amount multiplier (final_amount = amount * (amountMult * 10))
  *   [uint64]  deltaAmount - amount of change after each second
  *   [uint8]   deltaAmountMult - delta amount multiplier (final_amount = amount * (amountMult * 10))
- *   [bytes1]  flags/exponent - flip y, negatives, relative or absolute, exponent [fnnr eeee]
+ *   [bytes1]  flags/exponent - evaluate backwards, negatives, relative or absolute, exponent [bnnr eeee]
  */
 contract Erc20RequireExponential is IIntentStandard {
     using IntentSolutionLib for IntentSolution;
 
-    bytes32 private constant TOKEN_ADDRESS_MASK = 0x000000000000000000000000ffffffffffffffffffffffffffffffffffffffff;
+    bytes32 private constant _TOKEN_ADDRESS_MASK = 0x000000000000000000000000ffffffffffffffffffffffffffffffffffffffff;
 
     /**
      * Validate intent segment structure (typically just formatting).
@@ -60,7 +60,7 @@ contract Erc20RequireExponential is IIntentStandard {
     ) external view returns (bytes memory newContext) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
         bytes calldata segment = intent.intentData[segmentIndex];
-        address token = address(uint160(uint256(getSegmentWord(segment, 20) & TOKEN_ADDRESS_MASK)));
+        address token = address(uint160(uint256(getSegmentWord(segment, 20) & _TOKEN_ADDRESS_MASK)));
 
         //evaluate data
         bytes32 data = getSegmentWord(segment, 52);
@@ -102,7 +102,7 @@ contract Erc20RequireExponential is IIntentStandard {
      * @param startAmount starting amount
      * @param deltaAmount amount of change after each second
      * @param exponent the exponent order of the curve
-     * @param flipYAxis evaluate curve from right to left
+     * @param backwards evaluate curve from right to left
      * @param isRelative meant to be evaluated relatively
      * @return the fully encoded intent standard segment data
      */
@@ -114,10 +114,10 @@ contract Erc20RequireExponential is IIntentStandard {
         int256 startAmount,
         int256 deltaAmount,
         uint8 exponent,
-        bool flipYAxis,
+        bool backwards,
         bool isRelative
     ) external pure returns (bytes memory) {
-        bytes32 data = encodeExponentialCurve1(bytes32(0), startTime, deltaTime, exponent, flipYAxis, isRelative);
+        bytes32 data = encodeExponentialCurve1(bytes32(0), startTime, deltaTime, exponent, backwards, isRelative);
         {
             (uint96 adjStartAmount, uint8 startMult, bool startNegative) = encodeAsUint96(startAmount);
             data = encodeExponentialCurve2(data, adjStartAmount, startMult, startNegative);

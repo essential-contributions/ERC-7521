@@ -30,12 +30,12 @@ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
  *   [uint8]   startAmountMult - starting amount multiplier (final_amount = amount * (amountMult * 10))
  *   [uint64]  deltaAmount - amount of change after each second
  *   [uint8]   deltaAmountMult - delta amount multiplier (final_amount = amount * (amountMult * 10))
- *   [bytes1]  flags/exponent - flip y, negatives, exponent [fnnx eeee]
+ *   [bytes1]  flags/exponent - evaluate backwards, negatives, exponent [fnnx eeee]
  */
 contract Erc20ReleaseExponential is IIntentStandard, Erc20ReleaseDelegate {
     using IntentSolutionLib for IntentSolution;
 
-    bytes32 private constant TOKEN_ADDRESS_MASK = 0x000000000000000000000000ffffffffffffffffffffffffffffffffffffffff;
+    bytes32 private constant _TOKEN_ADDRESS_MASK = 0x000000000000000000000000ffffffffffffffffffffffffffffffffffffffff;
 
     /**
      * Validate intent segment structure (typically just formatting).
@@ -61,7 +61,7 @@ contract Erc20ReleaseExponential is IIntentStandard, Erc20ReleaseDelegate {
     ) external returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
         address token =
-            address(uint160(uint256(getSegmentWord(intent.intentData[segmentIndex], 20) & TOKEN_ADDRESS_MASK)));
+            address(uint160(uint256(getSegmentWord(intent.intentData[segmentIndex], 20) & _TOKEN_ADDRESS_MASK)));
 
         //evaluate data
         bytes32 data = getSegmentWord(intent.intentData[segmentIndex], 52);
@@ -88,7 +88,7 @@ contract Erc20ReleaseExponential is IIntentStandard, Erc20ReleaseDelegate {
      * @param startAmount starting amount
      * @param deltaAmount amount of change after each second
      * @param exponent the exponent order of the curve
-     * @param flipYAxis evaluate curve from right to left
+     * @param backwards evaluate curve from right to left
      * @return the fully encoded intent standard segment data
      */
     function encodeData(
@@ -99,9 +99,9 @@ contract Erc20ReleaseExponential is IIntentStandard, Erc20ReleaseDelegate {
         int256 startAmount,
         int256 deltaAmount,
         uint8 exponent,
-        bool flipYAxis
+        bool backwards
     ) external pure returns (bytes memory) {
-        bytes32 data = encodeExponentialCurve1(bytes32(0), startTime, deltaTime, exponent, flipYAxis, false);
+        bytes32 data = encodeExponentialCurve1(bytes32(0), startTime, deltaTime, exponent, backwards, false);
         {
             (uint96 adjStartAmount, uint8 startMult, bool startNegative) = encodeAsUint96(startAmount);
             data = encodeExponentialCurve2(data, adjStartAmount, startMult, startNegative);

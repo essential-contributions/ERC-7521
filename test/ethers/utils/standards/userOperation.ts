@@ -18,7 +18,6 @@ export class UserOperationSegment extends IntentSegment {
 
   //gets the bytes abi encoding of the segment
   asBytes(): string {
-    const abi = new ethers.AbiCoder();
-    return abi.encode(['bytes32', 'uint256', 'bytes'], [this.standard, this.gasLimit, this.callData]);
+    return ethers.solidityPacked(['bytes32', 'uint256', 'bytes'], [this.standard, this.gasLimit, this.callData]);
   }
 }

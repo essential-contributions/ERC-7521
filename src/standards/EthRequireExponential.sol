@@ -27,7 +27,7 @@ import {
  *   [uint8]   startAmountMult - starting amount multiplier (final_amount = amount * (amountMult * 10))
  *   [uint64]  deltaAmount - amount of change after each second
  *   [uint8]   deltaAmountMult - delta amount multiplier (final_amount = amount * (amountMult * 10))
- *   [bytes1]  flags/exponent - flip y, negatives, relative or absolute, exponent [fnnr eeee]
+ *   [bytes1]  flags/exponent - evaluate backwards, negatives, relative or absolute, exponent [bnnr eeee]
  */
 contract EthRequireExponential is IIntentStandard {
     using IntentSolutionLib for IntentSolution;
@@ -93,7 +93,7 @@ contract EthRequireExponential is IIntentStandard {
      * @param startAmount starting amount
      * @param deltaAmount amount of change after each second
      * @param exponent the exponent order of the curve
-     * @param flipYAxis evaluate curve from right to left
+     * @param backwards evaluate curve from right to left
      * @param isRelative meant to be evaluated relatively
      * @return the fully encoded intent standard segment data
      */
@@ -104,10 +104,10 @@ contract EthRequireExponential is IIntentStandard {
         int256 startAmount,
         int256 deltaAmount,
         uint8 exponent,
-        bool flipYAxis,
+        bool backwards,
         bool isRelative
     ) external pure returns (bytes memory) {
-        bytes32 data = encodeExponentialCurve1(bytes32(0), startTime, deltaTime, exponent, flipYAxis, isRelative);
+        bytes32 data = encodeExponentialCurve1(bytes32(0), startTime, deltaTime, exponent, backwards, isRelative);
         {
             (uint96 adjStartAmount, uint8 startMult, bool startNegative) = encodeAsUint96(startAmount);
             data = encodeExponentialCurve2(data, adjStartAmount, startMult, startNegative);
