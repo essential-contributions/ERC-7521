@@ -24,6 +24,8 @@ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 contract Erc20Release is IIntentStandard, Erc20ReleaseDelegate {
     using IntentSolutionLib for IntentSolution;
 
+    bytes32 private constant TOKEN_ADDRESS_MASK = 0x000000000000000000000000ffffffffffffffffffffffffffffffffffffffff;
+
     /**
      * Validate intent segment structure (typically just formatting).
      * @param segmentData the intent segment that is about to be solved.
@@ -47,13 +49,8 @@ contract Erc20Release is IIntentStandard, Erc20ReleaseDelegate {
         bytes calldata context
     ) external returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
-        address token = address(
-            uint160(
-                uint256(
-                    getSegmentWord(context, 20) & 0x000000000000000000000000ffffffffffffffffffffffffffffffffffffffff
-                )
-            )
-        );
+        address token =
+            address(uint160(uint256(getSegmentWord(intent.intentData[segmentIndex], 20) & TOKEN_ADDRESS_MASK)));
 
         //evaluate data
         bytes32 data = getSegmentWord(intent.intentData[segmentIndex], 34) << 144;

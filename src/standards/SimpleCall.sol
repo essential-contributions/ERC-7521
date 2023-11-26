@@ -52,10 +52,10 @@ contract SimpleCall is IIntentStandard, EmbeddedStandard {
         bytes calldata context
     ) external returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
-        uint256 segmentDataLength = intent.intentData[segmentIndex].length;
-        if (segmentDataLength > 32) {
+        bytes calldata segment = intent.intentData[segmentIndex];
+        if (segment.length > 32) {
             unchecked {
-                bytes memory callData = getSegmentBytes(context, 32, segmentDataLength - 32);
+                bytes memory callData = getSegmentBytes(segment, 32, segment.length - 32);
                 Exec.callAndRevert(intent.sender, callData, REVERT_REASON_MAX_LEN);
             }
         }

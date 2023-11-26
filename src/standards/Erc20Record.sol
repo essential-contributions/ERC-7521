@@ -17,6 +17,8 @@ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 contract Erc20Record is IIntentStandard {
     using IntentSolutionLib for IntentSolution;
 
+    bytes32 private constant TOKEN_ADDRESS_MASK = 0x000000000000000000000000ffffffffffffffffffffffffffffffffffffffff;
+
     /**
      * Validate intent segment structure (typically just formatting).
      * @param segmentData the intent segment that is about to be solved.
@@ -29,24 +31,18 @@ contract Erc20Record is IIntentStandard {
      * Performs part or all of the execution for an intent.
      * @param solution the full solution being executed.
      * @param executionIndex the current index of execution (used to get the UserIntent to execute for).
-     * @dev unused uint256 - [segmentIndex] the current segment to execute for the intent.
+     * @param segmentIndex the current segment to execute for the intent.
      * @param context context data from the previous step in execution (no data means execution is just starting).
      * @return newContext to remember for further execution.
      */
     function executeIntentSegment(
         IntentSolution calldata solution,
         uint256 executionIndex,
-        uint256,
+        uint256 segmentIndex,
         bytes calldata context
     ) external view returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
-        address token = address(
-            uint160(
-                uint256(
-                    getSegmentWord(context, 20) & 0x000000000000000000000000ffffffffffffffffffffffffffffffffffffffff
-                )
-            )
-        );
+        address token = address(uint160(uint256(getSegmentWord(intent.intentData[segmentIndex], 20) & TOKEN_ADDRESS_MASK)));
 
         //push current eth balance to the context data
         uint256 balance = IERC20(token).balanceOf(intent.sender);

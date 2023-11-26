@@ -31,7 +31,7 @@ contract TokenSwaps is ScenarioTestEnvironment {
             uint48(block.timestamp - releaseAt),
             uint24(releaseDuration),
             releaseStartAmount,
-            releaseEndAmount - releaseStartAmount
+            (releaseEndAmount - releaseStartAmount) / int256(releaseDuration)
         );
         intent = _addEthRecord(intent);
         intent = _addEthRequire(intent, int256(ethRequireAmount), true);
@@ -57,7 +57,7 @@ contract TokenSwaps is ScenarioTestEnvironment {
             uint48(block.timestamp - requireAt),
             uint24(requireDuration),
             requireStartAmount,
-            requireEndAmount - requireStartAmount,
+            (requireEndAmount - requireStartAmount) / int256(requireDuration),
             true
         );
         intent = _addSequentialNonce(intent, 1);
@@ -86,6 +86,9 @@ contract TokenSwaps is ScenarioTestEnvironment {
         //fund account
         _testERC20.mint(address(_account), _accountInitialERC20Balance);
         vm.deal(address(_account), _accountInitialETHBalance);
+
+        //set block timestamp to something reasonable
+        vm.warp(1700952587);
     }
 
     function testFuzz_constantRelease(

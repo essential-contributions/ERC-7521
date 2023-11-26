@@ -11,7 +11,7 @@ function push(bytes memory context, bytes32 data) pure returns (bytes memory new
             }
         }
         assembly {
-            mstore(add(newContext, contextLength), data)
+            mstore(add(add(newContext, 32), contextLength), data)
         }
     }
 }
@@ -22,11 +22,11 @@ function pushFromCalldata(bytes calldata context, bytes32 data) pure returns (by
         newContext = new bytes(contextLength + 32);
         if (contextLength > 0) {
             assembly {
-                calldatacopy(newContext, context.offset, contextLength)
+                calldatacopy(add(newContext, 32), context.offset, contextLength)
             }
         }
         assembly {
-            mstore(add(newContext, contextLength), data)
+            mstore(add(add(newContext, 32), contextLength), data)
         }
     }
 }
@@ -52,7 +52,7 @@ function popFromCalldata(bytes calldata context) pure returns (bytes memory newC
         newContext = new bytes(contextLength);
         if (contextLength > 0) {
             assembly {
-                calldatacopy(newContext, context.offset, contextLength)
+                calldatacopy(add(newContext, 32), context.offset, contextLength)
             }
         }
         assembly {

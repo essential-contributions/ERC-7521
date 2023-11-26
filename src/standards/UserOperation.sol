@@ -41,11 +41,11 @@ contract UserOperation is IIntentStandard {
         bytes calldata context
     ) external returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
-        uint256 segmentDataLength = intent.intentData[segmentIndex].length;
-        if (segmentDataLength > 64) {
+        bytes calldata segment = intent.intentData[segmentIndex];
+        if (segment.length > 64) {
             unchecked {
-                uint256 callGasLimit = uint256(getSegmentWord(context, 32));
-                bytes memory callData = getSegmentBytes(context, 64, segmentDataLength - 64);
+                uint256 callGasLimit = uint256(getSegmentWord(segment, 32));
+                bytes memory callData = getSegmentBytes(segment, 64, segment.length - 64);
                 Exec.call(intent.sender, 0, callData, callGasLimit);
             }
         }

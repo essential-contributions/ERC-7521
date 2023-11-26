@@ -33,7 +33,7 @@ contract TransferEth is ScenarioTestEnvironment {
             uint48(block.timestamp - releaseAt),
             uint24(releaseDuration),
             releaseStartAmount,
-            releaseEndAmount - releaseStartAmount
+            (releaseEndAmount - releaseStartAmount) / int256(releaseDuration)
         );
         bytes memory executeTransferETH = abi.encodeWithSelector(_account.execute.selector, ethRecipient, ethAmount, "");
         intent = _addUserOp(intent, callGasLimit, executeTransferETH);
@@ -56,6 +56,9 @@ contract TransferEth is ScenarioTestEnvironment {
         //fund account
         _testERC20.mint(address(_account), _accountInitialERC20Balance);
         vm.deal(address(_account), _accountInitialETHBalance);
+
+        //set block timestamp to something reasonable
+        vm.warp(1700952587);
     }
 
     function test_transferETH() public {

@@ -11,7 +11,7 @@ import "../utils/ScenarioTestEnvironment.sol";
  * Solution:
  * 1. the solver executes the operation and pockets the released tokens
  */
-contract TransferEth is ScenarioTestEnvironment {
+contract TransferErc20 is ScenarioTestEnvironment {
     uint256 private _accountInitialERC20Balance = 10 ether;
 
     function _intentForCase(uint256 erc20ReleaseAmount, address transferRecipient, uint256 transferAmount)
@@ -32,7 +32,7 @@ contract TransferEth is ScenarioTestEnvironment {
             uint48(block.timestamp - releaseAt),
             uint24(releaseDuration),
             releaseStartAmount,
-            releaseEndAmount - releaseStartAmount
+            (releaseEndAmount - releaseStartAmount) / int256(releaseDuration)
         );
         bytes memory transferErc20 =
             abi.encodeWithSelector(_testERC20.transfer.selector, transferRecipient, transferAmount);
@@ -57,6 +57,9 @@ contract TransferEth is ScenarioTestEnvironment {
 
         //fund account
         _testERC20.mint(address(_account), _accountInitialERC20Balance);
+
+        //set block timestamp to something reasonable
+        vm.warp(1700952587);
     }
 
     function test_transferERC20() public {
