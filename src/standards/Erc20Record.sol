@@ -42,7 +42,8 @@ contract Erc20Record is IIntentStandard {
         bytes calldata context
     ) external view returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
-        address token = address(uint160(uint256(getSegmentWord(intent.intentData[segmentIndex], 20) & TOKEN_ADDRESS_MASK)));
+        address token =
+            address(uint160(uint256(getSegmentWord(intent.intentData[segmentIndex], 20) & TOKEN_ADDRESS_MASK)));
 
         //push current eth balance to the context data
         uint256 balance = IERC20(token).balanceOf(intent.sender);
