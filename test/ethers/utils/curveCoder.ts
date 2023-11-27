@@ -75,7 +75,7 @@ export class LinearCurve extends Curve {
       ethers.toBeHex(start.mult, 1),
       ethers.toBeHex(delta.value, 8),
       ethers.toBeHex(delta.mult, 1),
-      ethers.toBeHex(flags, 1)
+      ethers.toBeHex(flags, 1),
     );
   }
 
@@ -112,7 +112,7 @@ export class ExponentialCurve extends Curve {
     endAmount: bigint,
     exponent: number,
     invert: boolean,
-    relative: boolean = false
+    relative: boolean = false,
   ) {
     super();
     if (startTime < 0) throw new Error(`startTime cannot be negative (startTime: ${startTime})`);
@@ -150,7 +150,7 @@ export class ExponentialCurve extends Curve {
       ethers.toBeHex(start.mult, 1),
       ethers.toBeHex(delta.value, 8),
       ethers.toBeHex(delta.mult, 1),
-      ethers.toBeHex(flags + this.exponent, 1)
+      ethers.toBeHex(flags + this.exponent, 1),
     );
   }
 

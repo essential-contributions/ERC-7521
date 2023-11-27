@@ -37,7 +37,7 @@ describe('Transfer ERC-20 Test', () => {
 
     expect(await env.test.erc20.balanceOf(env.deployerAddress)).to.equal(
       previousFromBalance - amount,
-      'Senders balance is incorrect'
+      'Senders balance is incorrect',
     );
     expect(await env.test.erc20.balanceOf(to)).to.equal(previousToBalance + amount, 'Recipients balance is incorrect');
   });
@@ -70,11 +70,11 @@ describe('Transfer ERC-20 Test', () => {
 
     expect(await env.test.erc20.balanceOf(account.contractAddress)).to.equal(
       previousFromBalance - (amount + gas),
-      'Senders balance is incorrect'
+      'Senders balance is incorrect',
     );
     expect(await env.test.erc20.balanceOf(env.deployerAddress)).to.equal(
       previousSolverBalance + gas,
-      'Solvers balance is incorrect'
+      'Solvers balance is incorrect',
     );
     expect(await env.test.erc20.balanceOf(to)).to.equal(previousToBalance + amount, 'Recipients balance is incorrect');
   });
@@ -124,23 +124,23 @@ describe('Transfer ERC-20 Test', () => {
     if (LOGGING_ENABLED) {
       console.log('solution dataSize: ' + ((await tx).data.length / 2 - 1) / MAX_INTENTS + ' (per intent)');
       console.log(
-        'solution gasUsed: ' + ((await (await tx).wait())?.gasUsed || 0n) / BigInt(MAX_INTENTS) + ' (per intent)'
+        'solution gasUsed: ' + ((await (await tx).wait())?.gasUsed || 0n) / BigInt(MAX_INTENTS) + ' (per intent)',
       );
     }
 
     expect(await env.test.erc20.balanceOf(env.deployerAddress)).to.equal(
       previousSolverBalance + gas * BigInt(MAX_INTENTS),
-      'Solvers balance is incorrect'
+      'Solvers balance is incorrect',
     );
     for (let i = 0; i < MAX_INTENTS; i++) {
       const account = env.abstractAccounts[i];
       expect(await env.test.erc20.balanceOf(account.contractAddress)).to.equal(
         previousFromBalances[i] - (amount + gas),
-        'Senders balance is incorrect'
+        'Senders balance is incorrect',
       );
       expect(await env.test.erc20.balanceOf(toAddresses[i])).to.equal(
         previousToBalances[i] + amount,
-        'Recipients balance is incorrect'
+        'Recipients balance is incorrect',
       );
     }
   });
