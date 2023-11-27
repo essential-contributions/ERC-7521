@@ -168,7 +168,7 @@ export async function deployTestEnvironment(
     [testUniswapAddress, testERC20Address, testWrappedNativeTokenAddress],
     deployer,
   );
-  const solverUtilsAddress = await testUniswap.getAddress();
+  const solverUtilsAddress = await solverUtils.getAddress();
 
   //deploy smart contract wallets
   const abstractAccounts = [];

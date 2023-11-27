@@ -1,22 +1,22 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.22;
 
-function getSegmentStandard(bytes calldata context) pure returns (bytes32 standard) {
+function getSegmentStandard(bytes calldata data) pure returns (bytes32 standard) {
     assembly {
-        standard := calldataload(context.offset)
+        standard := calldataload(data.offset)
     }
 }
 
-function getSegmentWord(bytes calldata context, uint256 byteOffset) pure returns (bytes32 data) {
+function getSegmentWord(bytes calldata data, uint256 byteOffset) pure returns (bytes32 word) {
     assembly {
-        data := calldataload(add(context.offset, byteOffset))
+        word := calldataload(add(data.offset, byteOffset))
     }
 }
 
-function getSegmentBytes(bytes calldata context, uint256 byteOffset, uint256 byteLength) pure returns (bytes memory) {
-    bytes memory data = new bytes(byteLength);
+function getSegmentBytes(bytes calldata data, uint256 byteOffset, uint256 byteLength) pure returns (bytes memory) {
+    bytes memory subset = new bytes(byteLength);
     assembly {
-        calldatacopy(add(data, 32), add(context.offset, byteOffset), byteLength)
+        calldatacopy(add(subset, 32), add(data.offset, byteOffset), byteLength)
     }
-    return data;
+    return subset;
 }

@@ -68,6 +68,53 @@ contract SolverUtils is IAccount {
         payable(recipient).transfer(amount - forwardAmount);
     }
 
+    /**
+     * Swap ERC20 tokens for ETH and forward some ETH to other addresses.
+     * @param uniswap The address of the Uniswap router contract.
+     * @param erc20 The address of the ERC20 token to be swapped.
+     * @param weth The address of the Wrapped Ether (WETH) token on Uniswap.
+     * @param amountOutMinimum The minimum amount of ETH expected after the swap.
+     * @param recipient The address to receive the swapped ETH (after forwarding).
+     * @param forwardAmounts The amount of ETH to forward to other addresses.
+     * @param forwardTos The addresses to forward the ETH to.
+     */
+    function swapERC20ForETHAndForwardMulti(
+        address uniswap,
+        address erc20,
+        address weth,
+        uint256 amountOutMinimum,
+        address recipient,
+        uint256[] calldata forwardAmounts,
+        address[] calldata forwardTos
+    ) external {
+        unchecked {
+            // swap tokens
+            ExactInputSingleParams memory swapParams = ExactInputSingleParams({
+                tokenIn: erc20,
+                tokenOut: weth,
+                fee: uint24(0),
+                recipient: address(this),
+                deadline: uint256(0),
+                amountIn: IERC20(erc20).balanceOf(address(this)),
+                amountOutMinimum: amountOutMinimum,
+                sqrtPriceLimitX96: uint160(0)
+            });
+            uint256 amount = TestUniswap(payable(uniswap)).exactInputSingle(swapParams);
+
+            // unwrap
+            TestWrappedNativeToken(payable(weth)).withdraw(amount);
+
+            // forward some eth
+            for(uint256 i=0; i<forwardAmounts.length; i++) {
+                payable(forwardTos[i]).transfer(forwardAmounts[i]);
+                amount = amount - forwardAmounts[i];
+            }
+
+            // send the remainder recipient
+            payable(recipient).transfer(amount);
+        }
+    }
+
     function transferERC20(address erc20, address recipient, uint256 amount) external {
         IERC20(erc20).transfer(recipient, amount);
     }
