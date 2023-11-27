@@ -24,6 +24,3 @@ lcov.info
 
 # Node
 node_modules
-
-# Added by cargo
-/target

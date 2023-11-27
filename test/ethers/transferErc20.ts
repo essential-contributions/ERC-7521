@@ -4,7 +4,7 @@ import { deployTestEnvironment, Environment, SmartContractAccount } from './util
 import { buildSolution, UserIntent } from './utils/intent';
 import { Curve, LinearCurve } from './utils/curveCoder';
 
-const LOGGING_ENABLED = true;
+const LOGGING_ENABLED = false;
 
 describe('Transfer ERC-20 Test', () => {
   const MAX_INTENTS = 4;
