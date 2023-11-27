@@ -105,7 +105,7 @@ contract SolverUtils is IAccount {
             TestWrappedNativeToken(payable(weth)).withdraw(amount);
 
             // forward some eth
-            for(uint256 i=0; i<forwardAmounts.length; i++) {
+            for (uint256 i = 0; i < forwardAmounts.length; i++) {
                 payable(forwardTos[i]).transfer(forwardAmounts[i]);
                 amount = amount - forwardAmounts[i];
             }

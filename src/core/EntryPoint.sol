@@ -169,7 +169,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, SimpleCall {
     function handleIntents(IntentSolution calldata solution) external {
         _handleIntents(solution, IAggregator(address(0)), bytes32(0));
     }
-    
+
     /**
      * Execute a batch of UserIntents using multiple solutions.
      * @param solutions list of solutions to execute for intents.
