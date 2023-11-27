@@ -23,7 +23,7 @@ contract TransferErc20 is ScenarioTestEnvironment {
         uint256 releaseAt = 1000;
         int256 releaseStartAmount = 0;
         int256 releaseEndAmount = int256(erc20ReleaseAmount * (releaseDuration / releaseAt));
-        uint256 callGasLimit = 100_000;
+        uint32 callGasLimit = 100_000;
 
         //build intent
         UserIntent memory intent = _intent();

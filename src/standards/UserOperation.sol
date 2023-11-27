@@ -12,7 +12,7 @@ import {Strings} from "openzeppelin/utils/Strings.sol";
  * User Operation Intent Standard
  * @dev data
  *   [bytes32] standard - the intent standard identifier
- *   [uint256] callGasLimit - the max gas for executing the call
+ *   [uint32] callGasLimit - the max gas for executing the call
  *   [bytes]   callData - the calldata to call on the intent sender
  */
 contract UserOperation is IIntentStandard {
@@ -23,7 +23,7 @@ contract UserOperation is IIntentStandard {
      * @param segmentData the intent segment that is about to be solved.
      */
     function validateIntentSegment(bytes calldata segmentData) external pure {
-        require(segmentData.length >= 64, "User Operation data is too small");
+        require(segmentData.length >= 36, "User Operation data is too small");
     }
 
     /**
@@ -42,10 +42,10 @@ contract UserOperation is IIntentStandard {
     ) external returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
         bytes calldata segment = intent.intentData[segmentIndex];
-        if (segment.length > 64) {
+        if (segment.length > 36) {
             unchecked {
-                uint256 callGasLimit = uint256(getSegmentWord(segment, 32));
-                bytes memory callData = getSegmentBytes(segment, 64, segment.length - 64);
+                uint32 callGasLimit = uint32(uint256(getSegmentWord(segment, 4)));
+                bytes memory callData = getSegmentBytes(segment, 36, segment.length - 36);
                 Exec.call(intent.sender, 0, callData, callGasLimit);
             }
         }
@@ -61,7 +61,7 @@ contract UserOperation is IIntentStandard {
      * @param callData the calldata to call on the intent sender
      * @return the fully encoded intent standard segment data
      */
-    function encodeData(bytes32 standardId, uint256 callGasLimit, bytes memory callData)
+    function encodeData(bytes32 standardId, uint32 callGasLimit, bytes memory callData)
         external
         pure
         returns (bytes memory)

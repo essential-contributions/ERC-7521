@@ -29,7 +29,7 @@ export type Environment = {
   entrypointAddress: string;
   standards: {
     call: (callData: string) => SimpleCallSegment;
-    userOp: (callData: string, gasLimit: bigint) => UserOperationSegment;
+    userOp: (callData: string, gasLimit: number) => UserOperationSegment;
     sequentialNonce: (nonce: number) => SequentialNonceSegment;
     ethRecord: () => EthRecordSegment;
     ethRelease: (curve: Curve) => EthReleaseSegment;
@@ -201,7 +201,7 @@ export async function deployTestEnvironment(
     entrypointAddress,
     standards: {
       call: (callData: string) => new SimpleCallSegment(callStdId, callData),
-      userOp: (callData: string, gasLimit: bigint) => new UserOperationSegment(userOperationStdId, callData, gasLimit),
+      userOp: (callData: string, gasLimit: number) => new UserOperationSegment(userOperationStdId, callData, gasLimit),
       sequentialNonce: (nonce: number) => new SequentialNonceSegment(sequentialNonceStdId, nonce),
       ethRecord: () => new EthRecordSegment(ethRecordStdId),
       ethRelease: (curve: Curve) => {

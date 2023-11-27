@@ -43,7 +43,7 @@ describe('Transfer ERC-20 Test', () => {
   });
 
   it('Should run single intent', async () => {
-    // intent transfer (1380bytes, 187763gas)
+    // intent transfer (1348bytes, 187559gas)
     const timestamp = (await env.provider.getBlock('latest'))?.timestamp || 0;
     const account = env.abstractAccounts[0];
     const to = ethers.hexlify(ethers.randomBytes(20));
@@ -56,7 +56,7 @@ describe('Transfer ERC-20 Test', () => {
     const intent = new UserIntent(account.contractAddress);
     intent.addSegment(env.standards.sequentialNonce(1));
     intent.addSegment(env.standards.erc20Release(env.test.erc20Address, generateLinearRelease(timestamp, gas)));
-    intent.addSegment(env.standards.userOp(generateExecuteTransferTx(account, to, amount), 100_000n));
+    intent.addSegment(env.standards.userOp(generateExecuteTransferTx(account, to, amount), 100_000));
     await intent.sign(env.chainId, env.entrypointAddress, account.signer);
 
     const solverIntent = new UserIntent(env.deployerAddress);
@@ -80,7 +80,7 @@ describe('Transfer ERC-20 Test', () => {
   });
 
   it('Should run multi intent', async () => {
-    // intent transfer (1028bytes, 146356gas)
+    // intent transfer (1161bytes, 160704gas)
     const timestamp = (await env.provider.getBlock('latest'))?.timestamp || 0;
     const amount = ethers.parseEther('10');
     const gas = ethers.parseEther('1');
@@ -103,7 +103,7 @@ describe('Transfer ERC-20 Test', () => {
       const intent = new UserIntent(account.contractAddress);
       intent.addSegment(env.standards.sequentialNonce(i == 0 ? 2 : 1));
       intent.addSegment(env.standards.erc20Release(env.test.erc20Address, generateLinearRelease(timestamp, gas)));
-      intent.addSegment(env.standards.userOp(generateExecuteTransferTx(account, to, amount), 100_000n));
+      intent.addSegment(env.standards.userOp(generateExecuteTransferTx(account, to, amount), 100_000));
       await intent.sign(env.chainId, env.entrypointAddress, account.signer);
       intents.push(intent);
     }

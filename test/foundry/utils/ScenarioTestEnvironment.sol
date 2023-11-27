@@ -416,7 +416,7 @@ abstract contract ScenarioTestEnvironment is Test {
         return intent.addSegment(_simpleCall.encodeData(standardId, callData));
     }
 
-    function _addUserOp(UserIntent memory intent, uint256 callGasLimit, bytes memory callData)
+    function _addUserOp(UserIntent memory intent, uint32 callGasLimit, bytes memory callData)
         internal
         view
         returns (UserIntent memory)
