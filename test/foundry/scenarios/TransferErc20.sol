@@ -84,9 +84,9 @@ contract TransferErc20 is ScenarioTestEnvironment {
             assertEq(solverBalance, erc20ReleaseAmount, "The solver ended up with incorrect token balance");
         }
         {
-            uint256 solverBalance = _testERC20.balanceOf(address(_account));
+            uint256 userBalance = _testERC20.balanceOf(address(_account));
             uint256 expectedUserBalance = _accountInitialERC20Balance - (erc20ReleaseAmount + transferAmount);
-            assertEq(solverBalance, expectedUserBalance, "The user ended up with incorrect token balance");
+            assertEq(userBalance, expectedUserBalance, "The user ended up with incorrect token balance");
         }
         {
             uint256 recipientBalance = _testERC20.balanceOf(address(_publicAddress));

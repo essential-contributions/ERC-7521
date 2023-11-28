@@ -92,9 +92,9 @@ contract TransferEth is ScenarioTestEnvironment {
             assertEq(recipientBalance, ethAmount, "The recipient didn't get the expected ETH");
         }
         {
-            uint256 recipientBalance = address(_account).balance;
+            uint256 userBalance = address(_account).balance;
             uint256 expectedUserBalance = _accountInitialETHBalance - ethAmount;
-            assertEq(recipientBalance, expectedUserBalance, "The user ended up with incorrect ETH balance");
+            assertEq(userBalance, expectedUserBalance, "The user ended up with incorrect ETH balance");
         }
     }
 }
