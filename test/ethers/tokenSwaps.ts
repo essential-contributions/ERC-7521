@@ -38,12 +38,12 @@ describe('Token Swaps Test', () => {
       env.test.erc20Address,
       env.test.wrappedNativeTokenAddress,
       amount,
-      env.deployerAddress,
+      env.deployerAddress
     );
     const tx = env.test.uniswap.exactInputSingle(swapParams);
     await expect(tx).to.not.be.reverted;
     const unwrap = env.test.wrappedNativeToken.withdraw(
-      await env.test.wrappedNativeToken.balanceOf(env.deployerAddress),
+      await env.test.wrappedNativeToken.balanceOf(env.deployerAddress)
     );
     await expect(unwrap).to.not.be.reverted;
 
@@ -52,7 +52,7 @@ describe('Token Swaps Test', () => {
       console.log(
         'gasUsed: ' +
           (((await (await tx).wait())?.gasUsed || 0n) + ((await (await unwrap).wait())?.gasUsed || 0n)) +
-          ' (including unwrap)',
+          ' (including unwrap)'
       );
     }
 
@@ -61,11 +61,11 @@ describe('Token Swaps Test', () => {
       ((await (await unwrap).wait())?.gasUsed || 0n) * ((await (await unwrap).wait())?.gasPrice || 0n);
     expect(await env.test.erc20.balanceOf(env.deployerAddress)).to.equal(
       previousFromBalance - amount,
-      'From balance is incorrect',
+      'From balance is incorrect'
     );
     expect(await env.provider.getBalance(env.deployerAddress)).to.equal(
       previousToBalance + amount + TOKEN_SWAP_SLIPPAGE - gasUsed,
-      'To balance is incorrect',
+      'To balance is incorrect'
     );
   });
 
@@ -87,7 +87,7 @@ describe('Token Swaps Test', () => {
 
     const solverIntent = new UserIntent(env.test.solverUtilsAddress);
     solverIntent.addSegment(
-      env.standards.call(generateSolverSwapTx(env, env.deployerAddress, account.contractAddress, amount)),
+      env.standards.call(generateSolverSwapTx(env, env.deployerAddress, account.contractAddress, amount))
     );
     const order = [0, 0, 0, 1, 0];
 
@@ -102,15 +102,15 @@ describe('Token Swaps Test', () => {
     const gasUsed = ((await (await tx).wait())?.gasUsed || 0n) * ((await (await tx).wait())?.gasPrice || 0n);
     expect(await env.test.erc20.balanceOf(account.contractAddress)).to.equal(
       previousFromBalance - amount,
-      'Senders token balance is incorrect',
+      'Senders token balance is incorrect'
     );
     expect(await env.provider.getBalance(env.deployerAddress)).to.equal(
       previousSolverBalance + TOKEN_SWAP_SLIPPAGE - gasUsed,
-      'Solvers balance is incorrect',
+      'Solvers balance is incorrect'
     );
     expect(await env.provider.getBalance(account.contractAddress)).to.equal(
       previousToBalance + amount,
-      'Senders balance is incorrect',
+      'Senders balance is incorrect'
     );
   });
 
@@ -168,97 +168,26 @@ describe('Token Swaps Test', () => {
     if (LOGGING_ENABLED) {
       console.log('solution dataSize: ' + ((await tx).data.length / 2 - 1) / MAX_INTENTS + ' (per intent)');
       console.log(
-        'solution gasUsed: ' + ((await (await tx).wait())?.gasUsed || 0n) / BigInt(MAX_INTENTS) + ' (per intent)',
+        'solution gasUsed: ' + ((await (await tx).wait())?.gasUsed || 0n) / BigInt(MAX_INTENTS) + ' (per intent)'
       );
     }
 
     const gasUsed = ((await (await tx).wait())?.gasUsed || 0n) * ((await (await tx).wait())?.gasPrice || 0n);
     expect(await env.provider.getBalance(env.deployerAddress)).to.equal(
       previousSolverBalance + TOKEN_SWAP_SLIPPAGE - gasUsed,
-      'Solvers balance is incorrect',
+      'Solvers balance is incorrect'
     );
     for (let i = 0; i < MAX_INTENTS; i++) {
       const account = env.abstractAccounts[i + 1];
       expect(await env.test.erc20.balanceOf(account.contractAddress)).to.equal(
         previousFromBalances[i] - amount,
-        'Senders token balance is incorrect',
-      );
-      expect(await env.provider.getBalance(account.contractAddress)).to.equal(
-        previousToBalances[i] + amount,
-        'Senders balance is incorrect',
-      );
-    }
-    /*
-    // intent transfer (1065bytes, 167613gas)
-    const timestamp = (await env.provider.getBlock('latest'))?.timestamp || 0;
-    const amount = ethers.parseEther('1');
-    const gas = ethers.parseEther('0.1');
-    const previousSolverBalanceErc20 = await env.test.erc20.balanceOf(env.deployerAddress);
-    const toAddresses: string[] = [];
-    const previousToBalances: bigint[] = [];
-    const previousFromBalances: bigint[] = [];
-    const previousFromBalancesErc20: bigint[] = [];
-    for (let i = 0; i < MAX_INTENTS; i++) {
-      const account = env.abstractAccounts[i];
-      const to = ethers.hexlify(ethers.randomBytes(20));
-      toAddresses.push(to);
-      previousToBalances.push(await env.provider.getBalance(to));
-      previousFromBalances.push(await env.provider.getBalance(account.contractAddress));
-      previousFromBalancesErc20.push(await env.test.erc20.balanceOf(account.contractAddress));
-    }
-
-    const intents = [];
-    for (let i = 0; i < MAX_INTENTS; i++) {
-      const account = env.abstractAccounts[i];
-      const to = toAddresses[i];
-      const intent = new UserIntent(account.contractAddress);
-      intent.addSegment(env.standards.sequentialNonce(i == 0 ? 2 : 1));
-      intent.addSegment(env.standards.erc20Release(env.test.erc20Address, generateLinearRelease(timestamp, gas)));
-      intent.addSegment(env.standards.userOp(generateExecuteTransferTx(account, to, amount), 100_000));
-      await intent.sign(env.chainId, env.entrypointAddress, account.signer);
-      intents.push(intent);
-    }
-    const solverIntent = new UserIntent(env.deployerAddress);
-    intents.push(solverIntent);
-
-    const order = [];
-    for (let i = 0; i < MAX_INTENTS; i++) {
-      order.push(i);
-      order.push(i);
-      order.push(MAX_INTENTS);
-      order.push(i);
-    }
-
-    const tx = env.entrypoint.handleIntents(buildSolution(timestamp, intents, order));
-    await expect(tx).to.not.be.reverted;
-
-    if (LOGGING_ENABLED) {
-      console.log('solution dataSize: ' + ((await tx).data.length / 2 - 1) / MAX_INTENTS + ' (per intent)');
-      console.log(
-        'solution gasUsed: ' + ((await (await tx).wait())?.gasUsed || 0n) / BigInt(MAX_INTENTS) + ' (per intent)'
-      );
-    }
-
-    expect(await env.test.erc20.balanceOf(env.deployerAddress)).to.equal(
-      previousSolverBalanceErc20 + gas * BigInt(MAX_INTENTS),
-      'Solvers token balance is incorrect'
-    );
-    for (let i = 0; i < MAX_INTENTS; i++) {
-      const account = env.abstractAccounts[i];
-      expect(await env.test.erc20.balanceOf(account.contractAddress)).to.equal(
-        previousFromBalancesErc20[i] - gas,
         'Senders token balance is incorrect'
       );
       expect(await env.provider.getBalance(account.contractAddress)).to.equal(
-        previousFromBalances[i] - amount,
+        previousToBalances[i] + amount,
         'Senders balance is incorrect'
       );
-      expect(await env.provider.getBalance(toAddresses[i])).to.equal(
-        previousToBalances[i] + amount,
-        'Recipients balance is incorrect'
-      );
     }
-*/
   });
 
   // helper function to generate transfer tx calldata
@@ -304,7 +233,7 @@ describe('Token Swaps Test', () => {
     tokenIn: string,
     tokenOut: string,
     amount: bigint,
-    recipient: string,
+    recipient: string
   ): ExactInputSingleParamsStruct {
     return {
       tokenIn,
