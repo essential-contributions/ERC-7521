@@ -4,65 +4,67 @@ pragma solidity ^0.8.22;
 /* solhint-disable func-name-mixedcase */
 
 import "forge-std/Test.sol";
-import {IntentBuilder} from "./builders/IntentBuilder.sol";
-import {CurveBuilder} from "./builders/CurveBuilder.sol";
-import {
-    EthReleaseIntentBuilder, EthReleaseIntentSegmentBuilder
-} from "./builders/standards/EthReleaseIntentBuilder.sol";
-import {
-    EthRequireIntentBuilder, EthRequireIntentSegmentBuilder
-} from "./builders/standards/EthRequireIntentBuilder.sol";
 import {EntryPoint} from "../../../src/core/EntryPoint.sol";
-import {IIntentStandard} from "../../../src/interfaces/IIntentStandard.sol";
 import {UserIntent, UserIntentLib} from "../../../src/interfaces/UserIntent.sol";
-import {CallIntentStandard, CallIntentSegment} from "../../../src/standards/CallIntentStandard.sol";
-import {EthReleaseIntentStandard, EthReleaseIntentSegment} from "../../../src/standards/EthReleaseIntentStandard.sol";
-import {EthRequireIntentStandard, EthRequireIntentSegment} from "../../../src/standards/EthRequireIntentStandard.sol";
+import {IntentBuilder} from "./IntentBuilder.sol";
+import {EthReleaseLinear} from "../../../src/standards/EthReleaseLinear.sol";
+import {EthRequire} from "../../../src/standards/EthRequire.sol";
+import {SimpleCall} from "../../../src/standards/SimpleCall.sol";
 import {AbstractAccount} from "../../../src/wallet/AbstractAccount.sol";
 import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 
 abstract contract TestEnvironment is Test {
+    using IntentBuilder for UserIntent;
     using UserIntentLib for UserIntent;
-    using EthReleaseIntentSegmentBuilder for EthReleaseIntentSegment;
-    using EthRequireIntentSegmentBuilder for EthRequireIntentSegment;
     using ECDSA for bytes32;
 
     EntryPoint internal _entryPoint;
-    CallIntentStandard internal _callIntentStandard;
-    EthReleaseIntentStandard internal _ethReleaseIntentStandard;
-    EthRequireIntentStandard internal _ethRequireIntentStandard;
+    EthReleaseLinear internal _ethReleaseLinear;
+    EthRequire internal _ethRequire;
+    SimpleCall internal _simpleCall;
     AbstractAccount internal _account;
 
     address internal _publicAddress = _getPublicAddress(uint256(keccak256("account_private_key")));
 
     function setUp() public virtual {
         _entryPoint = new EntryPoint();
-        _callIntentStandard = CallIntentStandard(_entryPoint);
-        _ethReleaseIntentStandard = new EthReleaseIntentStandard();
-        _ethRequireIntentStandard = new EthRequireIntentStandard();
+        _simpleCall = SimpleCall(_entryPoint);
+        _ethReleaseLinear = new EthReleaseLinear();
+        _ethRequire = new EthRequire();
         _account = new AbstractAccount(_entryPoint, _publicAddress);
 
         //register intent standards to entry point
-        _entryPoint.registerIntentStandard(_ethReleaseIntentStandard);
-        _entryPoint.registerIntentStandard(_ethRequireIntentStandard);
+        _entryPoint.registerIntentStandard(_ethReleaseLinear);
+        _entryPoint.registerIntentStandard(_ethRequire);
     }
 
     function _intent() internal view returns (UserIntent memory) {
         UserIntent memory intent = IntentBuilder.create(address(_account));
-        intent = EthReleaseIntentBuilder.addSegment(
-            intent,
-            EthReleaseIntentSegmentBuilder.create(_entryPoint.getIntentStandardId(_ethReleaseIntentStandard)).releaseEth(
-                uint48(block.timestamp), CurveBuilder.linearCurve(2, 10, 20, false)
-            )
-        );
-        intent = EthRequireIntentBuilder.addSegment(
-            intent,
-            EthRequireIntentSegmentBuilder.create(_entryPoint.getIntentStandardId(_ethRequireIntentStandard)).requireEth(
-                uint48(block.timestamp), CurveBuilder.constantCurve(10), false
-            )
-        );
+        intent = _addEthReleaseLinear(intent, uint40(block.timestamp), uint32(20), 10, 2);
+        intent = _addEthRequire(intent, 10, false);
 
         return intent;
+    }
+
+    function _addEthReleaseLinear(
+        UserIntent memory intent,
+        uint40 startTime,
+        uint32 deltaTime,
+        int256 startAmount,
+        int256 deltaAmount
+    ) internal view returns (UserIntent memory) {
+        bytes32 standardId = _entryPoint.getIntentStandardId(_ethReleaseLinear);
+        return
+            intent.addSegment(_ethReleaseLinear.encodeData(standardId, startTime, deltaTime, startAmount, deltaAmount));
+    }
+
+    function _addEthRequire(UserIntent memory intent, int256 amount, bool isRelative)
+        internal
+        view
+        returns (UserIntent memory)
+    {
+        bytes32 standardId = _entryPoint.getIntentStandardId(_ethRequire);
+        return intent.addSegment(_ethRequire.encodeData(standardId, amount, isRelative));
     }
 
     function _getPublicAddress(uint256 privateKey) internal pure returns (address) {
@@ -71,5 +73,10 @@ abstract contract TestEnvironment is Test {
         return ecrecover(digest, v, r, s);
     }
 
-    function test_nothing() public {}
+    /**
+     * Add a test to exclude this contract from coverage report
+     * note: there is currently an open ticket to resolve this more gracefully
+     * https://github.com/foundry-rs/foundry/issues/2988
+     */
+    function test() public {}
 }

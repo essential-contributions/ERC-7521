@@ -12,11 +12,12 @@ import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
 import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
-import {CallIntentStandard} from "../standards/CallIntentStandard.sol";
+import {SimpleCall} from "../standards/SimpleCall.sol";
+import {getSegmentStandard} from "../standards/utils/SegmentData.sol";
 import {Exec, RevertReason} from "../utils/Exec.sol";
 import {ReentrancyGuard} from "openzeppelin/security/ReentrancyGuard.sol";
 
-contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentStandard {
+contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, SimpleCall {
     using IntentSolutionLib for IntentSolution;
     using UserIntentLib for UserIntent;
     using RevertReason for bytes;
@@ -56,12 +57,13 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
         unchecked {
             // validate intents
             for (uint256 i = 0; i < intsLen; i++) {
-                bytes32 intentHash = _generateUserIntentHash(solution.intents[i]);
-                _validateUserIntentWithAccount(
-                    solution.intents[i], intentHash, i, signatureAggregator, validatedIntents
-                );
+                UserIntent calldata intent = solution.intents[i];
+                bytes32 intentHash = _generateUserIntentHash(intent);
+                if (intent.sender != address(0) && intent.intentData.length > 0) {
+                    _validateUserIntentWithAccount(intent, intentHash, i, signatureAggregator, validatedIntents);
+                }
 
-                emit UserIntentEvent(intentHash, solution.intents[i].sender, msg.sender);
+                emit UserIntentEvent(intentHash, intent.sender, msg.sender);
             }
 
             // execute solution
@@ -117,42 +119,44 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
         bytes memory contextData
     ) private returns (bytes memory) {
         UserIntent calldata intent = solution.intents[intentIndex];
-        bytes32 standardId = abi.decode(intent.intentData[segmentIndex], (bytes32));
-        IIntentStandard intentStandard;
-        if (standardId == CALL_INTENT_STANDARD_ID) {
-            intentStandard = this;
-        } else {
-            intentStandard = _registeredStandards[standardId];
-            if (intentStandard == IIntentStandard(address(0))) {
-                revert FailedIntent(intentIndex, segmentIndex, "AA82 unknown standard");
-            }
-        }
-
-        _executionStateContext = intent.sender;
-        _executionIntentStandard = address(intentStandard);
-        bool success = Exec.call(
-            address(intentStandard),
-            0,
-            abi.encodeWithSelector(
-                IIntentStandard.executeIntentSegment.selector, solution, executionIndex, segmentIndex, contextData
-            ),
-            gasleft()
-        );
-        if (success) {
-            if (Exec.getReturnDataSize() > CONTEXT_DATA_MAX_LEN) {
-                revert FailedIntent(intentIndex, segmentIndex, "AA60 invalid execution context");
-            }
-            contextData = Exec.getReturnDataMax(0x40, CONTEXT_DATA_MAX_LEN);
-        } else {
-            bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
-            if (reason.length > 0) {
-                revert FailedIntent(
-                    intentIndex,
-                    segmentIndex,
-                    string.concat("AA61 execution failed: ", string(reason.revertReasonWithoutPadding()))
-                );
+        if (intent.sender != address(0) && intent.intentData.length > 0) {
+            bytes32 standardId = getSegmentStandard(intent.intentData[segmentIndex]);
+            IIntentStandard intentStandard;
+            if (standardId == CALL_INTENT_STANDARD_ID) {
+                intentStandard = this;
             } else {
-                revert FailedIntent(intentIndex, segmentIndex, "AA61 execution failed (or OOG)");
+                intentStandard = _registeredStandards[standardId];
+                if (intentStandard == IIntentStandard(address(0))) {
+                    revert FailedIntent(intentIndex, segmentIndex, "AA82 unknown standard");
+                }
+            }
+
+            _executionStateContext = intent.sender;
+            _executionIntentStandard = address(intentStandard);
+            bool success = Exec.call(
+                address(intentStandard),
+                0,
+                abi.encodeWithSelector(
+                    IIntentStandard.executeIntentSegment.selector, solution, executionIndex, segmentIndex, contextData
+                ),
+                gasleft()
+            );
+            if (success) {
+                if (Exec.getReturnDataSize() > CONTEXT_DATA_MAX_LEN) {
+                    revert FailedIntent(intentIndex, segmentIndex, "AA60 invalid execution context");
+                }
+                contextData = Exec.getReturnDataMax(0x40, CONTEXT_DATA_MAX_LEN);
+            } else {
+                bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
+                if (reason.length > 0) {
+                    revert FailedIntent(
+                        intentIndex,
+                        segmentIndex,
+                        string.concat("AA61 execution failed: ", string(reason.revertReasonWithoutPadding()))
+                    );
+                } else {
+                    revert FailedIntent(intentIndex, segmentIndex, "AA61 execution failed (or OOG)");
+                }
             }
         }
         return contextData;
@@ -165,11 +169,11 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
     function handleIntents(IntentSolution calldata solution) external {
         _handleIntents(solution, IAggregator(address(0)), bytes32(0));
     }
+
     /**
      * Execute a batch of UserIntents using multiple solutions.
      * @param solutions list of solutions to execute for intents.
      */
-
     function handleIntentsMulti(IntentSolution[] calldata solutions) external {
         // loop through solutions and solve
         uint256 solsLen = solutions.length;
@@ -233,7 +237,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, CallIntentSta
 
         // validate intent standards are recognized and formatted correctly
         for (uint256 i = 0; i < intent.intentData.length; i++) {
-            bytes32 standardId = abi.decode(intent.intentData[i], (bytes32));
+            bytes32 standardId = getSegmentStandard(intent.intentData[i]);
             IIntentStandard standard;
             if (standardId == CALL_INTENT_STANDARD_ID) {
                 standard = this;

@@ -1,21 +1,18 @@
 import { ethers } from 'ethers';
 import { IntentSegment } from '../intent';
-import { Curve } from '../curveCoder';
 
 // The intent object
-export class EthReleaseSegment extends IntentSegment {
+export class EthRecordSegment extends IntentSegment {
   private standard: string;
-  private curve: Curve;
 
-  constructor(standard: string, curve: Curve) {
+  constructor(standard: string) {
     super();
     if (!ethers.isHexString(standard, 32)) throw new Error(`standard is not a valid bytes32 (standard: ${standard})`);
     this.standard = standard;
-    this.curve = curve;
   }
 
   //gets the bytes abi encoding of the segment
   asBytes(): string {
-    return ethers.solidityPacked(['bytes32', 'bytes'], [this.standard, this.curve.encode()]);
+    return ethers.solidityPacked(['bytes32'], [this.standard]);
   }
 }

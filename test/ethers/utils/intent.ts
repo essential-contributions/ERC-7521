@@ -74,12 +74,7 @@ export abstract class IntentSegment {
 }
 
 // Intent solution builder helper function
-export async function buildSolutionForNextBlock(
-  provider: Provider,
-  intents: UserIntent[],
-  order: number[],
-): Promise<IntentSolutionStruct> {
-  const timestamp = (await provider.getBlock('latest'))?.timestamp || 0;
+export function buildSolution(timestamp: number, intents: UserIntent[], order: number[]): IntentSolutionStruct {
   const intentStructs = intents.map((userIntent) => userIntent.asUserIntentStruct());
   return {
     timestamp,

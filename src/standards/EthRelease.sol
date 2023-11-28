@@ -2,20 +2,24 @@
 pragma solidity ^0.8.22;
 
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
+import {IIntentDelegate} from "../interfaces/IIntentDelegate.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
-import {Exec} from "../utils/Exec.sol";
-import {getSegmentWord, getSegmentBytes} from "./utils/SegmentData.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
+import {EthReleaseDelegate} from "./delegates/EthReleaseDelegate.sol";
+import {popFromCalldata} from "./utils/ContextData.sol";
+import {getSegmentWord} from "./utils/SegmentData.sol";
+import {evaluateConstantCurve, encodeConstantCurve, encodeAsUint96} from "./utils/CurveCoder.sol";
 
 /**
- * User Operation Intent Standard
+ * Eth Release Intent Standard
  * @dev data
  *   [bytes32] standard - the intent standard identifier
- *   [uint32] callGasLimit - the max gas for executing the call
- *   [bytes]   callData - the calldata to call on the intent sender
+ *   [uint96]  amount - amount required
+ *   [uint8]   amountMult - amount multiplier (final_amount = amount << amountMult)
+ *   [bytes1]  flags - negative [nxxx xxxx]
  */
-contract UserOperation is IIntentStandard {
+contract EthRelease is IIntentStandard, EthReleaseDelegate {
     using IntentSolutionLib for IntentSolution;
 
     /**
@@ -23,7 +27,7 @@ contract UserOperation is IIntentStandard {
      * @param segmentData the intent segment that is about to be solved.
      */
     function validateIntentSegment(bytes calldata segmentData) external pure {
-        require(segmentData.length >= 36, "User Operation data is too small");
+        require(segmentData.length != 46, "ETH Release data length invalid");
     }
 
     /**
@@ -32,7 +36,7 @@ contract UserOperation is IIntentStandard {
      * @param executionIndex the current index of execution (used to get the UserIntent to execute for).
      * @param segmentIndex the current segment to execute for the intent.
      * @param context context data from the previous step in execution (no data means execution is just starting).
-     * @return context to remember for further execution.
+     * @return newContext to remember for further execution.
      */
     function executeIntentSegment(
         IntentSolution calldata solution,
@@ -41,13 +45,16 @@ contract UserOperation is IIntentStandard {
         bytes calldata context
     ) external returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
-        bytes calldata segment = intent.intentData[segmentIndex];
-        if (segment.length > 36) {
-            unchecked {
-                uint32 callGasLimit = uint32(uint256(getSegmentWord(segment, 4)));
-                bytes memory callData = getSegmentBytes(segment, 36, segment.length - 36);
-                Exec.call(intent.sender, 0, callData, callGasLimit);
-            }
+
+        //evaluate data
+        bytes32 data = getSegmentWord(intent.intentData[segmentIndex], 32);
+        int256 releaseAmount = evaluateConstantCurve(data);
+
+        //release
+        address nextExecutingIntentSender = solution.intents[solution.getIntentIndex(executionIndex + 1)].sender;
+        if (releaseAmount > 0) {
+            bytes memory releaseEthDelegate = _encodeReleaseEth(nextExecutingIntentSender, uint256(releaseAmount));
+            IIntentDelegate(address(intent.sender)).generalizedIntentDelegateCall(releaseEthDelegate);
         }
 
         //return context unchanged
@@ -57,15 +64,12 @@ contract UserOperation is IIntentStandard {
     /**
      * Helper function to encode intent standard segment data.
      * @param standardId the entry point identifier for this standard
-     * @param callGasLimit the max gas for executing the call
-     * @param callData the calldata to call on the intent sender
+     * @param amount amount required
      * @return the fully encoded intent standard segment data
      */
-    function encodeData(bytes32 standardId, uint32 callGasLimit, bytes memory callData)
-        external
-        pure
-        returns (bytes memory)
-    {
-        return abi.encodePacked(standardId, callGasLimit, callData);
+    function encodeData(bytes32 standardId, int256 amount) external pure returns (bytes memory) {
+        (uint96 adjustedAmount, uint8 amountMult, bool amountNegative) = encodeAsUint96(amount);
+        bytes32 data = encodeConstantCurve(uint96(adjustedAmount), amountMult, amountNegative, false);
+        return abi.encodePacked(standardId, bytes14(data));
     }
 }

@@ -33,6 +33,13 @@ forge build
 forge test
 ```
 
+Build and run hardhat scenario tests and benchmarking:
+
+```sh
+npx hardhat compile
+npx hardhat test
+```
+
 ## Contributing
 
 Code must pass tests and coverage requirements as well as follow formatting requirements.
@@ -40,7 +47,11 @@ Code must pass tests and coverage requirements as well as follow formatting requ
 ```sh
 forge test
 forge coverage
-forge fmt
+npx hardhat test
+```
+
+```sh
+trunk fmt
 ```
 
 ## License

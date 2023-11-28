@@ -4,26 +4,27 @@ pragma solidity ^0.8.22;
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
-import {Exec} from "../utils/Exec.sol";
-import {getSegmentWord, getSegmentBytes} from "./utils/SegmentData.sol";
-import {Strings} from "openzeppelin/utils/Strings.sol";
+import {pushFromCalldata} from "./utils/ContextData.sol";
+import {getSegmentWord} from "./utils/SegmentData.sol";
+import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
 /**
- * User Operation Intent Standard
+ * ERC20 Record Intent Standard
  * @dev data
  *   [bytes32] standard - the intent standard identifier
- *   [uint32] callGasLimit - the max gas for executing the call
- *   [bytes]   callData - the calldata to call on the intent sender
+ *   [address] token - the ERC20 token contract address
  */
-contract UserOperation is IIntentStandard {
+contract Erc20Record is IIntentStandard {
     using IntentSolutionLib for IntentSolution;
+
+    bytes32 private constant _TOKEN_ADDRESS_MASK = 0x000000000000000000000000ffffffffffffffffffffffffffffffffffffffff;
 
     /**
      * Validate intent segment structure (typically just formatting).
      * @param segmentData the intent segment that is about to be solved.
      */
     function validateIntentSegment(bytes calldata segmentData) external pure {
-        require(segmentData.length >= 36, "User Operation data is too small");
+        require(segmentData.length != 52, "ERC-20 Record data length invalid");
     }
 
     /**
@@ -32,40 +33,30 @@ contract UserOperation is IIntentStandard {
      * @param executionIndex the current index of execution (used to get the UserIntent to execute for).
      * @param segmentIndex the current segment to execute for the intent.
      * @param context context data from the previous step in execution (no data means execution is just starting).
-     * @return context to remember for further execution.
+     * @return newContext to remember for further execution.
      */
     function executeIntentSegment(
         IntentSolution calldata solution,
         uint256 executionIndex,
         uint256 segmentIndex,
         bytes calldata context
-    ) external returns (bytes memory) {
+    ) external view returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
-        bytes calldata segment = intent.intentData[segmentIndex];
-        if (segment.length > 36) {
-            unchecked {
-                uint32 callGasLimit = uint32(uint256(getSegmentWord(segment, 4)));
-                bytes memory callData = getSegmentBytes(segment, 36, segment.length - 36);
-                Exec.call(intent.sender, 0, callData, callGasLimit);
-            }
-        }
+        address token =
+            address(uint160(uint256(getSegmentWord(intent.intentData[segmentIndex], 20) & _TOKEN_ADDRESS_MASK)));
 
-        //return context unchanged
-        return context;
+        //push current eth balance to the context data
+        uint256 balance = IERC20(token).balanceOf(intent.sender);
+        return pushFromCalldata(context, bytes32(balance));
     }
 
     /**
      * Helper function to encode intent standard segment data.
      * @param standardId the entry point identifier for this standard
-     * @param callGasLimit the max gas for executing the call
-     * @param callData the calldata to call on the intent sender
+     * @param token the token contract address
      * @return the fully encoded intent standard segment data
      */
-    function encodeData(bytes32 standardId, uint32 callGasLimit, bytes memory callData)
-        external
-        pure
-        returns (bytes memory)
-    {
-        return abi.encodePacked(standardId, callGasLimit, callData);
+    function encodeData(bytes32 standardId, address token) external pure returns (bytes memory) {
+        return abi.encodePacked(standardId, token);
     }
 }

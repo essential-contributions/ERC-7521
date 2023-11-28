@@ -24,6 +24,6 @@ interface IIntentStandard {
         IntentSolution calldata solution,
         uint256 executionIndex,
         uint256 segmentIndex,
-        bytes memory context
+        bytes calldata context
     ) external returns (bytes memory);
 }

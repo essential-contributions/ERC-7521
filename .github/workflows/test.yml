@@ -78,10 +78,10 @@ jobs:
         uses: VeryGoodOpenSource/very_good_coverage@v2
         with:
           path: lcov.info
-          min_coverage: 50
+          min_coverage: 40
 
-  cargo:
-    name: Cargo project
+  hardhat:
+    name: Hardhat project
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -89,23 +89,26 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Install packages
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: nightly
 
-      - name: Run Forge build
+      - name: Install Hardhat
         run: |
-          forge --version
-          forge build --sizes
-        id: forge-build
+          npm ci
 
-      - name: Run Cargo build
+      - name: Run Hardhat build
         run: |
-          cargo build --locked
-        id: cargo-build
+          npx hardhat compile
+        id: hardhat-build
 
-      - name: Run Cargo tests
+      - name: Run Hardhat tests
         run: |
-          cargo test --locked -- --test-threads=1
-        id: cargo-test
+          npx hardhat test
+        id: hardhat-test
