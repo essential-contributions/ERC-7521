@@ -1,29 +1,34 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.22;
 
-import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
-import {UserIntent} from "../interfaces/UserIntent.sol";
-import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
-import {Exec} from "../utils/Exec.sol";
-import {getSegmentWord, getSegmentBytes} from "./utils/SegmentData.sol";
-import {Strings} from "openzeppelin/utils/Strings.sol";
+/* solhint-disable private-vars-leading-underscore */
+
+import {BaseIntentStandard} from "../../interfaces/BaseIntentStandard.sol";
+import {UserIntent} from "../../interfaces/UserIntent.sol";
+import {IntentSolution, IntentSolutionLib} from "../../interfaces/IntentSolution.sol";
+import {Exec} from "../../utils/Exec.sol";
+import {getSegmentBytes} from "../utils/SegmentData.sol";
 
 /**
- * User Operation Intent Standard
+ * Simple Call Intent Standard
  * @dev data
  *   [bytes32] standard - the intent standard identifier
- *   [uint32] callGasLimit - the max gas for executing the call
  *   [bytes]   callData - the calldata to call on the intent sender
  */
-contract UserOperation is IIntentStandard {
+abstract contract BaseSimpleCall is BaseIntentStandard {
     using IntentSolutionLib for IntentSolution;
+
+    /**
+     * Basic state and constants.
+     */
+    uint256 private constant REVERT_REASON_MAX_LEN = 2048;
 
     /**
      * Validate intent segment structure (typically just formatting).
      * @param segmentData the intent segment that is about to be solved.
      */
-    function validateIntentSegment(bytes calldata segmentData) external pure {
-        require(segmentData.length >= 36, "User Operation data is too small");
+    function _validateIntentSegment(bytes calldata segmentData) internal pure virtual override {
+        require(segmentData.length >= 32, "Simple Call data is too small");
     }
 
     /**
@@ -34,19 +39,18 @@ contract UserOperation is IIntentStandard {
      * @param context context data from the previous step in execution (no data means execution is just starting).
      * @return context to remember for further execution.
      */
-    function executeIntentSegment(
+    function _executeIntentSegment(
         IntentSolution calldata solution,
         uint256 executionIndex,
         uint256 segmentIndex,
-        bytes calldata context
-    ) external returns (bytes memory) {
+        bytes memory context
+    ) internal virtual override returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
         bytes calldata segment = intent.intentData[segmentIndex];
-        if (segment.length > 36) {
+        if (segment.length > 32) {
             unchecked {
-                uint32 callGasLimit = uint32(uint256(getSegmentWord(segment, 4)));
-                bytes memory callData = getSegmentBytes(segment, 36, segment.length - 36);
-                Exec.call(intent.sender, 0, callData, callGasLimit);
+                bytes memory callData = getSegmentBytes(segment, 32, segment.length - 32);
+                Exec.callAndRevert(intent.sender, callData, REVERT_REASON_MAX_LEN);
             }
         }
 
@@ -57,15 +61,10 @@ contract UserOperation is IIntentStandard {
     /**
      * Helper function to encode intent standard segment data.
      * @param standardId the entry point identifier for this standard
-     * @param callGasLimit the max gas for executing the call
      * @param callData the calldata to call on the intent sender
      * @return the fully encoded intent standard segment data
      */
-    function encodeData(bytes32 standardId, uint32 callGasLimit, bytes memory callData)
-        external
-        pure
-        returns (bytes memory)
-    {
-        return abi.encodePacked(standardId, callGasLimit, callData);
+    function encodeData(bytes32 standardId, bytes memory callData) external pure returns (bytes memory) {
+        return abi.encodePacked(standardId, callData);
     }
 }

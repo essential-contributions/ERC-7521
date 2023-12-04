@@ -8,7 +8,7 @@ import {IAccount} from "../interfaces/IAccount.sol";
 import {IAggregator} from "../interfaces/IAggregator.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {IIntentDelegate} from "../interfaces/IIntentDelegate.sol";
-import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
+import {BaseIntentStandard} from "../interfaces/BaseIntentStandard.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {Exec} from "../utils/Exec.sol";
 import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
@@ -74,7 +74,7 @@ contract AbstractAccount is EntryPointTruster, IAccount, IIntentDelegate {
         onlyFromIntentStandardExecutingForSender
         returns (bool)
     {
-        bool success = Exec.delegateCall(address(IIntentStandard(msg.sender)), data, gasleft());
+        bool success = Exec.delegateCall(address(BaseIntentStandard(msg.sender)), data, gasleft());
         if (!success) {
             bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
             revert(string(reason));

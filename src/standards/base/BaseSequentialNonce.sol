@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.22;
 
-import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
-import {INonceManager} from "../interfaces/INonceManager.sol";
-import {UserIntent} from "../interfaces/UserIntent.sol";
-import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
-import {getSegmentWord} from "./utils/SegmentData.sol";
+import {BaseIntentStandard} from "../../interfaces/BaseIntentStandard.sol";
+import {INonceManager} from "../../interfaces/INonceManager.sol";
+import {UserIntent} from "../../interfaces/UserIntent.sol";
+import {IntentSolution, IntentSolutionLib} from "../../interfaces/IntentSolution.sol";
+import {getSegmentWord} from "../utils/SegmentData.sol";
 
 /**
  * Sequential Nonce Intent Standard
@@ -13,14 +13,14 @@ import {getSegmentWord} from "./utils/SegmentData.sol";
  *   [bytes32] standard - the intent standard identifier
  *   [uint256] nonce - the nonce
  */
-contract SequentialNonce is IIntentStandard {
+contract BaseSequentialNonce is BaseIntentStandard {
     using IntentSolutionLib for IntentSolution;
 
     /**
      * Validate intent segment structure (typically just formatting).
      * @param segmentData the intent segment that is about to be solved.
      */
-    function validateIntentSegment(bytes calldata segmentData) external pure {
+    function _validateIntentSegment(bytes calldata segmentData) internal pure virtual override {
         require(segmentData.length != 64, "Sequential Nonce data length invalid");
     }
 
@@ -32,12 +32,12 @@ contract SequentialNonce is IIntentStandard {
      * @param context context data from the previous step in execution (no data means execution is just starting).
      * @return context to remember for further execution.
      */
-    function executeIntentSegment(
+    function _executeIntentSegment(
         IntentSolution calldata solution,
         uint256 executionIndex,
         uint256 segmentIndex,
-        bytes calldata context
-    ) external returns (bytes memory) {
+        bytes memory context
+    ) internal virtual override returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
         uint256 nonce = uint256(getSegmentWord(intent.intentData[segmentIndex], 32));
         INonceManager nonceManager = INonceManager(msg.sender);

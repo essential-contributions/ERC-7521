@@ -4,24 +4,24 @@ pragma solidity ^0.8.22;
 /* solhint-disable func-name-mixedcase */
 
 import "./utils/TestEnvironment.sol";
-import "../../src/interfaces/IIntentStandard.sol";
+import "../../src/interfaces/DeployableIntentStandard.sol";
 
 contract EntryPointTest is TestEnvironment {
     function test_getUserIntentHash() public {
         UserIntent memory intent = _intent();
-        bytes32 expectedHash = 0xaea8b7637a6f9601b114a3ff5b15070d56ef3f448f9f355cef5c8f3a9b125c48;
+        bytes32 expectedHash = 0x7683e8b0796fa3d4f7a8b48b0ce7e60cd3aac896d6551361a9dd448bc6d4cf1b;
         bytes32 intentHash = _entryPoint.getUserIntentHash(intent);
         assertEq(intentHash, expectedHash);
     }
 
     function test_registerIntentStandard() public {
         EntryPoint newEntryPoint = new EntryPoint();
-        EthReleaseLinear newIntentStandard = new EthReleaseLinear();
+        DeployableEthReleaseLinear newIntentStandard = new DeployableEthReleaseLinear();
         newEntryPoint.registerIntentStandard(newIntentStandard);
         bytes32 registeredStandardId =
             keccak256(abi.encodePacked(newIntentStandard, address(newEntryPoint), block.chainid));
-        IIntentStandard registeredStandard = newEntryPoint.getIntentStandardContract(registeredStandardId);
-        bytes32 expectedHash = keccak256(abi.encode(IIntentStandard(newIntentStandard)));
+        DeployableIntentStandard registeredStandard = newEntryPoint.getIntentStandardContract(registeredStandardId);
+        bytes32 expectedHash = keccak256(abi.encode(DeployableIntentStandard(newIntentStandard)));
         bytes32 registeredHash = keccak256(abi.encode(registeredStandard));
         assertEq(registeredHash, expectedHash);
     }
@@ -33,8 +33,8 @@ contract EntryPointTest is TestEnvironment {
 
     function test_getIntentStandardContract() public {
         bytes32 standardId = _entryPoint.getIntentStandardId(_ethReleaseLinear);
-        IIntentStandard registeredStandard = _entryPoint.getIntentStandardContract(standardId);
-        bytes32 expectedHash = keccak256(abi.encode(IIntentStandard(_ethReleaseLinear)));
+        DeployableIntentStandard registeredStandard = _entryPoint.getIntentStandardContract(standardId);
+        bytes32 expectedHash = keccak256(abi.encode(DeployableIntentStandard(_ethReleaseLinear)));
         bytes32 registeredHash = keccak256(abi.encode(registeredStandard));
         assertEq(registeredHash, expectedHash);
     }
@@ -53,7 +53,7 @@ contract EntryPointTest is TestEnvironment {
 
     function test_failGetIntentStandardId_unknownStandard() public {
         EntryPoint newEntryPoint = new EntryPoint();
-        EthReleaseLinear newIntentStandard = new EthReleaseLinear();
+        DeployableEthReleaseLinear newIntentStandard = new DeployableEthReleaseLinear();
         vm.expectRevert("AA82 unknown standard");
         newEntryPoint.getIntentStandardId(newIntentStandard);
     }

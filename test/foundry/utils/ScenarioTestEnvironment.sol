@@ -9,23 +9,26 @@ import {IntentBuilder} from "./IntentBuilder.sol";
 import {EntryPoint} from "../../../src/core/EntryPoint.sol";
 import {UserIntent} from "../../../src/interfaces/UserIntent.sol";
 import {IntentSolution} from "../../../src/interfaces/IntentSolution.sol";
-import {Erc20Record} from "../../../src/standards/Erc20Record.sol";
-import {Erc20Release} from "../../../src/standards/Erc20Release.sol";
-import {Erc20ReleaseExponential} from "../../../src/standards/Erc20ReleaseExponential.sol";
-import {Erc20ReleaseLinear} from "../../../src/standards/Erc20ReleaseLinear.sol";
-import {Erc20Require} from "../../../src/standards/Erc20Require.sol";
-import {Erc20RequireExponential} from "../../../src/standards/Erc20RequireExponential.sol";
-import {Erc20RequireLinear} from "../../../src/standards/Erc20RequireLinear.sol";
-import {EthRecord} from "../../../src/standards/EthRecord.sol";
-import {EthRelease} from "../../../src/standards/EthRelease.sol";
-import {EthReleaseExponential} from "../../../src/standards/EthReleaseExponential.sol";
-import {EthReleaseLinear} from "../../../src/standards/EthReleaseLinear.sol";
-import {EthRequire} from "../../../src/standards/EthRequire.sol";
-import {EthRequireExponential} from "../../../src/standards/EthRequireExponential.sol";
-import {EthRequireLinear} from "../../../src/standards/EthRequireLinear.sol";
-import {SequentialNonce} from "../../../src/standards/SequentialNonce.sol";
-import {SimpleCall} from "../../../src/standards/SimpleCall.sol";
-import {UserOperation} from "../../../src/standards/UserOperation.sol";
+import {DeployableErc20Record} from "../../../src/standards/deployable/DeployableErc20Record.sol";
+import {DeployableErc20Release} from "../../../src/standards/deployable/DeployableErc20Release.sol";
+import {DeployableErc20ReleaseExponential} from
+    "../../../src/standards/deployable/DeployableErc20ReleaseExponential.sol";
+import {DeployableErc20ReleaseLinear} from "../../../src/standards/deployable/DeployableErc20ReleaseLinear.sol";
+import {DeployableErc20Require} from "../../../src/standards/deployable/DeployableErc20Require.sol";
+import {DeployableErc20RequireExponential} from
+    "../../../src/standards/deployable/DeployableErc20RequireExponential.sol";
+import {DeployableErc20RequireLinear} from "../../../src/standards/deployable/DeployableErc20RequireLinear.sol";
+import {DeployableEthReleaseExponential} from "../../../src/standards/deployable/DeployableEthReleaseExponential.sol";
+import {DeployableEthReleaseLinear} from "../../../src/standards/deployable/DeployableEthReleaseLinear.sol";
+import {DeployableEthRequireExponential} from "../../../src/standards/deployable/DeployableEthRequireExponential.sol";
+import {DeployableEthRequireLinear} from "../../../src/standards/deployable/DeployableEthRequireLinear.sol";
+import {DeployableSequentialNonce} from "../../../src/standards/deployable/DeployableSequentialNonce.sol";
+import {EmbeddableSimpleCall} from "../../../src/standards/Embeddable/EmbeddableSimpleCall.sol";
+import {EmbeddableUserOperation} from "../../../src/standards/Embeddable/EmbeddableUserOperation.sol";
+import {EmbeddableEthRequire} from "../../../src/standards/Embeddable/EmbeddableEthRequire.sol";
+import {EmbeddableEthRecord} from "../../../src/standards/Embeddable/EmbeddableEthRecord.sol";
+import {EmbeddableEthRelease} from "../../../src/standards/Embeddable/EmbeddableEthRelease.sol";
+import {BaseIntentStandard} from "../../../src/interfaces/BaseIntentStandard.sol";
 import {TestERC20} from "../../../src/test/TestERC20.sol";
 import {TestUniswap} from "../../../src/test/TestUniswap.sol";
 import {TestWrappedNativeToken} from "../../../src/test/TestWrappedNativeToken.sol";
@@ -42,23 +45,23 @@ abstract contract ScenarioTestEnvironment is Test {
     AbstractAccount internal _account;
 
     //intent standard contracts
-    Erc20Record internal _erc20Record;
-    Erc20Release internal _erc20Release;
-    Erc20ReleaseExponential internal _erc20ReleaseExponential;
-    Erc20ReleaseLinear internal _erc20ReleaseLinear;
-    Erc20Require internal _erc20Require;
-    Erc20RequireExponential internal _erc20RequireExponential;
-    Erc20RequireLinear internal _erc20RequireLinear;
-    EthRecord internal _ethRecord;
-    EthRelease internal _ethRelease;
-    EthReleaseExponential internal _ethReleaseExponential;
-    EthReleaseLinear internal _ethReleaseLinear;
-    EthRequire internal _ethRequire;
-    EthRequireExponential internal _ethRequireExponential;
-    EthRequireLinear internal _ethRequireLinear;
-    SequentialNonce internal _sequentialNonce;
-    SimpleCall internal _simpleCall;
-    UserOperation internal _userOperation;
+    DeployableErc20Record internal _erc20Record;
+    DeployableErc20Release internal _erc20Release;
+    DeployableErc20ReleaseExponential internal _erc20ReleaseExponential;
+    DeployableErc20ReleaseLinear internal _erc20ReleaseLinear;
+    DeployableErc20Require internal _erc20Require;
+    DeployableErc20RequireExponential internal _erc20RequireExponential;
+    DeployableErc20RequireLinear internal _erc20RequireLinear;
+    DeployableEthReleaseExponential internal _ethReleaseExponential;
+    DeployableEthReleaseLinear internal _ethReleaseLinear;
+    DeployableEthRequireExponential internal _ethRequireExponential;
+    DeployableEthRequireLinear internal _ethRequireLinear;
+    DeployableSequentialNonce internal _sequentialNonce;
+    EmbeddableSimpleCall internal _simpleCall;
+    EmbeddableUserOperation internal _userOperation;
+    EmbeddableEthRecord internal _ethRecord;
+    EmbeddableEthRelease internal _ethRelease;
+    EmbeddableEthRequire internal _ethRequire;
 
     //testing contracts
     TestERC20 internal _testERC20;
@@ -86,23 +89,23 @@ abstract contract ScenarioTestEnvironment is Test {
         _account = new AbstractAccount(_entryPoint, _publicAddress);
 
         //intent standards
-        _erc20Record = new Erc20Record();
-        _erc20Release = new Erc20Release();
-        _erc20ReleaseExponential = new Erc20ReleaseExponential();
-        _erc20ReleaseLinear = new Erc20ReleaseLinear();
-        _erc20Require = new Erc20Require();
-        _erc20RequireExponential = new Erc20RequireExponential();
-        _erc20RequireLinear = new Erc20RequireLinear();
-        _ethRecord = new EthRecord();
-        _ethRelease = new EthRelease();
-        _ethReleaseExponential = new EthReleaseExponential();
-        _ethReleaseLinear = new EthReleaseLinear();
-        _ethRequire = new EthRequire();
-        _ethRequireExponential = new EthRequireExponential();
-        _ethRequireLinear = new EthRequireLinear();
-        _sequentialNonce = new SequentialNonce();
-        _simpleCall = SimpleCall(_entryPoint);
-        _userOperation = new UserOperation();
+        _erc20Record = new DeployableErc20Record();
+        _erc20Release = new DeployableErc20Release();
+        _erc20ReleaseExponential = new DeployableErc20ReleaseExponential();
+        _erc20ReleaseLinear = new DeployableErc20ReleaseLinear();
+        _erc20Require = new DeployableErc20Require();
+        _erc20RequireExponential = new DeployableErc20RequireExponential();
+        _erc20RequireLinear = new DeployableErc20RequireLinear();
+        _ethRecord = EmbeddableEthRecord(address(_entryPoint));
+        _ethRelease = EmbeddableEthRelease(address(_entryPoint));
+        _ethReleaseExponential = new DeployableEthReleaseExponential();
+        _ethReleaseLinear = new DeployableEthReleaseLinear();
+        _ethRequire = EmbeddableEthRequire(address(_entryPoint));
+        _ethRequireExponential = new DeployableEthRequireExponential();
+        _ethRequireLinear = new DeployableEthRequireLinear();
+        _sequentialNonce = new DeployableSequentialNonce();
+        _simpleCall = EmbeddableSimpleCall(address(_entryPoint));
+        _userOperation = EmbeddableUserOperation(address(_entryPoint));
 
         //register intent standards to entry point
         _entryPoint.registerIntentStandard(_erc20Record);
@@ -112,16 +115,11 @@ abstract contract ScenarioTestEnvironment is Test {
         _entryPoint.registerIntentStandard(_erc20Require);
         _entryPoint.registerIntentStandard(_erc20RequireExponential);
         _entryPoint.registerIntentStandard(_erc20RequireLinear);
-        _entryPoint.registerIntentStandard(_ethRecord);
-        _entryPoint.registerIntentStandard(_ethRelease);
         _entryPoint.registerIntentStandard(_ethReleaseExponential);
         _entryPoint.registerIntentStandard(_ethReleaseLinear);
-        _entryPoint.registerIntentStandard(_ethRequire);
         _entryPoint.registerIntentStandard(_ethRequireExponential);
         _entryPoint.registerIntentStandard(_ethRequireLinear);
         _entryPoint.registerIntentStandard(_sequentialNonce);
-        _entryPoint.registerIntentStandard(_simpleCall);
-        _entryPoint.registerIntentStandard(_userOperation);
 
         //deploy test contracts
         _testERC20 = new TestERC20();
@@ -323,13 +321,11 @@ abstract contract ScenarioTestEnvironment is Test {
     }
 
     function _addEthRecord(UserIntent memory intent) internal view returns (UserIntent memory) {
-        bytes32 standardId = _entryPoint.getIntentStandardId(_ethRecord);
-        return intent.addSegment(_ethRecord.encodeData(standardId));
+        return intent.addSegment(_ethRecord.encodeData(_entryPoint.getEthRecordStandardId()));
     }
 
     function _addEthRelease(UserIntent memory intent, int256 amount) internal view returns (UserIntent memory) {
-        bytes32 standardId = _entryPoint.getIntentStandardId(_ethRelease);
-        return intent.addSegment(_ethRelease.encodeData(standardId, amount));
+        return intent.addSegment(_ethRelease.encodeData(_entryPoint.getEthReleaseStandardId(), amount));
     }
 
     function _addEthReleaseExponential(
@@ -366,8 +362,7 @@ abstract contract ScenarioTestEnvironment is Test {
         view
         returns (UserIntent memory)
     {
-        bytes32 standardId = _entryPoint.getIntentStandardId(_ethRequire);
-        return intent.addSegment(_ethRequire.encodeData(standardId, amount, isRelative));
+        return intent.addSegment(_ethRequire.encodeData(_entryPoint.getEthRequireStandardId(), amount, isRelative));
     }
 
     function _addEthRequireExponential(
@@ -412,8 +407,7 @@ abstract contract ScenarioTestEnvironment is Test {
         view
         returns (UserIntent memory)
     {
-        bytes32 standardId = _entryPoint.getIntentStandardId(_simpleCall);
-        return intent.addSegment(_simpleCall.encodeData(standardId, callData));
+        return intent.addSegment(_simpleCall.encodeData(_entryPoint.getSimpleCallStandardId(), callData));
     }
 
     function _addUserOp(UserIntent memory intent, uint32 callGasLimit, bytes memory callData)
@@ -421,8 +415,9 @@ abstract contract ScenarioTestEnvironment is Test {
         view
         returns (UserIntent memory)
     {
-        bytes32 standardId = _entryPoint.getIntentStandardId(_userOperation);
-        return intent.addSegment(_userOperation.encodeData(standardId, callGasLimit, callData));
+        return intent.addSegment(
+            _userOperation.encodeData(_entryPoint.getUserOperationStandardId(), callGasLimit, callData)
+        );
     }
 
     /**

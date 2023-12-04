@@ -7,9 +7,10 @@ import "forge-std/Test.sol";
 import {EntryPoint} from "../../../src/core/EntryPoint.sol";
 import {UserIntent, UserIntentLib} from "../../../src/interfaces/UserIntent.sol";
 import {IntentBuilder} from "./IntentBuilder.sol";
-import {EthReleaseLinear} from "../../../src/standards/EthReleaseLinear.sol";
-import {EthRequire} from "../../../src/standards/EthRequire.sol";
-import {SimpleCall} from "../../../src/standards/SimpleCall.sol";
+import {BaseIntentStandard} from "../../../src/interfaces/BaseIntentStandard.sol";
+import {DeployableEthReleaseLinear} from "../../../src/standards/deployable/DeployableEthReleaseLinear.sol";
+import {EmbeddableEthRequire} from "../../../src/standards/Embeddable/EmbeddableEthRequire.sol";
+import {EmbeddableSimpleCall} from "../../../src/standards/Embeddable/EmbeddableSimpleCall.sol";
 import {AbstractAccount} from "../../../src/wallet/AbstractAccount.sol";
 import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 
@@ -19,23 +20,22 @@ abstract contract TestEnvironment is Test {
     using ECDSA for bytes32;
 
     EntryPoint internal _entryPoint;
-    EthReleaseLinear internal _ethReleaseLinear;
-    EthRequire internal _ethRequire;
-    SimpleCall internal _simpleCall;
+    DeployableEthReleaseLinear internal _ethReleaseLinear;
+    EmbeddableEthRequire internal _ethRequire;
+    EmbeddableSimpleCall internal _simpleCall;
     AbstractAccount internal _account;
 
     address internal _publicAddress = _getPublicAddress(uint256(keccak256("account_private_key")));
 
     function setUp() public virtual {
         _entryPoint = new EntryPoint();
-        _simpleCall = SimpleCall(_entryPoint);
-        _ethReleaseLinear = new EthReleaseLinear();
-        _ethRequire = new EthRequire();
+        _simpleCall = EmbeddableSimpleCall(address(_entryPoint));
+        _ethRequire = EmbeddableEthRequire(address(_entryPoint));
+        _ethReleaseLinear = new DeployableEthReleaseLinear();
         _account = new AbstractAccount(_entryPoint, _publicAddress);
 
         //register intent standards to entry point
         _entryPoint.registerIntentStandard(_ethReleaseLinear);
-        _entryPoint.registerIntentStandard(_ethRequire);
     }
 
     function _intent() internal view returns (UserIntent memory) {
@@ -63,8 +63,7 @@ abstract contract TestEnvironment is Test {
         view
         returns (UserIntent memory)
     {
-        bytes32 standardId = _entryPoint.getIntentStandardId(_ethRequire);
-        return intent.addSegment(_ethRequire.encodeData(standardId, amount, isRelative));
+        return intent.addSegment(_ethRequire.encodeData(_entryPoint.getEthRequireStandardId(), amount, isRelative));
     }
 
     function _getPublicAddress(uint256 privateKey) internal pure returns (address) {

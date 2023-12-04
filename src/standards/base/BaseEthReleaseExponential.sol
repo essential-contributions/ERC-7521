@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.22;
 
-import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
-import {IIntentDelegate} from "../interfaces/IIntentDelegate.sol";
-import {UserIntent} from "../interfaces/UserIntent.sol";
-import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
+import {BaseIntentStandard} from "../../interfaces/BaseIntentStandard.sol";
+import {IIntentDelegate} from "../../interfaces/IIntentDelegate.sol";
+import {UserIntent} from "../../interfaces/UserIntent.sol";
+import {IntentSolution, IntentSolutionLib} from "../../interfaces/IntentSolution.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
-import {EthReleaseDelegate} from "./delegates/EthReleaseDelegate.sol";
-import {popFromCalldata} from "./utils/ContextData.sol";
-import {getSegmentWord} from "./utils/SegmentData.sol";
+import {EthReleaseDelegate} from "../delegates/EthReleaseDelegate.sol";
+import {popFromCalldata} from "../utils/ContextData.sol";
+import {getSegmentWord} from "../utils/SegmentData.sol";
 import {
     evaluateExponentialCurve,
     encodeExponentialCurve1,
@@ -16,7 +16,7 @@ import {
     encodeExponentialCurve3,
     encodeAsUint96,
     encodeAsUint64
-} from "./utils/CurveCoder.sol";
+} from "../utils/CurveCoder.sol";
 
 /**
  * Eth Require with Exponential Curve Intent Standard
@@ -30,14 +30,14 @@ import {
  *   [uint8]   deltaAmountMult - delta amount multiplier (final_amount = amount * (amountMult * 10))
  *   [bytes1]  flags/exponent - evaluate backwards, negatives, exponent [fnnx eeee]
  */
-contract EthReleaseExponential is IIntentStandard, EthReleaseDelegate {
+contract BaseEthReleaseExponential is BaseIntentStandard, EthReleaseDelegate {
     using IntentSolutionLib for IntentSolution;
 
     /**
      * Validate intent segment structure (typically just formatting).
      * @param segmentData the intent segment that is about to be solved.
      */
-    function validateIntentSegment(bytes calldata segmentData) external pure {
+    function _validateIntentSegment(bytes calldata segmentData) internal pure virtual override {
         require(segmentData.length != 64, "ETH Release Exponential data length invalid");
     }
 
@@ -49,12 +49,12 @@ contract EthReleaseExponential is IIntentStandard, EthReleaseDelegate {
      * @param context context data from the previous step in execution (no data means execution is just starting).
      * @return newContext to remember for further execution.
      */
-    function executeIntentSegment(
+    function _executeIntentSegment(
         IntentSolution calldata solution,
         uint256 executionIndex,
         uint256 segmentIndex,
-        bytes calldata context
-    ) external returns (bytes memory) {
+        bytes memory context
+    ) internal virtual override returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
 
         //evaluate data

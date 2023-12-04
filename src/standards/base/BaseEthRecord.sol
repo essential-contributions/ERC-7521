@@ -1,24 +1,24 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.22;
 
-import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
-import {UserIntent} from "../interfaces/UserIntent.sol";
-import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
-import {pushFromCalldata} from "./utils/ContextData.sol";
+import {BaseIntentStandard} from "../../interfaces/BaseIntentStandard.sol";
+import {UserIntent} from "../../interfaces/UserIntent.sol";
+import {IntentSolution, IntentSolutionLib} from "../../interfaces/IntentSolution.sol";
+import {push} from "../utils/ContextData.sol";
 
 /**
  * Eth Record Intent Standard
  * @dev data
  *   [bytes32] standard - the intent standard identifier
  */
-contract EthRecord is IIntentStandard {
+abstract contract BaseEthRecord is BaseIntentStandard {
     using IntentSolutionLib for IntentSolution;
 
     /**
      * Validate intent segment structure (typically just formatting).
      * @param segmentData the intent segment that is about to be solved.
      */
-    function validateIntentSegment(bytes calldata segmentData) external pure {
+    function _validateIntentSegment(bytes calldata segmentData) internal pure virtual override {
         require(segmentData.length != 32, "ETH Record data length invalid");
     }
 
@@ -30,16 +30,16 @@ contract EthRecord is IIntentStandard {
      * @param context context data from the previous step in execution (no data means execution is just starting).
      * @return newContext to remember for further execution.
      */
-    function executeIntentSegment(
+    function _executeIntentSegment(
         IntentSolution calldata solution,
         uint256 executionIndex,
         uint256,
-        bytes calldata context
-    ) external view returns (bytes memory) {
+        bytes memory context
+    ) internal virtual override returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
 
         //push current eth balance to the context data
-        return pushFromCalldata(context, bytes32(intent.sender.balance));
+        return push(context, bytes32(intent.sender.balance));
     }
 
     /**
