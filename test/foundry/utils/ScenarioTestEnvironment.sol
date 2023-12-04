@@ -23,11 +23,11 @@ import {DeployableEthReleaseLinear} from "../../../src/standards/deployable/Depl
 import {DeployableEthRequireExponential} from "../../../src/standards/deployable/DeployableEthRequireExponential.sol";
 import {DeployableEthRequireLinear} from "../../../src/standards/deployable/DeployableEthRequireLinear.sol";
 import {DeployableSequentialNonce} from "../../../src/standards/deployable/DeployableSequentialNonce.sol";
-import {EmbeddableSimpleCall} from "../../../src/standards/Embeddable/EmbeddableSimpleCall.sol";
-import {EmbeddableUserOperation} from "../../../src/standards/Embeddable/EmbeddableUserOperation.sol";
-import {EmbeddableEthRequire} from "../../../src/standards/Embeddable/EmbeddableEthRequire.sol";
-import {EmbeddableEthRecord} from "../../../src/standards/Embeddable/EmbeddableEthRecord.sol";
-import {EmbeddableEthRelease} from "../../../src/standards/Embeddable/EmbeddableEthRelease.sol";
+import {EmbeddableSimpleCall} from "../../../src/standards/embeddable/EmbeddableSimpleCall.sol";
+import {EmbeddableUserOperation} from "../../../src/standards/embeddable/EmbeddableUserOperation.sol";
+import {EmbeddableEthRequire} from "../../../src/standards/embeddable/EmbeddableEthRequire.sol";
+import {EmbeddableEthRecord} from "../../../src/standards/embeddable/EmbeddableEthRecord.sol";
+import {EmbeddableEthRelease} from "../../../src/standards/embeddable/EmbeddableEthRelease.sol";
 import {BaseIntentStandard} from "../../../src/interfaces/BaseIntentStandard.sol";
 import {TestERC20} from "../../../src/test/TestERC20.sol";
 import {TestUniswap} from "../../../src/test/TestUniswap.sol";

@@ -9,8 +9,8 @@ import {UserIntent, UserIntentLib} from "../../../src/interfaces/UserIntent.sol"
 import {IntentBuilder} from "./IntentBuilder.sol";
 import {BaseIntentStandard} from "../../../src/interfaces/BaseIntentStandard.sol";
 import {DeployableEthReleaseLinear} from "../../../src/standards/deployable/DeployableEthReleaseLinear.sol";
-import {EmbeddableEthRequire} from "../../../src/standards/Embeddable/EmbeddableEthRequire.sol";
-import {EmbeddableSimpleCall} from "../../../src/standards/Embeddable/EmbeddableSimpleCall.sol";
+import {EmbeddableEthRequire} from "../../../src/standards/embeddable/EmbeddableEthRequire.sol";
+import {EmbeddableSimpleCall} from "../../../src/standards/embeddable/EmbeddableSimpleCall.sol";
 import {AbstractAccount} from "../../../src/wallet/AbstractAccount.sol";
 import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 
