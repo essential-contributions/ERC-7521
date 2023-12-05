@@ -17,7 +17,7 @@ import {getSegmentStandard} from "../standards/utils/SegmentData.sol";
 import {Exec, RevertReason} from "../utils/Exec.sol";
 import {ReentrancyGuard} from "openzeppelin/security/ReentrancyGuard.sol";
 
-contract IntentValidatorExecutor is
+abstract contract IntentValidatorExecutor is
     IIntentValidatorExecutor,
     ReentrancyGuard,
     EmbeddedIntentStandards,

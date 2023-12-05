@@ -8,7 +8,7 @@ pragma solidity ^0.8.22;
 import {IIntentStandardRegistry} from "../interfaces/IIntentStandardRegistry.sol";
 import {IDeployableIntentStandard} from "../interfaces/IDeployableIntentStandard.sol";
 
-contract IntentStandardRegistry is IIntentStandardRegistry {
+abstract contract IntentStandardRegistry is IIntentStandardRegistry {
     //keeps track of registered intent standards
     mapping(bytes32 => IDeployableIntentStandard) internal _registeredStandards;
 

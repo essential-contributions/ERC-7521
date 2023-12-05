@@ -16,7 +16,7 @@ import {BaseEthRelease} from "../standards/base/BaseEthRelease.sol";
 import {getSegmentWord, getSegmentStandard} from "../standards/utils/SegmentData.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 
-contract EmbeddedIntentStandards is
+abstract contract EmbeddedIntentStandards is
     EmbeddableSimpleCall,
     EmbeddableUserOperation,
     EmbeddableEthRecord,
