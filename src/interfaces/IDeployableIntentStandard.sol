@@ -8,7 +8,7 @@ interface IDeployableIntentStandard {
      * Validate intent segment structure (typically just formatting).
      * @param segmentData the intent segment that is about to be solved.
      */
-    function validateIntentSegment(bytes calldata segmentData) external pure virtual;
+    function validateIntentSegment(bytes calldata segmentData) external pure;
 
     /**
      * Performs part or all of the execution for an intent.
@@ -23,5 +23,5 @@ interface IDeployableIntentStandard {
         uint256 executionIndex,
         uint256 segmentIndex,
         bytes calldata context
-    ) external virtual returns (bytes memory);
+    ) external returns (bytes memory);
 }
