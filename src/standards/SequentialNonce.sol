@@ -1,19 +1,20 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.22;
 
-import {BaseIntentStandard} from "../../interfaces/BaseIntentStandard.sol";
-import {INonceManager} from "../../interfaces/INonceManager.sol";
-import {UserIntent} from "../../interfaces/UserIntent.sol";
-import {IntentSolution, IntentSolutionLib} from "../../interfaces/IntentSolution.sol";
-import {getSegmentWord} from "../utils/SegmentData.sol";
+import {BaseIntentStandard} from "../interfaces/BaseIntentStandard.sol";
+import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
+import {INonceManager} from "../interfaces/INonceManager.sol";
+import {UserIntent} from "../interfaces/UserIntent.sol";
+import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
+import {getSegmentWord} from "./utils/SegmentData.sol";
 
 /**
- * Sequential Nonce Intent Standard
+ * Sequential Nonce Intent Standard core logic
  * @dev data
  *   [bytes32] standard - the intent standard identifier
  *   [uint256] nonce - the nonce
  */
-contract BaseSequentialNonce is BaseIntentStandard {
+abstract contract BaseSequentialNonce is BaseIntentStandard {
     using IntentSolutionLib for IntentSolution;
 
     /**
@@ -60,5 +61,23 @@ contract BaseSequentialNonce is BaseIntentStandard {
      */
     function encodeData(bytes32 standardId, uint256 nonce) external pure returns (bytes memory) {
         return abi.encodePacked(standardId, nonce);
+    }
+}
+
+/**
+ * Sequential Nonce Intent Standard that can be deployed and registered to the entry point
+ */
+contract SequentialNonce is BaseSequentialNonce, IIntentStandard {
+    function validateIntentSegment(bytes calldata segmentData) external pure override {
+        BaseSequentialNonce._validateIntentSegment(segmentData);
+    }
+
+    function executeIntentSegment(
+        IntentSolution calldata solution,
+        uint256 executionIndex,
+        uint256 segmentIndex,
+        bytes calldata context
+    ) external override returns (bytes memory) {
+        return BaseSequentialNonce._executeIntentSegment(solution, executionIndex, segmentIndex, context);
     }
 }

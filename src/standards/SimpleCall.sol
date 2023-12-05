@@ -3,14 +3,15 @@ pragma solidity ^0.8.22;
 
 /* solhint-disable private-vars-leading-underscore */
 
-import {BaseIntentStandard} from "../../interfaces/BaseIntentStandard.sol";
-import {UserIntent} from "../../interfaces/UserIntent.sol";
-import {IntentSolution, IntentSolutionLib} from "../../interfaces/IntentSolution.sol";
-import {Exec} from "../../utils/Exec.sol";
-import {getSegmentBytes} from "../utils/SegmentData.sol";
+import {BaseIntentStandard} from "../interfaces/BaseIntentStandard.sol";
+import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
+import {UserIntent} from "../interfaces/UserIntent.sol";
+import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
+import {Exec} from "../utils/Exec.sol";
+import {getSegmentBytes} from "./utils/SegmentData.sol";
 
 /**
- * Simple Call Intent Standard
+ * Simple Call Intent Standard core logic
  * @dev data
  *   [bytes32] standard - the intent standard identifier
  *   [bytes]   callData - the calldata to call on the intent sender
@@ -66,5 +67,34 @@ abstract contract BaseSimpleCall is BaseIntentStandard {
      */
     function encodeData(bytes32 standardId, bytes memory callData) external pure returns (bytes memory) {
         return abi.encodePacked(standardId, callData);
+    }
+}
+
+/**
+ * Simple Call Intent Standard that can be deployed and registered to the entry point
+ */
+contract SimpleCall is BaseSimpleCall, IIntentStandard {
+    function validateIntentSegment(bytes calldata segmentData) external pure override {
+        BaseSimpleCall._validateIntentSegment(segmentData);
+    }
+
+    function executeIntentSegment(
+        IntentSolution calldata solution,
+        uint256 executionIndex,
+        uint256 segmentIndex,
+        bytes calldata context
+    ) external override returns (bytes memory) {
+        return BaseSimpleCall._executeIntentSegment(solution, executionIndex, segmentIndex, context);
+    }
+}
+
+/**
+ * Simple Call Intent Standard that can be embedded in entry point
+ */
+contract EmbeddableSimpleCall is BaseSimpleCall {
+    bytes32 internal constant SIMPLE_CALL_STANDARD_ID = 0;
+
+    function getSimpleCallStandardId() public pure returns (bytes32) {
+        return SIMPLE_CALL_STANDARD_ID;
     }
 }

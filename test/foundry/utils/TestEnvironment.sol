@@ -8,9 +8,9 @@ import {EntryPoint} from "../../../src/core/EntryPoint.sol";
 import {UserIntent, UserIntentLib} from "../../../src/interfaces/UserIntent.sol";
 import {IntentBuilder} from "./IntentBuilder.sol";
 import {BaseIntentStandard} from "../../../src/interfaces/BaseIntentStandard.sol";
-import {DeployableEthReleaseLinear} from "../../../src/standards/deployable/DeployableEthReleaseLinear.sol";
-import {EmbeddableEthRequire} from "../../../src/standards/embeddable/EmbeddableEthRequire.sol";
-import {EmbeddableSimpleCall} from "../../../src/standards/embeddable/EmbeddableSimpleCall.sol";
+import {EthReleaseLinear} from "../../../src/standards/EthReleaseLinear.sol";
+import {EmbeddableEthRequire} from "../../../src/standards/EthRequire.sol";
+import {EmbeddableSimpleCall} from "../../../src/standards/SimpleCall.sol";
 import {AbstractAccount} from "../../../src/wallet/AbstractAccount.sol";
 import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 
@@ -20,7 +20,7 @@ abstract contract TestEnvironment is Test {
     using ECDSA for bytes32;
 
     EntryPoint internal _entryPoint;
-    DeployableEthReleaseLinear internal _ethReleaseLinear;
+    EthReleaseLinear internal _ethReleaseLinear;
     EmbeddableEthRequire internal _ethRequire;
     EmbeddableSimpleCall internal _simpleCall;
     AbstractAccount internal _account;
@@ -31,7 +31,7 @@ abstract contract TestEnvironment is Test {
         _entryPoint = new EntryPoint();
         _simpleCall = EmbeddableSimpleCall(address(_entryPoint));
         _ethRequire = EmbeddableEthRequire(address(_entryPoint));
-        _ethReleaseLinear = new DeployableEthReleaseLinear();
+        _ethReleaseLinear = new EthReleaseLinear();
         _account = new AbstractAccount(_entryPoint, _publicAddress);
 
         //register intent standards to entry point

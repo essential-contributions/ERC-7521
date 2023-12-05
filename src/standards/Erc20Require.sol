@@ -1,37 +1,28 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.22;
 
-import {BaseIntentStandard} from "../../interfaces/BaseIntentStandard.sol";
-import {UserIntent} from "../../interfaces/UserIntent.sol";
-import {IntentSolution, IntentSolutionLib} from "../../interfaces/IntentSolution.sol";
+import {BaseIntentStandard} from "../interfaces/BaseIntentStandard.sol";
+import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
+import {UserIntent} from "../interfaces/UserIntent.sol";
+import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
-import {pop} from "../utils/ContextData.sol";
-import {getSegmentWord} from "../utils/SegmentData.sol";
+import {pop} from "./utils/ContextData.sol";
+import {getSegmentWord} from "./utils/SegmentData.sol";
 import {
-    evaluateExponentialCurve,
-    encodeExponentialCurve1,
-    encodeExponentialCurve2,
-    encodeExponentialCurve3,
-    isExponentialCurveRelative,
-    encodeAsUint96,
-    encodeAsUint64
-} from "../utils/CurveCoder.sol";
+    evaluateConstantCurve, encodeConstantCurve, isConstantCurveRelative, encodeAsUint96
+} from "./utils/CurveCoder.sol";
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
 /**
- * ERC20 Require with Exponential Curve Intent Standard
+ * ERC20 Require Intent Standard core logic
  * @dev data
  *   [bytes32] standard - the intent standard identifier
  *   [address] token - the ERC20 token contract address
- *   [uint40]  startTime - start time of the curve (in seconds)
- *   [uint32]  deltaTime - amount of time from start until curve caps (in seconds)
- *   [uint96]  startAmount - starting amount
- *   [uint8]   startAmountMult - starting amount multiplier (final_amount = amount * (amountMult * 10))
- *   [uint64]  deltaAmount - amount of change after each second
- *   [uint8]   deltaAmountMult - delta amount multiplier (final_amount = amount * (amountMult * 10))
- *   [bytes1]  flags/exponent - evaluate backwards, negatives, relative or absolute, exponent [bnnr eeee]
+ *   [uint96]  amount - amount required
+ *   [uint8]   amountMult - amount multiplier (final_amount = amount << amountMult)
+ *   [bytes1]  flags - negative, relative or absolute [nrxx xxxx]
  */
-contract BaseErc20RequireExponential is BaseIntentStandard {
+abstract contract BaseErc20Require is BaseIntentStandard {
     using IntentSolutionLib for IntentSolution;
 
     bytes32 private constant _TOKEN_ADDRESS_MASK = 0x000000000000000000000000ffffffffffffffffffffffffffffffffffffffff;
@@ -41,7 +32,7 @@ contract BaseErc20RequireExponential is BaseIntentStandard {
      * @param segmentData the intent segment that is about to be solved.
      */
     function _validateIntentSegment(bytes calldata segmentData) internal pure virtual override {
-        require(segmentData.length != 84, "ERC-20 Require Exponential data length invalid");
+        require(segmentData.length != 66, "ERC-20 Require data length invalid");
     }
 
     /**
@@ -63,9 +54,9 @@ contract BaseErc20RequireExponential is BaseIntentStandard {
         address token = address(uint160(uint256(getSegmentWord(segment, 20) & _TOKEN_ADDRESS_MASK)));
 
         //evaluate data
-        bytes32 data = getSegmentWord(segment, 52);
-        int256 requiredBalance = evaluateExponentialCurve(data, solution.timestamp);
-        if (isExponentialCurveRelative(data)) {
+        bytes32 data = getSegmentWord(segment, 34) << 144;
+        int256 requiredBalance = evaluateConstantCurve(data);
+        if (isConstantCurveRelative(data)) {
             //relative to previous balance
             bytes32 previousBalance;
             (newContext, previousBalance) = pop(context);
@@ -97,35 +88,35 @@ contract BaseErc20RequireExponential is BaseIntentStandard {
      * Helper function to encode intent standard segment data.
      * @param standardId the entry point identifier for this standard
      * @param token the ERC20 token contract address
-     * @param startTime start time of the curve (in seconds)
-     * @param deltaTime amount of time from start until curve caps (in seconds)
-     * @param startAmount starting amount
-     * @param deltaAmount amount of change after each second
-     * @param exponent the exponent order of the curve
-     * @param backwards evaluate curve from right to left
+     * @param amount amount required
      * @param isRelative meant to be evaluated relatively
      * @return the fully encoded intent standard segment data
      */
-    function encodeData(
-        bytes32 standardId,
-        address token,
-        uint40 startTime,
-        uint32 deltaTime,
-        int256 startAmount,
-        int256 deltaAmount,
-        uint8 exponent,
-        bool backwards,
-        bool isRelative
-    ) external pure returns (bytes memory) {
-        bytes32 data = encodeExponentialCurve1(bytes32(0), startTime, deltaTime, exponent, backwards, isRelative);
-        {
-            (uint96 adjStartAmount, uint8 startMult, bool startNegative) = encodeAsUint96(startAmount);
-            data = encodeExponentialCurve2(data, adjStartAmount, startMult, startNegative);
-        }
-        {
-            (uint64 adjDeltaAmount, uint8 deltaMult, bool deltaNegative) = encodeAsUint64(deltaAmount);
-            data = encodeExponentialCurve3(data, adjDeltaAmount, deltaMult, deltaNegative);
-        }
-        return abi.encodePacked(standardId, token, bytes32(data));
+    function encodeData(bytes32 standardId, address token, int256 amount, bool isRelative)
+        external
+        pure
+        returns (bytes memory)
+    {
+        (uint96 adjustedAmount, uint8 amountMult, bool amountNegative) = encodeAsUint96(amount);
+        bytes32 data = encodeConstantCurve(uint96(adjustedAmount), amountMult, amountNegative, isRelative);
+        return abi.encodePacked(standardId, token, bytes14(data));
+    }
+}
+
+/**
+ * ERC20 Require Intent Standard core logic that can be deployed and registered to the entry point
+ */
+contract Erc20Require is BaseErc20Require, IIntentStandard {
+    function validateIntentSegment(bytes calldata segmentData) external pure override {
+        BaseErc20Require._validateIntentSegment(segmentData);
+    }
+
+    function executeIntentSegment(
+        IntentSolution calldata solution,
+        uint256 executionIndex,
+        uint256 segmentIndex,
+        bytes calldata context
+    ) external view override returns (bytes memory) {
+        return BaseErc20Require._executeIntentSegment(solution, executionIndex, segmentIndex, context);
     }
 }

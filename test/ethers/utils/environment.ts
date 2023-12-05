@@ -80,62 +80,62 @@ export async function deployTestEnvironment(
   const ethRequireStdId = await entrypoint.getEthRequireStandardId();
   const ethReleaseStdId = await entrypoint.getEthReleaseStandardId();
 
-  const erc20Record = await ethers.deployContract('DeployableErc20Record', [], deployer);
+  const erc20Record = await ethers.deployContract('Erc20Record', [], deployer);
   const erc20RecordAddress = await erc20Record.getAddress();
   await (await entrypoint.registerIntentStandard(erc20RecordAddress)).wait();
   const erc20RecordStdId = await entrypoint.getIntentStandardId(erc20RecordAddress);
 
-  const erc20Release = await ethers.deployContract('DeployableErc20Release', [], deployer);
+  const erc20Release = await ethers.deployContract('Erc20Release', [], deployer);
   const erc20ReleaseAddress = await erc20Release.getAddress();
   await (await entrypoint.registerIntentStandard(erc20ReleaseAddress)).wait();
   const erc20ReleaseStdId = await entrypoint.getIntentStandardId(erc20ReleaseAddress);
 
-  const erc20ReleaseExp = await ethers.deployContract('DeployableErc20ReleaseExponential', [], deployer);
+  const erc20ReleaseExp = await ethers.deployContract('Erc20ReleaseExponential', [], deployer);
   const erc20ReleaseExpAddress = await erc20ReleaseExp.getAddress();
   await (await entrypoint.registerIntentStandard(erc20ReleaseExpAddress)).wait();
   const erc20ReleaseExpStdId = await entrypoint.getIntentStandardId(erc20ReleaseExpAddress);
 
-  const erc20ReleaseLin = await ethers.deployContract('DeployableErc20ReleaseLinear', [], deployer);
+  const erc20ReleaseLin = await ethers.deployContract('Erc20ReleaseLinear', [], deployer);
   const erc20ReleaseLinAddress = await erc20ReleaseLin.getAddress();
   await (await entrypoint.registerIntentStandard(erc20ReleaseLinAddress)).wait();
   const erc20ReleaseLinStdId = await entrypoint.getIntentStandardId(erc20ReleaseLinAddress);
 
-  const erc20Require = await ethers.deployContract('DeployableErc20Require', [], deployer);
+  const erc20Require = await ethers.deployContract('Erc20Require', [], deployer);
   const erc20RequireAddress = await erc20Require.getAddress();
   await (await entrypoint.registerIntentStandard(erc20RequireAddress)).wait();
   const erc20RequireStdId = await entrypoint.getIntentStandardId(erc20RequireAddress);
 
-  const erc20RequireExp = await ethers.deployContract('DeployableErc20RequireExponential', [], deployer);
+  const erc20RequireExp = await ethers.deployContract('Erc20RequireExponential', [], deployer);
   const erc20RequireExpAddress = await erc20RequireExp.getAddress();
   await (await entrypoint.registerIntentStandard(erc20RequireExpAddress)).wait();
   const erc20RequireExpStdId = await entrypoint.getIntentStandardId(erc20RequireExpAddress);
 
-  const erc20RequireLin = await ethers.deployContract('DeployableErc20RequireLinear', [], deployer);
+  const erc20RequireLin = await ethers.deployContract('Erc20RequireLinear', [], deployer);
   const erc20RequireLinAddress = await erc20RequireLin.getAddress();
   await (await entrypoint.registerIntentStandard(erc20RequireLinAddress)).wait();
   const erc20RequireLinStdId = await entrypoint.getIntentStandardId(erc20RequireLinAddress);
 
-  const ethReleaseExp = await ethers.deployContract('DeployableEthReleaseExponential', [], deployer);
+  const ethReleaseExp = await ethers.deployContract('EthReleaseExponential', [], deployer);
   const ethReleaseExpAddress = await ethReleaseExp.getAddress();
   await (await entrypoint.registerIntentStandard(ethReleaseExpAddress)).wait();
   const ethReleaseExpStdId = await entrypoint.getIntentStandardId(ethReleaseExpAddress);
 
-  const ethReleaseLin = await ethers.deployContract('DeployableEthReleaseLinear', [], deployer);
+  const ethReleaseLin = await ethers.deployContract('EthReleaseLinear', [], deployer);
   const ethReleaseLinAddress = await ethReleaseLin.getAddress();
   await (await entrypoint.registerIntentStandard(ethReleaseLinAddress)).wait();
   const ethReleaseLinStdId = await entrypoint.getIntentStandardId(ethReleaseLinAddress);
 
-  const ethRequireExp = await ethers.deployContract('DeployableEthRequireExponential', [], deployer);
+  const ethRequireExp = await ethers.deployContract('EthRequireExponential', [], deployer);
   const ethRequireExpAddress = await ethRequireExp.getAddress();
   await (await entrypoint.registerIntentStandard(ethRequireExpAddress)).wait();
   const ethRequireExpStdId = await entrypoint.getIntentStandardId(ethRequireExpAddress);
 
-  const ethRequireLin = await ethers.deployContract('DeployableEthRequireLinear', [], deployer);
+  const ethRequireLin = await ethers.deployContract('EthRequireLinear', [], deployer);
   const ethRequireLinAddress = await ethRequireLin.getAddress();
   await (await entrypoint.registerIntentStandard(ethRequireLinAddress)).wait();
   const ethRequireLinStdId = await entrypoint.getIntentStandardId(ethRequireLinAddress);
 
-  const sequentialNonce = await ethers.deployContract('DeployableSequentialNonce', [], deployer);
+  const sequentialNonce = await ethers.deployContract('SequentialNonce', [], deployer);
   const sequentialNonceAddress = await sequentialNonce.getAddress();
   await (await entrypoint.registerIntentStandard(sequentialNonceAddress)).wait();
   const sequentialNonceStdId = await entrypoint.getIntentStandardId(sequentialNonceAddress);

@@ -3,16 +3,16 @@ pragma solidity ^0.8.22;
 
 import {BaseIntentStandard} from "../interfaces/BaseIntentStandard.sol";
 import {IntentSolutionLib, IntentSolution} from "../interfaces/IntentSolution.sol";
-import {EmbeddableSimpleCall} from "../standards/embeddable/EmbeddableSimpleCall.sol";
-import {EmbeddableUserOperation} from "../standards/embeddable/EmbeddableUserOperation.sol";
-import {EmbeddableEthRecord} from "../standards/embeddable/EmbeddableEthRecord.sol";
-import {EmbeddableEthRequire} from "../standards/embeddable/EmbeddableEthRequire.sol";
-import {EmbeddableEthRelease} from "../standards/embeddable/EmbeddableEthRelease.sol";
-import {BaseSimpleCall} from "../standards/base/BaseSimpleCall.sol";
-import {BaseUserOperation} from "../standards/base/BaseUserOperation.sol";
-import {BaseEthRecord} from "../standards/base/BaseEthRecord.sol";
-import {BaseEthRequire} from "../standards/base/BaseEthRequire.sol";
-import {BaseEthRelease} from "../standards/base/BaseEthRelease.sol";
+import {EmbeddableSimpleCall} from "../standards/SimpleCall.sol";
+import {EmbeddableUserOperation} from "../standards/UserOperation.sol";
+import {EmbeddableEthRecord} from "../standards/EthRecord.sol";
+import {EmbeddableEthRequire} from "../standards/EthRequire.sol";
+import {EmbeddableEthRelease} from "../standards/EthRelease.sol";
+import {BaseSimpleCall} from "../standards/SimpleCall.sol";
+import {BaseUserOperation} from "../standards/UserOperation.sol";
+import {BaseEthRecord} from "../standards/EthRecord.sol";
+import {BaseEthRequire} from "../standards/EthRequire.sol";
+import {BaseEthRelease} from "../standards/EthRelease.sol";
 import {getSegmentWord, getSegmentStandard} from "../standards/utils/SegmentData.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 

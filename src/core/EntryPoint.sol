@@ -10,7 +10,7 @@ import {NonceManager} from "./NonceManager.sol";
 import {IAggregator} from "../interfaces/IAggregator.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {BaseIntentStandard} from "../interfaces/BaseIntentStandard.sol";
-import {IDeployableIntentStandard} from "../interfaces/IDeployableIntentStandard.sol";
+import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
 import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
 import {getSegmentStandard} from "../standards/utils/SegmentData.sol";
@@ -101,8 +101,8 @@ contract EntryPoint is IEntryPoint, NonceManager, IntentValidatorExecutor {
                 // validate the intent segment itself
                 _validateIntentSegment(intent.intentData[i]);
             } else {
-                IDeployableIntentStandard standard = _registeredStandards[standardId];
-                if (standard == IDeployableIntentStandard(address(0))) {
+                IIntentStandard standard = _registeredStandards[standardId];
+                if (standard == IIntentStandard(address(0))) {
                     revert FailedIntent(0, i, "AA82 unknown standard");
                 }
 

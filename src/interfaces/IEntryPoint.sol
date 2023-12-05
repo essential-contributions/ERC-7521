@@ -2,7 +2,6 @@
 pragma solidity ^0.8.22;
 
 import {BaseIntentStandard} from "./BaseIntentStandard.sol";
-import {IDeployableIntentStandard} from "./IDeployableIntentStandard.sol";
 import {IIntentStandardRegistry} from "./IIntentStandardRegistry.sol";
 import {IIntentValidatorExecutor} from "./IIntentValidatorExecutor.sol";
 import {INonceManager} from "./INonceManager.sol";

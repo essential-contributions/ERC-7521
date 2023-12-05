@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.22;
 
-import {BaseIntentStandard} from "../../interfaces/BaseIntentStandard.sol";
-import {UserIntent} from "../../interfaces/UserIntent.sol";
-import {IntentSolution, IntentSolutionLib} from "../../interfaces/IntentSolution.sol";
+import {BaseIntentStandard} from "../interfaces/BaseIntentStandard.sol";
+import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
+import {UserIntent} from "../interfaces/UserIntent.sol";
+import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
-import {pop} from "../utils/ContextData.sol";
-import {getSegmentWord} from "../utils/SegmentData.sol";
+import {pop} from "./utils/ContextData.sol";
+import {getSegmentWord} from "./utils/SegmentData.sol";
 import {
     evaluateLinearCurve,
     encodeLinearCurve1,
@@ -14,14 +15,12 @@ import {
     isLinearCurveRelative,
     encodeAsUint96,
     encodeAsUint64
-} from "../utils/CurveCoder.sol";
-import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
+} from "./utils/CurveCoder.sol";
 
 /**
- * ERC20 Require with Linear Curve Intent Standard
+ * Eth Require with Linear Curve Intent Standard core logic
  * @dev data
  *   [bytes32] standard - the intent standard identifier
- *   [address] token - the ERC20 token contract address
  *   [uint40]  startTime - start time of the curve (in seconds)
  *   [uint32]  deltaTime - amount of time from start until curve caps (in seconds)
  *   [uint96]  startAmount - starting amount
@@ -30,17 +29,15 @@ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
  *   [uint8]   deltaAmountMult - delta amount multiplier (final_amount = amount << amountMult)
  *   [bytes1]  flags - negatives, relative or absolute [nnrx xxxx]
  */
-contract BaseErc20RequireLinear is BaseIntentStandard {
+abstract contract BaseEthRequireLinear is BaseIntentStandard {
     using IntentSolutionLib for IntentSolution;
-
-    bytes32 private constant _TOKEN_ADDRESS_MASK = 0x000000000000000000000000ffffffffffffffffffffffffffffffffffffffff;
 
     /**
      * Validate intent segment structure (typically just formatting).
      * @param segmentData the intent segment that is about to be solved.
      */
     function _validateIntentSegment(bytes calldata segmentData) internal pure virtual override {
-        require(segmentData.length != 84, "ERC-20 Require Linear data length invalid");
+        require(segmentData.length != 64, "ETH Require Linear data length invalid");
     }
 
     /**
@@ -58,11 +55,9 @@ contract BaseErc20RequireLinear is BaseIntentStandard {
         bytes memory context
     ) internal view virtual override returns (bytes memory newContext) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
-        bytes calldata segment = intent.intentData[segmentIndex];
-        address token = address(uint160(uint256(getSegmentWord(segment, 20) & _TOKEN_ADDRESS_MASK)));
 
         //evaluate data
-        bytes32 data = getSegmentWord(segment, 52);
+        bytes32 data = getSegmentWord(intent.intentData[segmentIndex], 32);
         int256 requiredBalance = evaluateLinearCurve(data, solution.timestamp);
         if (isLinearCurveRelative(data)) {
             //relative to previous balance
@@ -76,13 +71,11 @@ contract BaseErc20RequireLinear is BaseIntentStandard {
 
         // check requirement
         if (requiredBalance > 0) {
-            uint256 currentBalance = IERC20(token).balanceOf(intent.sender);
+            uint256 currentBalance = intent.sender.balance;
             require(
                 currentBalance >= uint256(requiredBalance),
                 string.concat(
-                    "insufficient token balance (token: ",
-                    Strings.toHexString(token),
-                    ", required: ",
+                    "insufficient balance (required: ",
                     Strings.toString(requiredBalance),
                     ", current: ",
                     Strings.toString(currentBalance),
@@ -95,7 +88,6 @@ contract BaseErc20RequireLinear is BaseIntentStandard {
     /**
      * Helper function to encode intent standard segment data.
      * @param standardId the entry point identifier for this standard
-     * @param token the ERC20 token contract address
      * @param startTime start time of the curve (in seconds)
      * @param deltaTime amount of time from start until curve caps (in seconds)
      * @param startAmount starting amount
@@ -105,7 +97,6 @@ contract BaseErc20RequireLinear is BaseIntentStandard {
      */
     function encodeData(
         bytes32 standardId,
-        address token,
         uint40 startTime,
         uint32 deltaTime,
         int256 startAmount,
@@ -121,6 +112,24 @@ contract BaseErc20RequireLinear is BaseIntentStandard {
             (uint64 adjustedDeltaAmount, uint8 deltaMult, bool deltaNegative) = encodeAsUint64(deltaAmount);
             data = encodeLinearCurve2(data, adjustedDeltaAmount, deltaMult, deltaNegative, isRelative);
         }
-        return abi.encodePacked(standardId, token, bytes32(data));
+        return abi.encodePacked(standardId, bytes32(data));
+    }
+}
+
+/**
+ * Eth Require with Linear Curve Intent Standard that can be deployed and registered to the entry point
+ */
+contract EthRequireLinear is BaseEthRequireLinear, IIntentStandard {
+    function validateIntentSegment(bytes calldata segmentData) external pure override {
+        BaseEthRequireLinear._validateIntentSegment(segmentData);
+    }
+
+    function executeIntentSegment(
+        IntentSolution calldata solution,
+        uint256 executionIndex,
+        uint256 segmentIndex,
+        bytes calldata context
+    ) external view override returns (bytes memory) {
+        return BaseEthRequireLinear._executeIntentSegment(solution, executionIndex, segmentIndex, context);
     }
 }

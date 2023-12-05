@@ -3,7 +3,7 @@ pragma solidity ^0.8.22;
 
 import {IntentSolution} from "./IntentSolution.sol";
 
-interface IDeployableIntentStandard {
+interface IIntentStandard {
     /**
      * Validate intent segment structure (typically just formatting).
      * @param segmentData the intent segment that is about to be solved.
