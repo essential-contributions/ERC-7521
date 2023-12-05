@@ -2,10 +2,10 @@
 pragma solidity ^0.8.22;
 
 import {BaseErc20ReleaseExponential} from "../base/BaseErc20ReleaseExponential.sol";
-import {DeployableIntentStandard} from "../../interfaces/DeployableIntentStandard.sol";
+import {IDeployableIntentStandard} from "../../interfaces/IDeployableIntentStandard.sol";
 import {IntentSolution} from "../../interfaces/IntentSolution.sol";
 
-contract DeployableErc20ReleaseExponential is BaseErc20ReleaseExponential, DeployableIntentStandard {
+contract DeployableErc20ReleaseExponential is BaseErc20ReleaseExponential, IDeployableIntentStandard {
     function validateIntentSegment(bytes calldata segmentData) external pure override {
         BaseErc20ReleaseExponential._validateIntentSegment(segmentData);
     }

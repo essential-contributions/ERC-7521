@@ -2,10 +2,10 @@
 pragma solidity ^0.8.22;
 
 import {BaseErc20Record} from "../base/BaseErc20Record.sol";
-import {DeployableIntentStandard} from "../../interfaces/DeployableIntentStandard.sol";
+import {IDeployableIntentStandard} from "../../interfaces/IDeployableIntentStandard.sol";
 import {IntentSolution} from "../../interfaces/IntentSolution.sol";
 
-contract DeployableErc20Record is BaseErc20Record, DeployableIntentStandard {
+contract DeployableErc20Record is BaseErc20Record, IDeployableIntentStandard {
     function validateIntentSegment(bytes calldata segmentData) external pure override {
         BaseErc20Record._validateIntentSegment(segmentData);
     }

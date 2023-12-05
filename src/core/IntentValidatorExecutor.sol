@@ -10,7 +10,7 @@ import {IntentStandardRegistry} from "./IntentStandardRegistry.sol";
 import {IAccount} from "../interfaces/IAccount.sol";
 import {IIntentValidatorExecutor} from "../interfaces/IIntentValidatorExecutor.sol";
 import {IAggregator} from "../interfaces/IAggregator.sol";
-import {DeployableIntentStandard} from "../interfaces/DeployableIntentStandard.sol";
+import {IDeployableIntentStandard} from "../interfaces/IDeployableIntentStandard.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
 import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
 import {getSegmentStandard} from "../standards/utils/SegmentData.sol";
@@ -128,8 +128,8 @@ contract IntentValidatorExecutor is
                 _executionIntentStandard = address(this);
                 contextData = _executeIntentSegment(solution, executionIndex, segmentIndex, contextData);
             } else {
-                DeployableIntentStandard intentStandard = _registeredStandards[standardId];
-                if (intentStandard == DeployableIntentStandard(address(0))) {
+                IDeployableIntentStandard intentStandard = _registeredStandards[standardId];
+                if (intentStandard == IDeployableIntentStandard(address(0))) {
                     revert FailedIntent(intentIndex, segmentIndex, "AA82 unknown standard");
                 }
 
@@ -139,7 +139,7 @@ contract IntentValidatorExecutor is
                     address(intentStandard),
                     0,
                     abi.encodeWithSelector(
-                        DeployableIntentStandard.executeIntentSegment.selector,
+                        IDeployableIntentStandard.executeIntentSegment.selector,
                         solution,
                         executionIndex,
                         segmentIndex,

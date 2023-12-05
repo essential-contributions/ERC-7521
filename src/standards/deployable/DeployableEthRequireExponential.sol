@@ -2,10 +2,10 @@
 pragma solidity ^0.8.22;
 
 import {BaseEthRequireExponential} from "../base/BaseEthRequireExponential.sol";
-import {DeployableIntentStandard} from "../../interfaces/DeployableIntentStandard.sol";
+import {IDeployableIntentStandard} from "../../interfaces/IDeployableIntentStandard.sol";
 import {IntentSolution} from "../../interfaces/IntentSolution.sol";
 
-contract DeployableEthRequireExponential is BaseEthRequireExponential, DeployableIntentStandard {
+contract DeployableEthRequireExponential is BaseEthRequireExponential, IDeployableIntentStandard {
     function validateIntentSegment(bytes calldata segmentData) external pure override {
         BaseEthRequireExponential._validateIntentSegment(segmentData);
     }

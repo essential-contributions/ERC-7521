@@ -2,10 +2,10 @@
 pragma solidity ^0.8.22;
 
 import {BaseErc20RequireLinear} from "../base/BaseErc20RequireLinear.sol";
-import {DeployableIntentStandard} from "../../interfaces/DeployableIntentStandard.sol";
+import {IDeployableIntentStandard} from "../../interfaces/IDeployableIntentStandard.sol";
 import {IntentSolution} from "../../interfaces/IntentSolution.sol";
 
-contract DeployableErc20RequireLinear is BaseErc20RequireLinear, DeployableIntentStandard {
+contract DeployableErc20RequireLinear is BaseErc20RequireLinear, IDeployableIntentStandard {
     function validateIntentSegment(bytes calldata segmentData) external pure override {
         BaseErc20RequireLinear._validateIntentSegment(segmentData);
     }

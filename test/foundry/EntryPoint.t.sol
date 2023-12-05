@@ -4,7 +4,7 @@ pragma solidity ^0.8.22;
 /* solhint-disable func-name-mixedcase */
 
 import "./utils/TestEnvironment.sol";
-import "../../src/interfaces/DeployableIntentStandard.sol";
+import "../../src/interfaces/IDeployableIntentStandard.sol";
 
 contract EntryPointTest is TestEnvironment {
     function test_getUserIntentHash() public {
@@ -20,8 +20,8 @@ contract EntryPointTest is TestEnvironment {
         newEntryPoint.registerIntentStandard(newIntentStandard);
         bytes32 registeredStandardId =
             keccak256(abi.encodePacked(newIntentStandard, address(newEntryPoint), block.chainid));
-        DeployableIntentStandard registeredStandard = newEntryPoint.getIntentStandardContract(registeredStandardId);
-        bytes32 expectedHash = keccak256(abi.encode(DeployableIntentStandard(newIntentStandard)));
+        IDeployableIntentStandard registeredStandard = newEntryPoint.getIntentStandardContract(registeredStandardId);
+        bytes32 expectedHash = keccak256(abi.encode(IDeployableIntentStandard(newIntentStandard)));
         bytes32 registeredHash = keccak256(abi.encode(registeredStandard));
         assertEq(registeredHash, expectedHash);
     }
@@ -33,8 +33,8 @@ contract EntryPointTest is TestEnvironment {
 
     function test_getIntentStandardContract() public {
         bytes32 standardId = _entryPoint.getIntentStandardId(_ethReleaseLinear);
-        DeployableIntentStandard registeredStandard = _entryPoint.getIntentStandardContract(standardId);
-        bytes32 expectedHash = keccak256(abi.encode(DeployableIntentStandard(_ethReleaseLinear)));
+        IDeployableIntentStandard registeredStandard = _entryPoint.getIntentStandardContract(standardId);
+        bytes32 expectedHash = keccak256(abi.encode(IDeployableIntentStandard(_ethReleaseLinear)));
         bytes32 registeredHash = keccak256(abi.encode(registeredStandard));
         assertEq(registeredHash, expectedHash);
     }

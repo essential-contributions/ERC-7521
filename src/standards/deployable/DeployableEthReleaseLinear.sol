@@ -2,10 +2,10 @@
 pragma solidity ^0.8.22;
 
 import {BaseEthReleaseLinear} from "../base/BaseEthReleaseLinear.sol";
-import {DeployableIntentStandard} from "../../interfaces/DeployableIntentStandard.sol";
+import {IDeployableIntentStandard} from "../../interfaces/IDeployableIntentStandard.sol";
 import {IntentSolution} from "../../interfaces/IntentSolution.sol";
 
-contract DeployableEthReleaseLinear is BaseEthReleaseLinear, DeployableIntentStandard {
+contract DeployableEthReleaseLinear is BaseEthReleaseLinear, IDeployableIntentStandard {
     function validateIntentSegment(bytes calldata segmentData) external pure override {
         BaseEthReleaseLinear._validateIntentSegment(segmentData);
     }

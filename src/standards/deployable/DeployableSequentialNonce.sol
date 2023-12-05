@@ -2,10 +2,10 @@
 pragma solidity ^0.8.22;
 
 import {BaseSequentialNonce} from "../base/BaseSequentialNonce.sol";
-import {DeployableIntentStandard} from "../../interfaces/DeployableIntentStandard.sol";
+import {IDeployableIntentStandard} from "../../interfaces/IDeployableIntentStandard.sol";
 import {IntentSolution} from "../../interfaces/IntentSolution.sol";
 
-contract DeployableSequentialNonce is BaseSequentialNonce, DeployableIntentStandard {
+contract DeployableSequentialNonce is BaseSequentialNonce, IDeployableIntentStandard {
     function validateIntentSegment(bytes calldata segmentData) external pure override {
         BaseSequentialNonce._validateIntentSegment(segmentData);
     }
