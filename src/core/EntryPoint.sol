@@ -33,8 +33,8 @@ contract EntryPoint is IEntryPoint, NonceManager, IntentStandardRegistry, Embedd
         address(uint160(uint256(keccak256("EX_STATE_VALIDATION_EXECUTING"))));
 
     //flag for applications to check current context of execution
-    address internal _executionStateContext;
-    address internal _executionIntentStandard;
+    address private _executionStateContext;
+    address private _executionIntentStandard;
 
     /**
      * Execute a batch of UserIntents with given solution.
@@ -43,7 +43,7 @@ contract EntryPoint is IEntryPoint, NonceManager, IntentStandardRegistry, Embedd
      * @param validatedIntents the intents that were validated with the signature aggregator.
      */
     function _handleIntents(IntentSolution calldata solution, IAggregator signatureAggregator, bytes32 validatedIntents)
-        internal
+        private
         nonReentrant
     {
         uint256 intsLen = solution.intents.length;
@@ -295,7 +295,7 @@ contract EntryPoint is IEntryPoint, NonceManager, IntentStandardRegistry, Embedd
         uint256 intentIndex,
         IAggregator signatureAggregator,
         bytes32 validatedIntents
-    ) internal view {
+    ) private view {
         // validate intent with account
         try IAccount(intent.sender).validateUserIntent(intent, intentHash) returns (IAggregator aggregator) {
             //check if intent is to be verified by aggregator
@@ -321,7 +321,7 @@ contract EntryPoint is IEntryPoint, NonceManager, IntentStandardRegistry, Embedd
     /**
      * generates an intent ID for an intent.
      */
-    function _generateUserIntentHash(UserIntent calldata intent) internal view returns (bytes32) {
+    function _generateUserIntentHash(UserIntent calldata intent) private view returns (bytes32) {
         return keccak256(abi.encode(intent.hash(), address(this), block.chainid));
     }
 
