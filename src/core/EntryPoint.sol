@@ -19,14 +19,6 @@ import {getSegmentStandard} from "../standards/utils/SegmentData.sol";
 import {Exec, RevertReason} from "../utils/Exec.sol";
 import {ReentrancyGuard} from "openzeppelin/security/ReentrancyGuard.sol";
 
-// import {IIntentValidatorExecutor} from "../interfaces/IIntentValidatorExecutor.sol";
-// import {IAggregator} from "../interfaces/IAggregator.sol";
-// import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
-// import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
-// import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
-// import {getSegmentStandard} from "../standards/utils/SegmentData.sol";
-// import {Exec, RevertReason} from "../utils/Exec.sol";
-
 contract EntryPoint is IEntryPoint, NonceManager, IntentStandardRegistry, EmbeddedIntentStandards, ReentrancyGuard {
     using IntentSolutionLib for IntentSolution;
     using UserIntentLib for UserIntent;
