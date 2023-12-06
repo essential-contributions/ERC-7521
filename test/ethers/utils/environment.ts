@@ -74,7 +74,11 @@ export async function deployTestEnvironment(
   //deploy the entrypoint contract and register intent standards
   const entrypoint = await ethers.deployContract('EntryPoint', [], deployer);
   const entrypointAddress = await entrypoint.getAddress();
-  const callStdId = await entrypoint.getStandardId();
+  const callStdId = await entrypoint.getSimpleCallStandardId();
+  const userOperationStdId = await entrypoint.getUserOperationStandardId();
+  const ethRecordStdId = await entrypoint.getEthRecordStandardId();
+  const ethRequireStdId = await entrypoint.getEthRequireStandardId();
+  const ethReleaseStdId = await entrypoint.getEthReleaseStandardId();
 
   const erc20Record = await ethers.deployContract('Erc20Record', [], deployer);
   const erc20RecordAddress = await erc20Record.getAddress();
@@ -111,16 +115,6 @@ export async function deployTestEnvironment(
   await (await entrypoint.registerIntentStandard(erc20RequireLinAddress)).wait();
   const erc20RequireLinStdId = await entrypoint.getIntentStandardId(erc20RequireLinAddress);
 
-  const ethRecord = await ethers.deployContract('EthRecord', [], deployer);
-  const ethRecordAddress = await ethRecord.getAddress();
-  await (await entrypoint.registerIntentStandard(ethRecordAddress)).wait();
-  const ethRecordStdId = await entrypoint.getIntentStandardId(ethRecordAddress);
-
-  const ethRelease = await ethers.deployContract('EthRelease', [], deployer);
-  const ethReleaseAddress = await ethRelease.getAddress();
-  await (await entrypoint.registerIntentStandard(ethReleaseAddress)).wait();
-  const ethReleaseStdId = await entrypoint.getIntentStandardId(ethReleaseAddress);
-
   const ethReleaseExp = await ethers.deployContract('EthReleaseExponential', [], deployer);
   const ethReleaseExpAddress = await ethReleaseExp.getAddress();
   await (await entrypoint.registerIntentStandard(ethReleaseExpAddress)).wait();
@@ -130,11 +124,6 @@ export async function deployTestEnvironment(
   const ethReleaseLinAddress = await ethReleaseLin.getAddress();
   await (await entrypoint.registerIntentStandard(ethReleaseLinAddress)).wait();
   const ethReleaseLinStdId = await entrypoint.getIntentStandardId(ethReleaseLinAddress);
-
-  const ethRequire = await ethers.deployContract('EthRequire', [], deployer);
-  const ethRequireAddress = await ethRequire.getAddress();
-  await (await entrypoint.registerIntentStandard(ethRequireAddress)).wait();
-  const ethRequireStdId = await entrypoint.getIntentStandardId(ethRequireAddress);
 
   const ethRequireExp = await ethers.deployContract('EthRequireExponential', [], deployer);
   const ethRequireExpAddress = await ethRequireExp.getAddress();
@@ -150,11 +139,6 @@ export async function deployTestEnvironment(
   const sequentialNonceAddress = await sequentialNonce.getAddress();
   await (await entrypoint.registerIntentStandard(sequentialNonceAddress)).wait();
   const sequentialNonceStdId = await entrypoint.getIntentStandardId(sequentialNonceAddress);
-
-  const userOperation = await ethers.deployContract('UserOperation', [], deployer);
-  const userOperationAddress = await userOperation.getAddress();
-  await (await entrypoint.registerIntentStandard(userOperationAddress)).wait();
-  const userOperationStdId = await entrypoint.getIntentStandardId(userOperationAddress);
 
   //deploy misc test contracts
   const testERC20 = await ethers.deployContract('TestERC20', [], deployer);

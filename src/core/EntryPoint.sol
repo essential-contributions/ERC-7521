@@ -5,19 +5,21 @@ pragma solidity ^0.8.22;
 /* solhint-disable no-inline-assembly */
 /* solhint-disable private-vars-leading-underscore */
 
+import {EmbeddedIntentStandards} from "./EmbeddedIntentStandards.sol";
+import {IntentStandardRegistry} from "./IntentStandardRegistry.sol";
 import {NonceManager} from "./NonceManager.sol";
 import {IAccount} from "../interfaces/IAccount.sol";
 import {IAggregator} from "../interfaces/IAggregator.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
+import {BaseIntentStandard} from "../interfaces/BaseIntentStandard.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
 import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
-import {SimpleCall} from "../standards/SimpleCall.sol";
 import {getSegmentStandard} from "../standards/utils/SegmentData.sol";
 import {Exec, RevertReason} from "../utils/Exec.sol";
 import {ReentrancyGuard} from "openzeppelin/security/ReentrancyGuard.sol";
 
-contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, SimpleCall {
+contract EntryPoint is IEntryPoint, NonceManager, IntentStandardRegistry, EmbeddedIntentStandards, ReentrancyGuard {
     using IntentSolutionLib for IntentSolution;
     using UserIntentLib for UserIntent;
     using RevertReason for bytes;
@@ -29,9 +31,6 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, SimpleCall {
     address private constant EX_STATE_NOT_ACTIVE = address(0);
     address private constant EX_STATE_VALIDATION_EXECUTING =
         address(uint160(uint256(keccak256("EX_STATE_VALIDATION_EXECUTING"))));
-
-    //keeps track of registered intent standards
-    mapping(bytes32 => IIntentStandard) private _registeredStandards;
 
     //flag for applications to check current context of execution
     address private _executionStateContext;
@@ -121,41 +120,46 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, SimpleCall {
         UserIntent calldata intent = solution.intents[intentIndex];
         if (intent.sender != address(0) && intent.intentData.length > 0) {
             bytes32 standardId = getSegmentStandard(intent.intentData[segmentIndex]);
-            IIntentStandard intentStandard;
-            if (standardId == CALL_INTENT_STANDARD_ID) {
-                intentStandard = this;
+            if (isEmbeddedIntentStandard(standardId)) {
+                _executionStateContext = intent.sender;
+                _executionIntentStandard = address(this);
+                contextData = _executeIntentSegment(solution, executionIndex, segmentIndex, contextData);
             } else {
-                intentStandard = _registeredStandards[standardId];
+                IIntentStandard intentStandard = _registeredStandards[standardId];
                 if (intentStandard == IIntentStandard(address(0))) {
                     revert FailedIntent(intentIndex, segmentIndex, "AA82 unknown standard");
                 }
-            }
 
-            _executionStateContext = intent.sender;
-            _executionIntentStandard = address(intentStandard);
-            bool success = Exec.call(
-                address(intentStandard),
-                0,
-                abi.encodeWithSelector(
-                    IIntentStandard.executeIntentSegment.selector, solution, executionIndex, segmentIndex, contextData
-                ),
-                gasleft()
-            );
-            if (success) {
-                if (Exec.getReturnDataSize() > CONTEXT_DATA_MAX_LEN) {
-                    revert FailedIntent(intentIndex, segmentIndex, "AA60 invalid execution context");
-                }
-                contextData = Exec.getReturnDataMax(0x40, CONTEXT_DATA_MAX_LEN);
-            } else {
-                bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
-                if (reason.length > 0) {
-                    revert FailedIntent(
-                        intentIndex,
+                _executionStateContext = intent.sender;
+                _executionIntentStandard = address(intentStandard);
+                bool success = Exec.call(
+                    address(intentStandard),
+                    0,
+                    abi.encodeWithSelector(
+                        IIntentStandard.executeIntentSegment.selector,
+                        solution,
+                        executionIndex,
                         segmentIndex,
-                        string.concat("AA61 execution failed: ", string(reason.revertReasonWithoutPadding()))
-                    );
+                        contextData
+                    ),
+                    gasleft()
+                );
+                if (success) {
+                    if (Exec.getReturnDataSize() > CONTEXT_DATA_MAX_LEN) {
+                        revert FailedIntent(intentIndex, segmentIndex, "AA60 invalid execution context");
+                    }
+                    contextData = Exec.getReturnDataMax(0x40, CONTEXT_DATA_MAX_LEN);
                 } else {
-                    revert FailedIntent(intentIndex, segmentIndex, "AA61 execution failed (or OOG)");
+                    bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
+                    if (reason.length > 0) {
+                        revert FailedIntent(
+                            intentIndex,
+                            segmentIndex,
+                            string.concat("AA61 execution failed: ", string(reason.revertReasonWithoutPadding()))
+                        );
+                    } else {
+                        revert FailedIntent(intentIndex, segmentIndex, "AA61 execution failed (or OOG)");
+                    }
                 }
             }
         }
@@ -238,22 +242,22 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, SimpleCall {
         // validate intent standards are recognized and formatted correctly
         for (uint256 i = 0; i < intent.intentData.length; i++) {
             bytes32 standardId = getSegmentStandard(intent.intentData[i]);
-            IIntentStandard standard;
-            if (standardId == CALL_INTENT_STANDARD_ID) {
-                standard = this;
+            if (isEmbeddedIntentStandard(standardId)) {
+                // validate the intent segment itself
+                _validateIntentSegment(intent.intentData[i]);
             } else {
-                standard = _registeredStandards[standardId];
+                IIntentStandard standard = _registeredStandards[standardId];
                 if (standard == IIntentStandard(address(0))) {
                     revert FailedIntent(0, i, "AA82 unknown standard");
                 }
-            }
 
-            // validate the intent segment itself
-            try standard.validateIntentSegment(intent.intentData[i]) {}
-            catch Error(string memory revertReason) {
-                revert FailedIntent(0, i, string.concat("AA62 reverted: ", revertReason));
-            } catch {
-                revert FailedIntent(0, i, "AA62 reverted (or OOG)");
+                // validate the intent segment itself
+                try standard.validateIntentSegment(intent.intentData[i]) {}
+                catch Error(string memory revertReason) {
+                    revert FailedIntent(0, i, string.concat("AA62 reverted: ", revertReason));
+                } catch {
+                    revert FailedIntent(0, i, "AA62 reverted (or OOG)");
+                }
             }
         }
 
@@ -271,47 +275,9 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, SimpleCall {
     }
 
     /**
-     * registers a new intent standard.
-     */
-    function registerIntentStandard(IIntentStandard intentStandard) external returns (bytes32) {
-        if (address(intentStandard) == address(this)) {
-            return CALL_INTENT_STANDARD_ID;
-        }
-        bytes32 standardId = _generateIntentStandardId(intentStandard);
-        require(address(_registeredStandards[standardId]) == address(0), "AA81 already registered");
-
-        _registeredStandards[standardId] = intentStandard;
-        return standardId;
-    }
-
-    /**
-     * gets the intent standard contract for the given intent standard ID.
-     */
-    function getIntentStandardContract(bytes32 standardId) external view returns (IIntentStandard) {
-        if (standardId == CALL_INTENT_STANDARD_ID) {
-            return this;
-        }
-        IIntentStandard intentStandard = _registeredStandards[standardId];
-        require(intentStandard != IIntentStandard(address(0)), "AA82 unknown standard");
-        return intentStandard;
-    }
-
-    /**
-     * gets the intent standard ID for the given intent standard contract.
-     */
-    function getIntentStandardId(IIntentStandard intentStandard) external view returns (bytes32) {
-        if (address(intentStandard) == address(this)) {
-            return CALL_INTENT_STANDARD_ID;
-        }
-        bytes32 standardId = _generateIntentStandardId(intentStandard);
-        require(_registeredStandards[standardId] != IIntentStandard(address(0)), "AA82 unknown standard");
-        return standardId;
-    }
-
-    /**
      * returns true if the given standard is currently executing an intent segment for the msg.sender.
      */
-    function verifyExecutingIntentSegmentForStandard(IIntentStandard intentStandard) external view returns (bool) {
+    function verifyExecutingIntentSegmentForStandard(BaseIntentStandard intentStandard) external view returns (bool) {
         return _executionStateContext == msg.sender && _executionIntentStandard == address(intentStandard);
     }
 
@@ -353,14 +319,7 @@ contract EntryPoint is IEntryPoint, NonceManager, ReentrancyGuard, SimpleCall {
     }
 
     /**
-     * generates an intent standard ID for an intent standard contract.
-     */
-    function _generateIntentStandardId(IIntentStandard intentStandard) private view returns (bytes32) {
-        return keccak256(abi.encodePacked(intentStandard, address(this), block.chainid));
-    }
-
-    /**
-     * generates an intent standard ID for an intent standard contract.
+     * generates an intent ID for an intent.
      */
     function _generateUserIntentHash(UserIntent calldata intent) private view returns (bytes32) {
         return keccak256(abi.encode(intent.hash(), address(this), block.chainid));

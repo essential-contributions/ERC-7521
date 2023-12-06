@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.22;
 
+import {BaseIntentStandard} from "../interfaces/BaseIntentStandard.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
-import {popFromCalldata} from "./utils/ContextData.sol";
+import {pop} from "./utils/ContextData.sol";
 import {getSegmentWord} from "./utils/SegmentData.sol";
 import {
     evaluateConstantCurve, encodeConstantCurve, isConstantCurveRelative, encodeAsUint96
@@ -13,7 +14,7 @@ import {
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
 /**
- * ERC20 Require Intent Standard
+ * ERC20 Require Intent Standard core logic
  * @dev data
  *   [bytes32] standard - the intent standard identifier
  *   [address] token - the ERC20 token contract address
@@ -21,7 +22,7 @@ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
  *   [uint8]   amountMult - amount multiplier (final_amount = amount << amountMult)
  *   [bytes1]  flags - negative, relative or absolute [nrxx xxxx]
  */
-contract Erc20Require is IIntentStandard {
+abstract contract BaseErc20Require is BaseIntentStandard {
     using IntentSolutionLib for IntentSolution;
 
     bytes32 private constant _TOKEN_ADDRESS_MASK = 0x000000000000000000000000ffffffffffffffffffffffffffffffffffffffff;
@@ -30,7 +31,7 @@ contract Erc20Require is IIntentStandard {
      * Validate intent segment structure (typically just formatting).
      * @param segmentData the intent segment that is about to be solved.
      */
-    function validateIntentSegment(bytes calldata segmentData) external pure {
+    function _validateIntentSegment(bytes calldata segmentData) internal pure virtual override {
         require(segmentData.length != 66, "ERC-20 Require data length invalid");
     }
 
@@ -42,12 +43,12 @@ contract Erc20Require is IIntentStandard {
      * @param context context data from the previous step in execution (no data means execution is just starting).
      * @return newContext to remember for further execution.
      */
-    function executeIntentSegment(
+    function _executeIntentSegment(
         IntentSolution calldata solution,
         uint256 executionIndex,
         uint256 segmentIndex,
-        bytes calldata context
-    ) external view returns (bytes memory newContext) {
+        bytes memory context
+    ) internal view virtual override returns (bytes memory newContext) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
         bytes calldata segment = intent.intentData[segmentIndex];
         address token = address(uint160(uint256(getSegmentWord(segment, 20) & _TOKEN_ADDRESS_MASK)));
@@ -58,7 +59,7 @@ contract Erc20Require is IIntentStandard {
         if (isConstantCurveRelative(data)) {
             //relative to previous balance
             bytes32 previousBalance;
-            (newContext, previousBalance) = popFromCalldata(context);
+            (newContext, previousBalance) = pop(context);
             requiredBalance = int256(uint256(previousBalance)) + requiredBalance;
         } else {
             //context data remains the same
@@ -99,5 +100,23 @@ contract Erc20Require is IIntentStandard {
         (uint96 adjustedAmount, uint8 amountMult, bool amountNegative) = encodeAsUint96(amount);
         bytes32 data = encodeConstantCurve(uint96(adjustedAmount), amountMult, amountNegative, isRelative);
         return abi.encodePacked(standardId, token, bytes14(data));
+    }
+}
+
+/**
+ * ERC20 Require Intent Standard core logic that can be deployed and registered to the entry point
+ */
+contract Erc20Require is BaseErc20Require, IIntentStandard {
+    function validateIntentSegment(bytes calldata segmentData) external pure override {
+        BaseErc20Require._validateIntentSegment(segmentData);
+    }
+
+    function executeIntentSegment(
+        IntentSolution calldata solution,
+        uint256 executionIndex,
+        uint256 segmentIndex,
+        bytes calldata context
+    ) external view override returns (bytes memory) {
+        return BaseErc20Require._executeIntentSegment(solution, executionIndex, segmentIndex, context);
     }
 }

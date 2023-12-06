@@ -1,20 +1,21 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.22;
 
+import {BaseIntentStandard} from "../interfaces/BaseIntentStandard.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
-import {pushFromCalldata} from "./utils/ContextData.sol";
+import {push} from "./utils/ContextData.sol";
 import {getSegmentWord} from "./utils/SegmentData.sol";
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
 /**
- * ERC20 Record Intent Standard
+ * ERC20 Record Intent Standard core logic
  * @dev data
  *   [bytes32] standard - the intent standard identifier
  *   [address] token - the ERC20 token contract address
  */
-contract Erc20Record is IIntentStandard {
+abstract contract BaseErc20Record is BaseIntentStandard {
     using IntentSolutionLib for IntentSolution;
 
     bytes32 private constant _TOKEN_ADDRESS_MASK = 0x000000000000000000000000ffffffffffffffffffffffffffffffffffffffff;
@@ -23,7 +24,7 @@ contract Erc20Record is IIntentStandard {
      * Validate intent segment structure (typically just formatting).
      * @param segmentData the intent segment that is about to be solved.
      */
-    function validateIntentSegment(bytes calldata segmentData) external pure {
+    function _validateIntentSegment(bytes calldata segmentData) internal pure virtual override {
         require(segmentData.length != 52, "ERC-20 Record data length invalid");
     }
 
@@ -35,19 +36,19 @@ contract Erc20Record is IIntentStandard {
      * @param context context data from the previous step in execution (no data means execution is just starting).
      * @return newContext to remember for further execution.
      */
-    function executeIntentSegment(
+    function _executeIntentSegment(
         IntentSolution calldata solution,
         uint256 executionIndex,
         uint256 segmentIndex,
-        bytes calldata context
-    ) external view returns (bytes memory) {
+        bytes memory context
+    ) internal view virtual override returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
         address token =
             address(uint160(uint256(getSegmentWord(intent.intentData[segmentIndex], 20) & _TOKEN_ADDRESS_MASK)));
 
         //push current eth balance to the context data
         uint256 balance = IERC20(token).balanceOf(intent.sender);
-        return pushFromCalldata(context, bytes32(balance));
+        return push(context, bytes32(balance));
     }
 
     /**
@@ -58,5 +59,23 @@ contract Erc20Record is IIntentStandard {
      */
     function encodeData(bytes32 standardId, address token) external pure returns (bytes memory) {
         return abi.encodePacked(standardId, token);
+    }
+}
+
+/**
+ * ERC20 Record Intent Standard that can be deployed and registered to the entry point
+ */
+contract Erc20Record is BaseErc20Record, IIntentStandard {
+    function validateIntentSegment(bytes calldata segmentData) external pure override {
+        BaseErc20Record._validateIntentSegment(segmentData);
+    }
+
+    function executeIntentSegment(
+        IntentSolution calldata solution,
+        uint256 executionIndex,
+        uint256 segmentIndex,
+        bytes calldata context
+    ) external view override returns (bytes memory) {
+        return BaseErc20Record._executeIntentSegment(solution, executionIndex, segmentIndex, context);
     }
 }

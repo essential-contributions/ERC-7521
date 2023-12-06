@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.22;
 
-import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
+import {BaseIntentStandard} from "../interfaces/BaseIntentStandard.sol";
 import {IIntentDelegate} from "../interfaces/IIntentDelegate.sol";
+import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
@@ -19,7 +20,7 @@ import {
 } from "./utils/CurveCoder.sol";
 
 /**
- * Eth Require with Exponential Curve Intent Standard
+ * Eth Release with Exponential Curve Intent Standard core logic
  * @dev data
  *   [bytes32] standard - the intent standard identifier
  *   [uint40]  startTime - start time of the curve (in seconds)
@@ -30,14 +31,14 @@ import {
  *   [uint8]   deltaAmountMult - delta amount multiplier (final_amount = amount * (amountMult * 10))
  *   [bytes1]  flags/exponent - evaluate backwards, negatives, exponent [fnnx eeee]
  */
-contract EthReleaseExponential is IIntentStandard, EthReleaseDelegate {
+abstract contract BaseEthReleaseExponential is BaseIntentStandard, EthReleaseDelegate {
     using IntentSolutionLib for IntentSolution;
 
     /**
      * Validate intent segment structure (typically just formatting).
      * @param segmentData the intent segment that is about to be solved.
      */
-    function validateIntentSegment(bytes calldata segmentData) external pure {
+    function _validateIntentSegment(bytes calldata segmentData) internal pure virtual override {
         require(segmentData.length != 64, "ETH Release Exponential data length invalid");
     }
 
@@ -49,12 +50,12 @@ contract EthReleaseExponential is IIntentStandard, EthReleaseDelegate {
      * @param context context data from the previous step in execution (no data means execution is just starting).
      * @return newContext to remember for further execution.
      */
-    function executeIntentSegment(
+    function _executeIntentSegment(
         IntentSolution calldata solution,
         uint256 executionIndex,
         uint256 segmentIndex,
-        bytes calldata context
-    ) external returns (bytes memory) {
+        bytes memory context
+    ) internal virtual override returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
 
         //evaluate data
@@ -102,5 +103,23 @@ contract EthReleaseExponential is IIntentStandard, EthReleaseDelegate {
             data = encodeExponentialCurve3(data, adjDeltaAmount, deltaMult, deltaNegative);
         }
         return abi.encodePacked(standardId, bytes32(data));
+    }
+}
+
+/**
+ * Eth Release with Exponential Curve Intent Standard that can be deployed and registered to the entry point
+ */
+contract EthReleaseExponential is BaseEthReleaseExponential, IIntentStandard {
+    function validateIntentSegment(bytes calldata segmentData) external pure override {
+        BaseEthReleaseExponential._validateIntentSegment(segmentData);
+    }
+
+    function executeIntentSegment(
+        IntentSolution calldata solution,
+        uint256 executionIndex,
+        uint256 segmentIndex,
+        bytes calldata context
+    ) external override returns (bytes memory) {
+        return BaseEthReleaseExponential._executeIntentSegment(solution, executionIndex, segmentIndex, context);
     }
 }

@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.22;
 
+import {BaseIntentStandard} from "../interfaces/BaseIntentStandard.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
-import {popFromCalldata} from "./utils/ContextData.sol";
+import {pop} from "./utils/ContextData.sol";
 import {getSegmentWord} from "./utils/SegmentData.sol";
 import {
     evaluateLinearCurve,
@@ -17,7 +18,7 @@ import {
 } from "./utils/CurveCoder.sol";
 
 /**
- * Eth Require with Linear Curve Intent Standard
+ * Eth Require with Linear Curve Intent Standard core logic
  * @dev data
  *   [bytes32] standard - the intent standard identifier
  *   [uint40]  startTime - start time of the curve (in seconds)
@@ -28,14 +29,14 @@ import {
  *   [uint8]   deltaAmountMult - delta amount multiplier (final_amount = amount << amountMult)
  *   [bytes1]  flags - negatives, relative or absolute [nnrx xxxx]
  */
-contract EthRequireLinear is IIntentStandard {
+abstract contract BaseEthRequireLinear is BaseIntentStandard {
     using IntentSolutionLib for IntentSolution;
 
     /**
      * Validate intent segment structure (typically just formatting).
      * @param segmentData the intent segment that is about to be solved.
      */
-    function validateIntentSegment(bytes calldata segmentData) external pure {
+    function _validateIntentSegment(bytes calldata segmentData) internal pure virtual override {
         require(segmentData.length != 64, "ETH Require Linear data length invalid");
     }
 
@@ -47,12 +48,12 @@ contract EthRequireLinear is IIntentStandard {
      * @param context context data from the previous step in execution (no data means execution is just starting).
      * @return newContext to remember for further execution.
      */
-    function executeIntentSegment(
+    function _executeIntentSegment(
         IntentSolution calldata solution,
         uint256 executionIndex,
         uint256 segmentIndex,
-        bytes calldata context
-    ) external view returns (bytes memory newContext) {
+        bytes memory context
+    ) internal view virtual override returns (bytes memory newContext) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
 
         //evaluate data
@@ -61,7 +62,7 @@ contract EthRequireLinear is IIntentStandard {
         if (isLinearCurveRelative(data)) {
             //relative to previous balance
             bytes32 previousBalance;
-            (newContext, previousBalance) = popFromCalldata(context);
+            (newContext, previousBalance) = pop(context);
             requiredBalance = int256(uint256(previousBalance)) + requiredBalance;
         } else {
             //context data remains the same
@@ -112,5 +113,23 @@ contract EthRequireLinear is IIntentStandard {
             data = encodeLinearCurve2(data, adjustedDeltaAmount, deltaMult, deltaNegative, isRelative);
         }
         return abi.encodePacked(standardId, bytes32(data));
+    }
+}
+
+/**
+ * Eth Require with Linear Curve Intent Standard that can be deployed and registered to the entry point
+ */
+contract EthRequireLinear is BaseEthRequireLinear, IIntentStandard {
+    function validateIntentSegment(bytes calldata segmentData) external pure override {
+        BaseEthRequireLinear._validateIntentSegment(segmentData);
+    }
+
+    function executeIntentSegment(
+        IntentSolution calldata solution,
+        uint256 executionIndex,
+        uint256 segmentIndex,
+        bytes calldata context
+    ) external view override returns (bytes memory) {
+        return BaseEthRequireLinear._executeIntentSegment(solution, executionIndex, segmentIndex, context);
     }
 }

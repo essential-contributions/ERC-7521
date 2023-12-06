@@ -3,7 +3,7 @@ pragma solidity ^0.8.22;
 
 /* solhint-disable private-vars-leading-underscore */
 
-import {EmbeddedStandard} from "../core/EmbeddedStandard.sol";
+import {BaseIntentStandard} from "../interfaces/BaseIntentStandard.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
@@ -11,29 +11,24 @@ import {Exec} from "../utils/Exec.sol";
 import {getSegmentBytes} from "./utils/SegmentData.sol";
 
 /**
- * Simple Call Intent Standard
+ * Simple Call Intent Standard core logic
  * @dev data
  *   [bytes32] standard - the intent standard identifier
  *   [bytes]   callData - the calldata to call on the intent sender
  */
-contract SimpleCall is IIntentStandard, EmbeddedStandard {
+abstract contract BaseSimpleCall is BaseIntentStandard {
     using IntentSolutionLib for IntentSolution;
 
     /**
      * Basic state and constants.
      */
-    bytes32 internal constant CALL_INTENT_STANDARD_ID = 0;
     uint256 private constant REVERT_REASON_MAX_LEN = 2048;
-
-    function getStandardId() public pure override returns (bytes32) {
-        return CALL_INTENT_STANDARD_ID;
-    }
 
     /**
      * Validate intent segment structure (typically just formatting).
      * @param segmentData the intent segment that is about to be solved.
      */
-    function validateIntentSegment(bytes calldata segmentData) external pure {
+    function _validateIntentSegment(bytes calldata segmentData) internal pure virtual override {
         require(segmentData.length >= 32, "Simple Call data is too small");
     }
 
@@ -45,12 +40,12 @@ contract SimpleCall is IIntentStandard, EmbeddedStandard {
      * @param context context data from the previous step in execution (no data means execution is just starting).
      * @return context to remember for further execution.
      */
-    function executeIntentSegment(
+    function _executeIntentSegment(
         IntentSolution calldata solution,
         uint256 executionIndex,
         uint256 segmentIndex,
-        bytes calldata context
-    ) external returns (bytes memory) {
+        bytes memory context
+    ) internal virtual override returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
         bytes calldata segment = intent.intentData[segmentIndex];
         if (segment.length > 32) {
@@ -72,5 +67,34 @@ contract SimpleCall is IIntentStandard, EmbeddedStandard {
      */
     function encodeData(bytes32 standardId, bytes memory callData) external pure returns (bytes memory) {
         return abi.encodePacked(standardId, callData);
+    }
+}
+
+/**
+ * Simple Call Intent Standard that can be deployed and registered to the entry point
+ */
+contract SimpleCall is BaseSimpleCall, IIntentStandard {
+    function validateIntentSegment(bytes calldata segmentData) external pure override {
+        BaseSimpleCall._validateIntentSegment(segmentData);
+    }
+
+    function executeIntentSegment(
+        IntentSolution calldata solution,
+        uint256 executionIndex,
+        uint256 segmentIndex,
+        bytes calldata context
+    ) external override returns (bytes memory) {
+        return BaseSimpleCall._executeIntentSegment(solution, executionIndex, segmentIndex, context);
+    }
+}
+
+/**
+ * Simple Call Intent Standard that can be embedded in entry point
+ */
+contract EmbeddableSimpleCall is BaseSimpleCall {
+    bytes32 internal constant SIMPLE_CALL_STANDARD_ID = 0;
+
+    function getSimpleCallStandardId() public pure returns (bytes32) {
+        return SIMPLE_CALL_STANDARD_ID;
     }
 }

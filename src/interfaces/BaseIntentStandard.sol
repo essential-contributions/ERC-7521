@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.22;
 
+import {IEntryPoint} from "./IEntryPoint.sol";
 import {IntentSolution} from "./IntentSolution.sol";
+import {UserIntent} from "./UserIntent.sol";
 
-interface IIntentStandard {
+abstract contract BaseIntentStandard {
     /**
      * Validate intent segment structure (typically just formatting).
      * @param segmentData the intent segment that is about to be solved.
      */
-    function validateIntentSegment(bytes calldata segmentData) external pure;
+    function _validateIntentSegment(bytes calldata segmentData) internal pure virtual;
 
     /**
      * Performs part or all of the execution for an intent.
@@ -18,10 +20,10 @@ interface IIntentStandard {
      * @param context context data from the previous step in execution (no data means execution is just starting).
      * @return context to remember for further execution.
      */
-    function executeIntentSegment(
+    function _executeIntentSegment(
         IntentSolution calldata solution,
         uint256 executionIndex,
         uint256 segmentIndex,
-        bytes calldata context
-    ) external returns (bytes memory);
+        bytes memory context
+    ) internal virtual returns (bytes memory);
 }

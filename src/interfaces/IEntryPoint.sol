@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.22;
 
-import {IIntentStandard} from "./IIntentStandard.sol";
+import {BaseIntentStandard} from "./BaseIntentStandard.sol";
+import {IIntentStandardRegistry} from "./IIntentStandardRegistry.sol";
 import {INonceManager} from "./INonceManager.sol";
 import {IntentSolution} from "./IntentSolution.sol";
 import {IAggregator} from "./IAggregator.sol";
 import {UserIntent} from "./UserIntent.sol";
 
-interface IEntryPoint is INonceManager {
+interface IEntryPoint is INonceManager, IIntentStandardRegistry {
     /**
      * An event emitted after each successful intent solution
      * @param intentHash - unique identifier for the intent (hash its entire content, except signature).
@@ -66,22 +67,7 @@ interface IEntryPoint is INonceManager {
     function getUserIntentHash(UserIntent calldata intent) external view returns (bytes32);
 
     /**
-     * registers a new intent standard.
-     */
-    function registerIntentStandard(IIntentStandard intentStandard) external returns (bytes32);
-
-    /**
-     * gets the intent standard contract for the given intent standard ID.
-     */
-    function getIntentStandardContract(bytes32 standardId) external view returns (IIntentStandard);
-
-    /**
-     * gets the intent standard ID for the given intent standard contract.
-     */
-    function getIntentStandardId(IIntentStandard intentStandard) external view returns (bytes32);
-
-    /**
      * returns true if the given standard is currently executing an intent segment for the msg.sender.
      */
-    function verifyExecutingIntentSegmentForStandard(IIntentStandard intentStandard) external returns (bool);
+    function verifyExecutingIntentSegmentForStandard(BaseIntentStandard intentStandard) external returns (bool);
 }
