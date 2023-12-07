@@ -3,7 +3,6 @@ pragma solidity ^0.8.22;
 
 /* solhint-disable private-vars-leading-underscore */
 
-import {BaseIntentStandard} from "../interfaces/BaseIntentStandard.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
@@ -14,15 +13,35 @@ import {push} from "./utils/ContextData.sol";
  * @dev data
  *   [bytes32] standard - the intent standard identifier
  */
-abstract contract BaseEthRecord is BaseIntentStandard {
+abstract contract EthRecordCore {
+    /**
+     * Validate intent segment structure (typically just formatting).
+     */
+    function _validateEthRecord(bytes calldata segmentData) internal pure {
+        require(segmentData.length != 32, "ETH Record data length invalid");
+    }
+
+    /**
+     * Performs part or all of the execution for an intent.
+     */
+    function _executeEthRecord(address intentSender, bytes memory context) internal view returns (bytes memory) {
+        //push current eth balance to the context data
+        return push(context, bytes32(intentSender.balance));
+    }
+}
+
+/**
+ * Eth Record Intent Standard that can be deployed and registered to the entry point
+ */
+contract EthRecord is EthRecordCore, IIntentStandard {
     using IntentSolutionLib for IntentSolution;
 
     /**
      * Validate intent segment structure (typically just formatting).
      * @param segmentData the intent segment that is about to be solved.
      */
-    function _validateIntentSegment(bytes calldata segmentData) internal pure virtual override {
-        require(segmentData.length != 32, "ETH Record data length invalid");
+    function validateIntentSegment(bytes calldata segmentData) external pure override {
+        _validateEthRecord(segmentData);
     }
 
     /**
@@ -33,54 +52,22 @@ abstract contract BaseEthRecord is BaseIntentStandard {
      * @param context context data from the previous step in execution (no data means execution is just starting).
      * @return newContext to remember for further execution.
      */
-    function _executeIntentSegment(
-        IntentSolution calldata solution,
-        uint256 executionIndex,
-        uint256,
-        bytes memory context
-    ) internal virtual override returns (bytes memory) {
-        UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
-
-        //push current eth balance to the context data
-        return push(context, bytes32(intent.sender.balance));
-    }
-
-    /**
-     * Helper function to encode intent standard segment data.
-     * @param standardId the entry point identifier for this standard
-     * @return the fully encoded intent standard segment data
-     */
-    function encodeData(bytes32 standardId) external pure returns (bytes memory) {
-        return abi.encodePacked(standardId);
-    }
-}
-
-/**
- * Eth Record Intent Standard that can be deployed and registered to the entry point
- */
-contract EthRecord is BaseEthRecord, IIntentStandard {
-    function validateIntentSegment(bytes calldata segmentData) external pure override {
-        BaseEthRecord._validateIntentSegment(segmentData);
-    }
-
     function executeIntentSegment(
         IntentSolution calldata solution,
         uint256 executionIndex,
-        uint256 segmentIndex,
+        uint256,
         bytes calldata context
-    ) external override returns (bytes memory) {
-        return BaseEthRecord._executeIntentSegment(solution, executionIndex, segmentIndex, context);
+    ) external view override returns (bytes memory) {
+        UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
+        return _executeEthRecord(intent.sender, context);
     }
 }
 
 /**
- * Eth Record Intent Standard that can be embedded in entry point
+ * Helper function to encode intent standard segment data.
+ * @param standardId the entry point identifier for this standard
+ * @return the fully encoded intent standard segment data
  */
-contract EmbeddableEthRecord is BaseEthRecord {
-    uint256 private constant _ETH_RECORD_STANDARD_ID = 2;
-    bytes32 internal constant ETH_RECORD_STANDARD_ID = bytes32(_ETH_RECORD_STANDARD_ID);
-
-    function getEthRecordStandardId() public pure returns (bytes32) {
-        return ETH_RECORD_STANDARD_ID;
-    }
+function encodeEthRecordData(bytes32 standardId) pure returns (bytes memory) {
+    return abi.encodePacked(standardId);
 }

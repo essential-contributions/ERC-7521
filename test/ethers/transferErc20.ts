@@ -4,7 +4,7 @@ import { deployTestEnvironment, Environment, SmartContractAccount } from './util
 import { buildSolution, UserIntent } from './utils/intent';
 import { Curve, LinearCurve } from './utils/curveCoder';
 
-const LOGGING_ENABLED = false;
+const LOGGING_ENABLED = true;
 
 describe('Transfer ERC-20 Test', () => {
   const MAX_INTENTS = 4;
@@ -44,6 +44,8 @@ describe('Transfer ERC-20 Test', () => {
 
   it('Should run single intent', async () => {
     // intent transfer (1348bytes, 187559gas)
+    // intent transfer (1348bytes, 179172gas) - embedded standards
+    // intent transfer (1348bytes, 158578gas) - refactored embedded standards
     const timestamp = (await env.provider.getBlock('latest'))?.timestamp || 0;
     const account = env.abstractAccounts[0];
     const to = ethers.hexlify(ethers.randomBytes(20));
@@ -81,6 +83,8 @@ describe('Transfer ERC-20 Test', () => {
 
   it('Should run multi intent', async () => {
     // intent transfer (1161bytes, 160704gas)
+    // intent transfer (1161bytes, 151807gas) - embedded standards
+    // intent transfer (1161bytes, 120481gas) - refactored embedded standards
     const timestamp = (await env.provider.getBlock('latest'))?.timestamp || 0;
     const amount = ethers.parseEther('10');
     const gas = ethers.parseEther('1');

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.22;
 
-import {BaseIntentStandard} from "../interfaces/BaseIntentStandard.sol";
 import {IIntentDelegate} from "../interfaces/IIntentDelegate.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
@@ -32,17 +31,48 @@ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
  *   [uint8]   deltaAmountMult - delta amount multiplier (final_amount = amount << amountMult)
  *   [bytes1]  flags - negative [nnxx xxxx]
  */
-abstract contract BaseErc20ReleaseLinear is BaseIntentStandard, Erc20ReleaseDelegate {
-    using IntentSolutionLib for IntentSolution;
+abstract contract Erc20ReleaseLinearCore is Erc20ReleaseDelegate {
+    /**
+     * Validate intent segment structure (typically just formatting).
+     */
+    function _validateErc20ReleaseLinear(bytes calldata segmentData) internal pure {
+        require(segmentData.length != 84, "ERC-20 Release Linear data length invalid");
+    }
 
-    bytes32 private constant _TOKEN_ADDRESS_MASK = 0x000000000000000000000000ffffffffffffffffffffffffffffffffffffffff;
+    /**
+     * Performs part or all of the execution for an intent.
+     */
+    function _executeErc20ReleaseLinear(
+        uint256 timestamp,
+        address intentSender,
+        address nextExecutingIntentSender,
+        bytes calldata segmentData
+    ) internal {
+        address token = address(uint160(uint256(getSegmentWord(segmentData, 20))));
+        bytes32 curve = getSegmentWord(segmentData, 52);
+        int256 releaseAmount = evaluateLinearCurve(curve, timestamp);
+
+        //release
+        if (releaseAmount > 0) {
+            bytes memory releaseEthDelegate =
+                _encodeReleaseErc20(token, nextExecutingIntentSender, uint256(releaseAmount));
+            IIntentDelegate(address(intentSender)).generalizedIntentDelegateCall(releaseEthDelegate);
+        }
+    }
+}
+
+/**
+ * ERC20 Release with Linear Curve Intent Standard that can be deployed and registered to the entry point
+ */
+contract Erc20ReleaseLinear is Erc20ReleaseLinearCore, IIntentStandard {
+    using IntentSolutionLib for IntentSolution;
 
     /**
      * Validate intent segment structure (typically just formatting).
      * @param segmentData the intent segment that is about to be solved.
      */
-    function _validateIntentSegment(bytes calldata segmentData) internal pure virtual override {
-        require(segmentData.length != 84, "ERC-20 Release Linear data length invalid");
+    function validateIntentSegment(bytes calldata segmentData) external pure override {
+        _validateErc20ReleaseLinear(segmentData);
     }
 
     /**
@@ -53,77 +83,49 @@ abstract contract BaseErc20ReleaseLinear is BaseIntentStandard, Erc20ReleaseDele
      * @param context context data from the previous step in execution (no data means execution is just starting).
      * @return newContext to remember for further execution.
      */
-    function _executeIntentSegment(
-        IntentSolution calldata solution,
-        uint256 executionIndex,
-        uint256 segmentIndex,
-        bytes memory context
-    ) internal virtual override returns (bytes memory) {
-        UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
-        address token =
-            address(uint160(uint256(getSegmentWord(intent.intentData[segmentIndex], 20) & _TOKEN_ADDRESS_MASK)));
-
-        //evaluate data
-        bytes32 data = getSegmentWord(intent.intentData[segmentIndex], 52);
-        int256 releaseAmount = evaluateLinearCurve(data, solution.timestamp);
-
-        //release
-        address nextExecutingIntentSender = solution.intents[solution.getIntentIndex(executionIndex + 1)].sender;
-        if (releaseAmount > 0) {
-            bytes memory releaseEthDelegate =
-                _encodeReleaseErc20(token, nextExecutingIntentSender, uint256(releaseAmount));
-            IIntentDelegate(address(intent.sender)).generalizedIntentDelegateCall(releaseEthDelegate);
-        }
-
-        //return context unchanged
-        return context;
-    }
-
-    /**
-     * Helper function to encode intent standard segment data.
-     * @param standardId the entry point identifier for this standard
-     * @param token the ERC20 token contract address
-     * @param startTime start time of the curve (in seconds)
-     * @param deltaTime amount of time from start until curve caps (in seconds)
-     * @param startAmount starting amount
-     * @param deltaAmount amount of change after each second
-     * @return the fully encoded intent standard segment data
-     */
-    function encodeData(
-        bytes32 standardId,
-        address token,
-        uint40 startTime,
-        uint32 deltaTime,
-        int256 startAmount,
-        int256 deltaAmount
-    ) external pure returns (bytes memory) {
-        bytes32 data;
-        {
-            (uint96 adjustedStartAmount, uint8 startMult, bool startNegative) = encodeAsUint96(startAmount);
-            data = encodeLinearCurve1(data, startTime, deltaTime, adjustedStartAmount, startMult, startNegative);
-        }
-        {
-            (uint64 adjustedDeltaAmount, uint8 deltaMult, bool deltaNegative) = encodeAsUint64(deltaAmount);
-            data = encodeLinearCurve2(data, adjustedDeltaAmount, deltaMult, deltaNegative, false);
-        }
-        return abi.encodePacked(standardId, token, bytes32(data));
-    }
-}
-
-/**
- * ERC20 Release with Linear Curve Intent Standard that can be deployed and registered to the entry point
- */
-contract Erc20ReleaseLinear is BaseErc20ReleaseLinear, IIntentStandard {
-    function validateIntentSegment(bytes calldata segmentData) external pure override {
-        BaseErc20ReleaseLinear._validateIntentSegment(segmentData);
-    }
-
     function executeIntentSegment(
         IntentSolution calldata solution,
         uint256 executionIndex,
         uint256 segmentIndex,
         bytes calldata context
     ) external override returns (bytes memory) {
-        return BaseErc20ReleaseLinear._executeIntentSegment(solution, executionIndex, segmentIndex, context);
+        UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
+        _executeErc20ReleaseLinear(
+            solution.timestamp,
+            intent.sender,
+            solution.intents[solution.getIntentIndex(executionIndex + 1)].sender,
+            intent.intentData[segmentIndex]
+        );
+        return context;
     }
+}
+
+/**
+ * Helper function to encode intent standard segment data.
+ * @param standardId the entry point identifier for this standard
+ * @param token the ERC20 token contract address
+ * @param startTime start time of the curve (in seconds)
+ * @param deltaTime amount of time from start until curve caps (in seconds)
+ * @param startAmount starting amount
+ * @param deltaAmount amount of change after each second
+ * @return the fully encoded intent standard segment data
+ */
+function encodeErc20ReleaseLinearData(
+    bytes32 standardId,
+    address token,
+    uint40 startTime,
+    uint32 deltaTime,
+    int256 startAmount,
+    int256 deltaAmount
+) pure returns (bytes memory) {
+    bytes32 data;
+    {
+        (uint96 adjustedStartAmount, uint8 startMult, bool startNegative) = encodeAsUint96(startAmount);
+        data = encodeLinearCurve1(data, startTime, deltaTime, adjustedStartAmount, startMult, startNegative);
+    }
+    {
+        (uint64 adjustedDeltaAmount, uint8 deltaMult, bool deltaNegative) = encodeAsUint64(deltaAmount);
+        data = encodeLinearCurve2(data, adjustedDeltaAmount, deltaMult, deltaNegative, false);
+    }
+    return abi.encodePacked(standardId, token, bytes32(data));
 }

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.22;
 
-import {BaseIntentStandard} from "../interfaces/BaseIntentStandard.sol";
 import {IIntentDelegate} from "../interfaces/IIntentDelegate.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
@@ -30,15 +29,47 @@ import {
  *   [uint8]   deltaAmountMult - delta amount multiplier (final_amount = amount << amountMult)
  *   [bytes1]  flags - negatives [nnxx xxxx]
  */
-abstract contract BaseEthReleaseLinear is BaseIntentStandard, EthReleaseDelegate {
+abstract contract EthReleaseLinearCore is EthReleaseDelegate {
+    /**
+     * Validate intent segment structure (typically just formatting).
+     */
+    function _validateEthReleaseLinear(bytes calldata segmentData) internal pure {
+        require(segmentData.length != 64, "ETH Release Linear data length invalid");
+    }
+
+    /**
+     * Performs part or all of the execution for an intent.
+     */
+    function _executeEthReleaseLinear(
+        uint256 timestamp,
+        address intentSender,
+        address nextExecutingIntentSender,
+        bytes calldata segmentData
+    ) internal {
+        //evaluate data
+        bytes32 curve = getSegmentWord(segmentData, 32);
+        int256 releaseAmount = evaluateLinearCurve(curve, timestamp);
+
+        //release
+        if (releaseAmount > 0) {
+            bytes memory releaseEthDelegate = _encodeReleaseEth(nextExecutingIntentSender, uint256(releaseAmount));
+            IIntentDelegate(address(intentSender)).generalizedIntentDelegateCall(releaseEthDelegate);
+        }
+    }
+}
+
+/**
+ * Eth Release with Linear Curve Intent Standard that can be deployed and registered to the entry point
+ */
+contract EthReleaseLinear is EthReleaseLinearCore, IIntentStandard {
     using IntentSolutionLib for IntentSolution;
 
     /**
      * Validate intent segment structure (typically just formatting).
      * @param segmentData the intent segment that is about to be solved.
      */
-    function _validateIntentSegment(bytes calldata segmentData) internal pure virtual override {
-        require(segmentData.length != 64, "ETH Release Linear data length invalid");
+    function validateIntentSegment(bytes calldata segmentData) external pure override {
+        _validateEthReleaseLinear(segmentData);
     }
 
     /**
@@ -49,70 +80,47 @@ abstract contract BaseEthReleaseLinear is BaseIntentStandard, EthReleaseDelegate
      * @param context context data from the previous step in execution (no data means execution is just starting).
      * @return newContext to remember for further execution.
      */
-    function _executeIntentSegment(
-        IntentSolution calldata solution,
-        uint256 executionIndex,
-        uint256 segmentIndex,
-        bytes memory context
-    ) internal virtual override returns (bytes memory) {
-        UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
-
-        //evaluate data
-        bytes32 data = getSegmentWord(intent.intentData[segmentIndex], 32);
-        int256 releaseAmount = evaluateLinearCurve(data, solution.timestamp);
-
-        //release
-        address nextExecutingIntentSender = solution.intents[solution.getIntentIndex(executionIndex + 1)].sender;
-        if (releaseAmount > 0) {
-            bytes memory releaseEthDelegate = _encodeReleaseEth(nextExecutingIntentSender, uint256(releaseAmount));
-            IIntentDelegate(address(intent.sender)).generalizedIntentDelegateCall(releaseEthDelegate);
-        }
-
-        //return context unchanged
-        return context;
-    }
-
-    /**
-     * Helper function to encode intent standard segment data.
-     * @param standardId the entry point identifier for this standard
-     * @param startTime start time of the curve (in seconds)
-     * @param deltaTime amount of time from start until curve caps (in seconds)
-     * @param startAmount starting amount
-     * @param deltaAmount amount of change after each second
-     * @return the fully encoded intent standard segment data
-     */
-    function encodeData(bytes32 standardId, uint40 startTime, uint32 deltaTime, int256 startAmount, int256 deltaAmount)
-        external
-        pure
-        returns (bytes memory)
-    {
-        bytes32 data;
-        {
-            (uint96 adjustedStartAmount, uint8 startMult, bool startNegative) = encodeAsUint96(startAmount);
-            data = encodeLinearCurve1(data, startTime, deltaTime, adjustedStartAmount, startMult, startNegative);
-        }
-        {
-            (uint64 adjustedDeltaAmount, uint8 deltaMult, bool deltaNegative) = encodeAsUint64(deltaAmount);
-            data = encodeLinearCurve2(data, adjustedDeltaAmount, deltaMult, deltaNegative, false);
-        }
-        return abi.encodePacked(standardId, bytes32(data));
-    }
-}
-
-/**
- * Eth Release with Linear Curve Intent Standard that can be deployed and registered to the entry point
- */
-contract EthReleaseLinear is BaseEthReleaseLinear, IIntentStandard {
-    function validateIntentSegment(bytes calldata segmentData) external pure override {
-        BaseEthReleaseLinear._validateIntentSegment(segmentData);
-    }
-
     function executeIntentSegment(
         IntentSolution calldata solution,
         uint256 executionIndex,
         uint256 segmentIndex,
         bytes calldata context
     ) external override returns (bytes memory) {
-        return BaseEthReleaseLinear._executeIntentSegment(solution, executionIndex, segmentIndex, context);
+        UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
+        _executeEthReleaseLinear(
+            solution.timestamp,
+            intent.sender,
+            solution.intents[solution.getIntentIndex(executionIndex + 1)].sender,
+            intent.intentData[segmentIndex]
+        );
+        return context;
     }
+}
+
+/**
+ * Helper function to encode intent standard segment data.
+ * @param standardId the entry point identifier for this standard
+ * @param startTime start time of the curve (in seconds)
+ * @param deltaTime amount of time from start until curve caps (in seconds)
+ * @param startAmount starting amount
+ * @param deltaAmount amount of change after each second
+ * @return the fully encoded intent standard segment data
+ */
+function encodeEthReleaseLinearData(
+    bytes32 standardId,
+    uint40 startTime,
+    uint32 deltaTime,
+    int256 startAmount,
+    int256 deltaAmount
+) pure returns (bytes memory) {
+    bytes32 data;
+    {
+        (uint96 adjustedStartAmount, uint8 startMult, bool startNegative) = encodeAsUint96(startAmount);
+        data = encodeLinearCurve1(data, startTime, deltaTime, adjustedStartAmount, startMult, startNegative);
+    }
+    {
+        (uint64 adjustedDeltaAmount, uint8 deltaMult, bool deltaNegative) = encodeAsUint64(deltaAmount);
+        data = encodeLinearCurve2(data, adjustedDeltaAmount, deltaMult, deltaNegative, false);
+    }
+    return abi.encodePacked(standardId, bytes32(data));
 }

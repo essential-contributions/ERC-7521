@@ -5,7 +5,7 @@ import { buildSolution, UserIntent } from './utils/intent';
 import { ConstantCurve, Curve, LinearCurve } from './utils/curveCoder';
 import { ExactInputSingleParamsStruct } from '../../typechain/src/test/TestUniswap';
 
-const LOGGING_ENABLED = false;
+const LOGGING_ENABLED = true;
 
 describe('Token Swaps Test', () => {
   const MAX_INTENTS = 4;
@@ -71,6 +71,8 @@ describe('Token Swaps Test', () => {
 
   it('Should run single intent', async () => {
     // intent transfer (1732bytes, 269814gas)
+    // intent transfer (1732bytes, 249972gas) - embedded standards
+    // intent transfer (1732bytes, 228216gas) - refactored embedded standards
     const timestamp = (await env.provider.getBlock('latest'))?.timestamp || 0;
     const account = env.abstractAccounts[0];
     const amount = ethers.parseEther('1');
@@ -116,6 +118,8 @@ describe('Token Swaps Test', () => {
 
   it('Should run multi intent', async () => {
     // intent transfer (1297bytes, 201973gas)
+    // intent transfer (1297bytes, 164165gas) - embedded standards
+    // intent transfer (1297bytes, 125091gas) - refactored embedded standards
     const timestamp = (await env.provider.getBlock('latest'))?.timestamp || 0;
     const account = env.abstractAccounts[0];
     const amount = ethers.parseEther('1');

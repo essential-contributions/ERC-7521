@@ -2,7 +2,7 @@
 pragma solidity ^0.8.22;
 
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
-import {BaseIntentStandard} from "../interfaces/BaseIntentStandard.sol";
+import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 
 /**
  * Foundational contract for any contract that expects communication from an entrypoint contract.
@@ -29,7 +29,7 @@ abstract contract EntryPointTruster {
      */
     modifier onlyFromIntentStandardExecutingForSender() {
         require(
-            entryPoint().verifyExecutingIntentSegmentForStandard(BaseIntentStandard(msg.sender)),
+            entryPoint().verifyExecutingIntentSegmentForStandard(IIntentStandard(msg.sender)),
             "EntryPoint not executing intent standard for sender"
         );
         _;

@@ -11,7 +11,6 @@ import {NonceManager} from "./NonceManager.sol";
 import {IAccount} from "../interfaces/IAccount.sol";
 import {IAggregator} from "../interfaces/IAggregator.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
-import {BaseIntentStandard} from "../interfaces/BaseIntentStandard.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
 import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
@@ -123,7 +122,7 @@ contract EntryPoint is IEntryPoint, NonceManager, IntentStandardRegistry, Embedd
             if (isEmbeddedIntentStandard(standardId)) {
                 _executionStateContext = intent.sender;
                 _executionIntentStandard = address(this);
-                contextData = _executeIntentSegment(solution, executionIndex, segmentIndex, contextData);
+                contextData = _executeEmbeddedIntentSegment(solution, executionIndex, segmentIndex, contextData);
             } else {
                 IIntentStandard intentStandard = _registeredStandards[standardId];
                 if (intentStandard == IIntentStandard(address(0))) {
@@ -244,7 +243,7 @@ contract EntryPoint is IEntryPoint, NonceManager, IntentStandardRegistry, Embedd
             bytes32 standardId = getSegmentStandard(intent.intentData[i]);
             if (isEmbeddedIntentStandard(standardId)) {
                 // validate the intent segment itself
-                _validateIntentSegment(intent.intentData[i]);
+                _validateEmbeddedIntentSegment(intent.intentData[i]);
             } else {
                 IIntentStandard standard = _registeredStandards[standardId];
                 if (standard == IIntentStandard(address(0))) {
@@ -277,8 +276,17 @@ contract EntryPoint is IEntryPoint, NonceManager, IntentStandardRegistry, Embedd
     /**
      * returns true if the given standard is currently executing an intent segment for the msg.sender.
      */
-    function verifyExecutingIntentSegmentForStandard(BaseIntentStandard intentStandard) external view returns (bool) {
+    function verifyExecutingIntentSegmentForStandard(IIntentStandard intentStandard) external view returns (bool) {
         return _executionStateContext == msg.sender && _executionIntentStandard == address(intentStandard);
+    }
+
+    /**
+     * Manually set the nonce of the sender.
+     * @dev this method should only be allowed to be called by the currently executing intent standard contract
+     */
+    function setNonce(uint256 key, uint256 nonce) external override {
+        require(msg.sender == _executionIntentStandard, "Invalid nonce access");
+        _setNonce(_executionStateContext, key, nonce);
     }
 
     /**
@@ -323,14 +331,5 @@ contract EntryPoint is IEntryPoint, NonceManager, IntentStandardRegistry, Embedd
      */
     function _generateUserIntentHash(UserIntent calldata intent) private view returns (bytes32) {
         return keccak256(abi.encode(intent.hash(), address(this), block.chainid));
-    }
-
-    /**
-     * Manually set the nonce of the sender.
-     * @dev this method should only be allowed to be called by the currently executing intent standard contract
-     */
-    function _setNonce(uint256 key, uint256 nonce) internal override {
-        require(msg.sender == _executionIntentStandard, "Invalid nonce access");
-        nonceValues[_executionStateContext][key] = nonce;
     }
 }

@@ -4,7 +4,7 @@ import { deployTestEnvironment, Environment, SmartContractAccount } from './util
 import { buildSolution, UserIntent } from './utils/intent';
 import { Curve, LinearCurve } from './utils/curveCoder';
 
-const LOGGING_ENABLED = false;
+const LOGGING_ENABLED = true;
 
 describe('Transfer ETH Test', () => {
   const MAX_INTENTS = 4;
@@ -48,6 +48,8 @@ describe('Transfer ETH Test', () => {
 
   it('Should run single intent', async () => {
     // intent transfer (1252bytes, 194913gas)
+    // intent transfer (1252bytes, 186582gas) - embedded standards
+    // intent transfer (1252bytes, 164520gas) - refactored embedded standards
     const timestamp = (await env.provider.getBlock('latest'))?.timestamp || 0;
     const account = env.abstractAccounts[0];
     const to = ethers.hexlify(ethers.randomBytes(20));
@@ -90,6 +92,8 @@ describe('Transfer ETH Test', () => {
 
   it('Should run multi intent', async () => {
     // intent transfer (1065bytes, 167613gas)
+    // intent transfer (1065bytes, 158943gas) - embedded standards
+    // intent transfer (1065bytes, 127884gas) - refactored embedded standards
     const timestamp = (await env.provider.getBlock('latest'))?.timestamp || 0;
     const amount = ethers.parseEther('1');
     const gas = ethers.parseEther('0.1');
