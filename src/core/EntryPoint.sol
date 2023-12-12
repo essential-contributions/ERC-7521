@@ -5,6 +5,58 @@ pragma solidity ^0.8.22;
 /* solhint-disable no-inline-assembly */
 /* solhint-disable private-vars-leading-underscore */
 
+
+
+
+import {IntentSolutionLib, IntentSolution} from "../interfaces/IntentSolution.sol";
+import {Erc20RecordCore} from "../standards/Erc20Record.sol";
+import {Erc20ReleaseCore} from "../standards/Erc20Release.sol";
+import {Erc20ReleaseExponentialCore} from "../standards/Erc20ReleaseExponential.sol";
+import {Erc20ReleaseLinearCore} from "../standards/Erc20ReleaseLinear.sol";
+import {Erc20RequireCore} from "../standards/Erc20Require.sol";
+import {Erc20RequireExponentialCore} from "../standards/Erc20RequireExponential.sol";
+import {Erc20RequireLinearCore} from "../standards/Erc20RequireLinear.sol";
+import {EthRecordCore} from "../standards/EthRecord.sol";
+import {EthReleaseCore} from "../standards/EthRelease.sol";
+import {EthReleaseExponentialCore} from "../standards/EthReleaseExponential.sol";
+import {EthReleaseLinearCore} from "../standards/EthReleaseLinear.sol";
+import {EthRequireCore} from "../standards/EthRequire.sol";
+import {EthRequireExponentialCore} from "../standards/EthRequireExponential.sol";
+import {EthRequireLinearCore} from "../standards/EthRequireLinear.sol";
+import {SequentialNonceManagerCore} from "../standards/SequentialNonce.sol";
+import {SimpleCallCore} from "../standards/SimpleCall.sol";
+import {UserOperationCore} from "../standards/UserOperation.sol";
+import {getSegmentStandard} from "../standards/utils/SegmentData.sol";
+import {UserIntent} from "../interfaces/UserIntent.sol";
+
+bytes32 constant SIMPLE_CALL_STD_ID = bytes32(uint256(0));
+bytes32 constant ERC20_RECORD_STD_ID = bytes32(uint256(1));
+bytes32 constant ERC20_RELEASE_STD_ID = bytes32(uint256(2));
+bytes32 constant ERC20_RELEASE_EXPONENTIAL_STD_ID = bytes32(uint256(3));
+bytes32 constant ERC20_RELEASE_LINEAR_STD_ID = bytes32(uint256(4));
+bytes32 constant ERC20_REQUIRE_STD_ID = bytes32(uint256(5));
+bytes32 constant ERC20_REQUIRE_EXPONENTIAL_STD_ID = bytes32(uint256(6));
+bytes32 constant ERC20_REQUIRE_LINEAR_STD_ID = bytes32(uint256(7));
+bytes32 constant ETH_RECORD_STD_ID = bytes32(uint256(8));
+bytes32 constant ETH_RELEASE_STD_ID = bytes32(uint256(9));
+bytes32 constant ETH_RELEASE_EXPONENTIAL_STD_ID = bytes32(uint256(10));
+bytes32 constant ETH_RELEASE_LINEAR_STD_ID = bytes32(uint256(11));
+bytes32 constant ETH_REQUIRE_STD_ID = bytes32(uint256(12));
+bytes32 constant ETH_REQUIRE_EXPONENTIAL_STD_ID = bytes32(uint256(13));
+bytes32 constant ETH_REQUIRE_LINEAR_STD_ID = bytes32(uint256(14));
+bytes32 constant SEQUENTIAL_NONCE_STD_ID = bytes32(uint256(15));
+bytes32 constant USER_OPERATION_STD_ID = bytes32(uint256(16));
+uint256 constant NUM_EMBEDDED_STANDARDS = uint256(17);
+
+
+
+
+
+
+
+
+
+
 import {EmbeddedIntentStandards} from "./EmbeddedIntentStandards.sol";
 import {IntentStandardRegistry} from "./IntentStandardRegistry.sol";
 import {NonceManager} from "./NonceManager.sol";
@@ -18,7 +70,29 @@ import {getSegmentStandard} from "../standards/utils/SegmentData.sol";
 import {Exec, RevertReason} from "../utils/Exec.sol";
 import {ReentrancyGuard} from "openzeppelin/security/ReentrancyGuard.sol";
 
-contract EntryPoint is IEntryPoint, NonceManager, IntentStandardRegistry, EmbeddedIntentStandards, ReentrancyGuard {
+contract EntryPoint is 
+    IEntryPoint, 
+    NonceManager, 
+    IntentStandardRegistry, 
+    ReentrancyGuard,
+    SimpleCallCore,
+    Erc20RecordCore,
+    Erc20ReleaseCore,
+    Erc20ReleaseExponentialCore,
+    Erc20ReleaseLinearCore,
+    Erc20RequireCore,
+    Erc20RequireExponentialCore,
+    Erc20RequireLinearCore,
+    EthRecordCore,
+    EthReleaseCore,
+    EthReleaseExponentialCore,
+    EthReleaseLinearCore,
+    EthRequireCore,
+    EthRequireExponentialCore,
+    EthRequireLinearCore,
+    SequentialNonceManagerCore,
+    UserOperationCore 
+{
     using IntentSolutionLib for IntentSolution;
     using UserIntentLib for UserIntent;
     using RevertReason for bytes;
@@ -26,14 +100,10 @@ contract EntryPoint is IEntryPoint, NonceManager, IntentStandardRegistry, Embedd
     uint256 private constant REVERT_REASON_MAX_LEN = 2048;
     uint256 private constant CONTEXT_DATA_MAX_LEN = 2048;
 
-    address private constant EX_STANDARD_NOT_ACTIVE = address(0);
-    address private constant EX_STATE_NOT_ACTIVE = address(0);
-    address private constant EX_STATE_VALIDATION_EXECUTING =
-        address(uint160(uint256(keccak256("EX_STATE_VALIDATION_EXECUTING"))));
+    bytes32 private constant EX_STATE_NOT_ACTIVE = bytes32(0);
 
     //flag for applications to check current context of execution
-    address private _executionStateContext;
-    address private _executionIntentStandard;
+    bytes32 private _executionState;
 
     /**
      * Execute a batch of UserIntents with given solution.
@@ -47,10 +117,7 @@ contract EntryPoint is IEntryPoint, NonceManager, IntentStandardRegistry, Embedd
     {
         uint256 intsLen = solution.intents.length;
         require(intsLen > 0, "AA70 no intents");
-
-        // validate timestamp
-        uint256 timestamp = solution.getTimestamp();
-        require(timestamp > 0, "AA71 invalid timestamp");
+        require(solution.getTimestamp() > 0, "AA71 invalid timestamp");
 
         unchecked {
             // validate intents
@@ -59,9 +126,8 @@ contract EntryPoint is IEntryPoint, NonceManager, IntentStandardRegistry, Embedd
                 bytes32 intentHash = _generateUserIntentHash(intent);
                 if (intent.sender != address(0) && intent.intentData.length > 0) {
                     _validateUserIntentWithAccount(intent, intentHash, i, signatureAggregator, validatedIntents);
+                    emit UserIntentEvent(intentHash, intent.sender, msg.sender);
                 }
-
-                emit UserIntentEvent(intentHash, intent.sender, msg.sender);
             }
 
             // execute solution
@@ -96,8 +162,7 @@ contract EntryPoint is IEntryPoint, NonceManager, IntentStandardRegistry, Embedd
             }
 
             // no longer executing
-            _executionStateContext = EX_STATE_NOT_ACTIVE;
-            _executionIntentStandard = EX_STANDARD_NOT_ACTIVE;
+            _executionState = EX_STATE_NOT_ACTIVE;
         } //unchecked
     }
 
@@ -119,18 +184,127 @@ contract EntryPoint is IEntryPoint, NonceManager, IntentStandardRegistry, Embedd
         UserIntent calldata intent = solution.intents[intentIndex];
         if (intent.sender != address(0) && intent.intentData.length > 0) {
             bytes32 standardId = getSegmentStandard(intent.intentData[segmentIndex]);
-            if (isEmbeddedIntentStandard(standardId)) {
-                _executionStateContext = intent.sender;
-                _executionIntentStandard = address(this);
-                contextData = _executeEmbeddedIntentSegment(solution, executionIndex, segmentIndex, contextData);
+            if (uint256(standardId) < NUM_EMBEDDED_STANDARDS) {
+                _executionState = keccak256(abi.encodePacked(intent.sender, address(this)));
+                //contextData = _executeEmbeddedIntentSegment(solution, executionIndex, segmentIndex, contextData);
+
+
+
+
+
+                if (standardId == SIMPLE_CALL_STD_ID) {
+                    _executeSimpleCall(intent.sender, intent.intentData[segmentIndex]);
+                } else if (standardId == ERC20_RECORD_STD_ID) {
+                    contextData = _executeErc20Record(intent.sender, intent.intentData[segmentIndex], contextData);
+                } else if (standardId == ERC20_RELEASE_STD_ID) {
+                    _executeErc20Release(
+                        intent.sender,
+                        solution.intents[solution.getIntentIndex(executionIndex + 1)].sender,
+                        intent.intentData[segmentIndex]
+                    );
+                } else if (standardId == ERC20_RELEASE_EXPONENTIAL_STD_ID) {
+                    _executeErc20ReleaseExponential(
+                        solution.timestamp,
+                        intent.sender,
+                        solution.intents[solution.getIntentIndex(executionIndex + 1)].sender,
+                        intent.intentData[segmentIndex]
+                    );
+                } else if (standardId == ERC20_RELEASE_LINEAR_STD_ID) {
+                    _executeErc20ReleaseLinear(
+                        solution.timestamp,
+                        intent.sender,
+                        solution.intents[solution.getIntentIndex(executionIndex + 1)].sender,
+                        intent.intentData[segmentIndex]
+                    );
+                } else if (standardId == ERC20_REQUIRE_STD_ID) {
+                    contextData = _executeErc20Require(intent.sender, intent.intentData[segmentIndex], contextData);
+                } else if (standardId == ERC20_REQUIRE_EXPONENTIAL_STD_ID) {
+                    contextData = _executeErc20RequireExponential(
+                        solution.timestamp, intent.sender, intent.intentData[segmentIndex], contextData
+                    );
+                } else if (standardId == ERC20_REQUIRE_LINEAR_STD_ID) {
+                    contextData =
+                        _executeErc20RequireLinear(solution.timestamp, intent.sender, intent.intentData[segmentIndex], contextData);
+                } else if (standardId == ETH_RECORD_STD_ID) {
+                    contextData = _executeEthRecord(intent.sender, contextData);
+                } else if (standardId == ETH_RELEASE_STD_ID) {
+                    _executeEthRelease(
+                        intent.sender,
+                        solution.intents[solution.getIntentIndex(executionIndex + 1)].sender,
+                        intent.intentData[segmentIndex]
+                    );
+                } else if (standardId == ETH_RELEASE_EXPONENTIAL_STD_ID) {
+                    _executeEthReleaseExponential(
+                        solution.timestamp,
+                        intent.sender,
+                        solution.intents[solution.getIntentIndex(executionIndex + 1)].sender,
+                        intent.intentData[segmentIndex]
+                    );
+                } else if (standardId == ETH_RELEASE_LINEAR_STD_ID) {
+                    _executeEthReleaseLinear(
+                        solution.timestamp,
+                        intent.sender,
+                        solution.intents[solution.getIntentIndex(executionIndex + 1)].sender,
+                        intent.intentData[segmentIndex]
+                    );
+                } else if (standardId == ETH_REQUIRE_STD_ID) {
+                    contextData = _executeEthRequire(intent.sender, intent.intentData[segmentIndex], contextData);
+                } else if (standardId == ETH_REQUIRE_EXPONENTIAL_STD_ID) {
+                    contextData = _executeEthRequireExponential(
+                        solution.timestamp, intent.sender, intent.intentData[segmentIndex], contextData
+                    );
+                } else if (standardId == ETH_REQUIRE_LINEAR_STD_ID) {
+                    contextData = _executeEthRequireLinear(solution.timestamp, intent.sender, intent.intentData[segmentIndex], contextData);
+                } else if (standardId == SEQUENTIAL_NONCE_STD_ID) {
+                    _executeSequentialNonce(intent.sender, intent.intentData[segmentIndex]);
+                } else if (standardId == USER_OPERATION_STD_ID) {
+                    _executeUserOperation(intent.sender, intent.intentData[segmentIndex]);
+                } else {
+                    revert("Cannot execute invalid standard");
+                }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             } else {
                 IIntentStandard intentStandard = _registeredStandards[standardId];
                 if (intentStandard == IIntentStandard(address(0))) {
                     revert FailedIntent(intentIndex, segmentIndex, "AA82 unknown standard");
                 }
 
-                _executionStateContext = intent.sender;
-                _executionIntentStandard = address(intentStandard);
+                _executionState = keccak256(abi.encodePacked(intent.sender, address(intentStandard)));
                 bool success = Exec.call(
                     address(intentStandard),
                     0,
@@ -241,9 +415,45 @@ contract EntryPoint is IEntryPoint, NonceManager, IntentStandardRegistry, Embedd
         // validate intent standards are recognized and formatted correctly
         for (uint256 i = 0; i < intent.intentData.length; i++) {
             bytes32 standardId = getSegmentStandard(intent.intentData[i]);
-            if (isEmbeddedIntentStandard(standardId)) {
-                // validate the intent segment itself
-                _validateEmbeddedIntentSegment(intent.intentData[i]);
+            // validate the intent segment itself
+            if (uint256(standardId) < NUM_EMBEDDED_STANDARDS) {
+                if (standardId == SIMPLE_CALL_STD_ID) {
+                    _validateSimpleCall(intent.intentData[i]);
+                } else if (standardId == ERC20_RECORD_STD_ID) {
+                    _validateErc20Record(intent.intentData[i]);
+                } else if (standardId == ERC20_RELEASE_STD_ID) {
+                    _validateErc20Release(intent.intentData[i]);
+                } else if (standardId == ERC20_RELEASE_EXPONENTIAL_STD_ID) {
+                    _validateErc20ReleaseExponential(intent.intentData[i]);
+                } else if (standardId == ERC20_RELEASE_LINEAR_STD_ID) {
+                    _validateErc20ReleaseLinear(intent.intentData[i]);
+                } else if (standardId == ERC20_REQUIRE_STD_ID) {
+                    _validateErc20Require(intent.intentData[i]);
+                } else if (standardId == ERC20_REQUIRE_EXPONENTIAL_STD_ID) {
+                    _validateErc20RequireExponential(intent.intentData[i]);
+                } else if (standardId == ERC20_REQUIRE_LINEAR_STD_ID) {
+                    _validateErc20RequireLinear(intent.intentData[i]);
+                } else if (standardId == ETH_RECORD_STD_ID) {
+                    _validateEthRecord(intent.intentData[i]);
+                } else if (standardId == ETH_RELEASE_STD_ID) {
+                    _validateEthRelease(intent.intentData[i]);
+                } else if (standardId == ETH_RELEASE_EXPONENTIAL_STD_ID) {
+                    _validateEthReleaseExponential(intent.intentData[i]);
+                } else if (standardId == ETH_RELEASE_LINEAR_STD_ID) {
+                    _validateEthReleaseLinear(intent.intentData[i]);
+                } else if (standardId == ETH_REQUIRE_STD_ID) {
+                    _validateEthRequire(intent.intentData[i]);
+                } else if (standardId == ETH_REQUIRE_EXPONENTIAL_STD_ID) {
+                    _validateEthRequireExponential(intent.intentData[i]);
+                } else if (standardId == ETH_REQUIRE_LINEAR_STD_ID) {
+                    _validateEthRequireLinear(intent.intentData[i]);
+                } else if (standardId == SEQUENTIAL_NONCE_STD_ID) {
+                    _validateSequentialNonce(intent.intentData[i]);
+                } else if (standardId == USER_OPERATION_STD_ID) {
+                    _validateUserOperation(intent.intentData[i]);
+                } else {
+                    revert("Cannot validate invalid standard");
+                }
             } else {
                 IIntentStandard standard = _registeredStandards[standardId];
                 if (standard == IIntentStandard(address(0))) {
@@ -277,16 +487,16 @@ contract EntryPoint is IEntryPoint, NonceManager, IntentStandardRegistry, Embedd
      * returns true if the given standard is currently executing an intent segment for the msg.sender.
      */
     function verifyExecutingIntentSegmentForStandard(IIntentStandard intentStandard) external view returns (bool) {
-        return _executionStateContext == msg.sender && _executionIntentStandard == address(intentStandard);
+        return _executionState == keccak256(abi.encodePacked(msg.sender, address(intentStandard)));
     }
 
     /**
      * Manually set the nonce of the sender.
      * @dev this method should only be allowed to be called by the currently executing intent standard contract
      */
-    function setNonce(uint256 key, uint256 nonce) external override {
-        require(msg.sender == _executionIntentStandard, "Invalid nonce access");
-        _setNonce(_executionStateContext, key, nonce);
+    function setNonce(address sender, uint256 key, uint256 nonce) external override {
+        require(_executionState == keccak256(abi.encodePacked(sender, msg.sender)), "Invalid nonce access");
+        _setNonce(sender, key, nonce);
     }
 
     /**

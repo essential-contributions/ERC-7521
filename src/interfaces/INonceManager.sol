@@ -15,8 +15,9 @@ interface INonceManager {
      * Manually set the nonce of the sender.
      * @dev this method should only be allowed to be called by the currently executing intent standard contract
      *
+     * @param sender the account address
      * @param key the unique key that points to the nonce
      * @param nonce the nonce value
      */
-    function setNonce(uint256 key, uint256 nonce) external;
+    function setNonce(address sender, uint256 key, uint256 nonce) external;
 }

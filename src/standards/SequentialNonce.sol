@@ -32,7 +32,7 @@ abstract contract SequentialNonceCore {
         uint192 key = uint192(nonce >> 64);
         uint64 next = uint64(nonceManager.getNonce(intentSender, key) + 1);
         require(uint64(nonce) == next, "Invalid nonce");
-        nonceManager.setNonce(key, next);
+        nonceManager.setNonce(intentSender, key, next);
     }
 }
 
