@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { deployTestEnvironment, Environment, SmartContractAccount } from './utils/environment';
+import { deployTestEnvironment, Environment, ECDSASmartContractAccount } from './utils/environment';
 import { buildSolution, UserIntent } from './utils/intent';
 import { Curve, LinearCurve } from './utils/curveCoder';
 
@@ -11,11 +11,11 @@ describe('Transfer ETH Test', () => {
   let env: Environment;
 
   before(async () => {
-    env = await deployTestEnvironment({ numAbstractAccounts: MAX_INTENTS + 1 });
+    env = await deployTestEnvironment({ numECDSAAccounts: MAX_INTENTS + 1, numBLSAccounts: MAX_INTENTS + 1 });
 
     //fund accounts
     await (await env.test.erc20.mint(env.deployerAddress, ethers.parseEther('1000'))).wait();
-    for (const account of env.abstractAccounts) {
+    for (const account of env.ecdsaAccounts) {
       await (await env.test.erc20.mint(account.contractAddress, ethers.parseEther('1000'))).wait();
       await (
         await env.deployer.sendTransaction({ to: account.contractAddress, value: ethers.parseEther('10') })
@@ -49,7 +49,7 @@ describe('Transfer ETH Test', () => {
   it('Should run single intent', async () => {
     // intent transfer (1252bytes, 194913gas)
     const timestamp = (await env.provider.getBlock('latest'))?.timestamp || 0;
-    const account = env.abstractAccounts[0];
+    const account = env.ecdsaAccounts[0];
     const to = ethers.hexlify(ethers.randomBytes(20));
     const amount = ethers.parseEther('1');
     const gas = ethers.parseEther('0.1');
@@ -99,7 +99,7 @@ describe('Transfer ETH Test', () => {
     const previousFromBalances: bigint[] = [];
     const previousFromBalancesErc20: bigint[] = [];
     for (let i = 0; i < MAX_INTENTS; i++) {
-      const account = env.abstractAccounts[i + 1];
+      const account = env.ecdsaAccounts[i + 1];
       const to = ethers.hexlify(ethers.randomBytes(20));
       toAddresses.push(to);
       previousToBalances.push(await env.provider.getBalance(to));
@@ -109,7 +109,7 @@ describe('Transfer ETH Test', () => {
 
     const intents = [];
     for (let i = 0; i < MAX_INTENTS; i++) {
-      const account = env.abstractAccounts[i + 1];
+      const account = env.ecdsaAccounts[i + 1];
       const to = toAddresses[i];
       const intent = new UserIntent(account.contractAddress);
       intent.addSegment(env.standards.sequentialNonce(1));
@@ -144,7 +144,7 @@ describe('Transfer ETH Test', () => {
       'Solvers token balance is incorrect',
     );
     for (let i = 0; i < MAX_INTENTS; i++) {
-      const account = env.abstractAccounts[i + 1];
+      const account = env.ecdsaAccounts[i + 1];
       expect(await env.test.erc20.balanceOf(account.contractAddress)).to.equal(
         previousFromBalancesErc20[i] - gas,
         'Senders token balance is incorrect',
@@ -161,7 +161,7 @@ describe('Transfer ETH Test', () => {
   });
 
   // helper function to generate transfer tx calldata
-  function generateExecuteTransferTx(account: SmartContractAccount, to: string, amount: bigint): string {
+  function generateExecuteTransferTx(account: ECDSASmartContractAccount, to: string, amount: bigint): string {
     return account.contract.interface.encodeFunctionData('execute', [to, amount, '0x']);
   }
 
