@@ -3,10 +3,10 @@ pragma solidity ^0.8.22;
 
 /* solhint-disable func-name-mixedcase */
 
-import "./utils/ScenarioTestEnvironment.sol";
+import "./utils/TestEnvironment.sol";
 import "../../src/interfaces/IEntryPoint.sol";
 
-contract AbstractAccountTest is ScenarioTestEnvironment {
+contract ECDSAAccountTest is TestEnvironment {
     function test_entryPoint() public {
         assertEq(address(_account.entryPoint()), address(_entryPoint));
     }
@@ -18,7 +18,7 @@ contract AbstractAccountTest is ScenarioTestEnvironment {
         bytes[] memory datas = new bytes[](2);
 
         UserIntent memory intent = _intent();
-        bytes memory badCallData = abi.encodeWithSelector(AbstractAccount.executeMulti.selector, targets, values, datas);
+        bytes memory badCallData = abi.encodeWithSelector(ECDSAAccount.executeMulti.selector, targets, values, datas);
         intent = _addSimpleCall(intent, badCallData);
         intent = _signIntent(intent);
 
@@ -35,7 +35,7 @@ contract AbstractAccountTest is ScenarioTestEnvironment {
         bytes[] memory datas = new bytes[](1);
 
         UserIntent memory intent = _intent();
-        bytes memory badCallData = abi.encodeWithSelector(AbstractAccount.executeMulti.selector, targets, values, datas);
+        bytes memory badCallData = abi.encodeWithSelector(ECDSAAccount.executeMulti.selector, targets, values, datas);
         intent = _addSimpleCall(intent, badCallData);
         intent = _signIntent(intent);
 

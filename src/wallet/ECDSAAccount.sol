@@ -13,7 +13,7 @@ import {UserIntent} from "../interfaces/UserIntent.sol";
 import {Exec} from "../utils/Exec.sol";
 import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 
-contract AbstractAccount is EntryPointTruster, IAccount, IIntentDelegate {
+contract ECDSAAccount is EntryPointTruster, IAccount, IIntentDelegate {
     using ECDSA for bytes32;
 
     uint256 private constant REVERT_REASON_MAX_LEN = 2048;
@@ -95,6 +95,7 @@ contract AbstractAccount is EntryPointTruster, IAccount, IIntentDelegate {
     function validateUserIntent(UserIntent calldata intent, bytes32 intentHash)
         external
         view
+        virtual
         override
         returns (IAggregator)
     {

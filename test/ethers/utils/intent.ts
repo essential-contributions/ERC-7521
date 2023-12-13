@@ -1,5 +1,9 @@
+import { expect } from 'chai';
+import { BlsSignerInterface, BlsVerifier } from '@thehubbleproject/bls/dist/signer';
 import { IntentSolutionStruct, UserIntentStruct } from '../../../typechain/src/core/EntryPoint';
-import { ethers, AddressLike, BytesLike, Provider, Signer } from 'ethers';
+import { ethers, AddressLike, BigNumberish, BytesLike, Provider, Signer } from 'ethers';
+import { BLSSignatureAggregator } from '../../../typechain';
+import { hashToPoint } from '@thehubbleproject/bls/dist/mcl';
 
 // The intent object
 export class UserIntent {
@@ -39,6 +43,25 @@ export class UserIntent {
   public async sign(chainId: bigint, entrypoint: string, signer: Signer): Promise<string> {
     const hash = ethers.getBytes(this.hash(chainId, entrypoint));
     this.signature = await signer.signMessage(hash);
+    return this.signature;
+  }
+
+  public async signBLS(
+    signer: BlsSignerInterface,
+    blsAggregator: BLSSignatureAggregator,
+    bls_domain: Uint8Array,
+  ): Promise<string> {
+    const requestHash = await blsAggregator.getUserIntentHash(this.asUserIntentStruct());
+    const sigParts = signer.sign(requestHash);
+    this.signature = ethers.concat(sigParts);
+    expect(this.signature.length).to.equal(130); // 64-byte hex value
+
+    const verifier = new BlsVerifier(bls_domain);
+    expect(verifier.verify(sigParts, signer.pubkey, requestHash)).to.equal(true);
+
+    const ret = await blsAggregator.validateIntentSignature(this.asUserIntentStruct());
+    expect(ret).to.equal('0x');
+
     return this.signature;
   }
 

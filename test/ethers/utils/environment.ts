@@ -1,12 +1,18 @@
+import { BlsSignerFactory, BlsSignerInterface } from '@thehubbleproject/bls/dist/signer';
 import { Provider, Signer } from 'ethers';
 import { ethers } from 'hardhat';
 import {
-  AbstractAccount,
+  ECDSAAccount,
+  BLSAccount,
+  BLSOpen,
+  BLSSignatureAggregator,
+  BLSSignatureAggregator__factory,
   EntryPoint,
   SolverUtils,
   TestERC20,
   TestUniswap,
   TestWrappedNativeToken,
+  BLSOpen__factory,
 } from '../../../typechain';
 import { Curve, LinearCurve, ExponentialCurve } from './curveCoder';
 import { SimpleCallSegment } from './standards/simpleCall';
@@ -49,22 +55,31 @@ export type Environment = {
     solverUtilsAddress: string;
   };
   solverUtils: SolverUtils;
-  abstractAccounts: SmartContractAccount[];
+  ecdsaAccounts: ECDSASmartContractAccount[];
+  blsAccounts: BLSSmartContractAccount[];
+  blsAggregator: BLSSignatureAggregator;
+  blsDomain: Uint8Array;
 };
-export type SmartContractAccount = {
-  contract: AbstractAccount;
+export type ECDSASmartContractAccount = {
+  contract: ECDSAAccount;
   contractAddress: string;
   signer: Signer;
+};
+export type BLSSmartContractAccount = {
+  contract: BLSAccount;
+  contractAddress: string;
+  signer: BlsSignerInterface;
 };
 
 // Deploy configuration options
 export type DeployConfiguration = {
-  numAbstractAccounts: number;
+  numECDSAAccounts: number;
+  numBLSAccounts: number;
 };
 
 // Deploy the testing environment
 export async function deployTestEnvironment(
-  config: DeployConfiguration = { numAbstractAccounts: 4 },
+  config: DeployConfiguration = { numECDSAAccounts: 4, numBLSAccounts: 4 },
 ): Promise<Environment> {
   const provider = ethers.provider;
   const network = await provider.getNetwork();
@@ -155,19 +170,41 @@ export async function deployTestEnvironment(
   const solverUtilsAddress = await solverUtils.getAddress();
 
   //deploy smart contract wallets
-  const abstractAccounts = [];
-  for (let i = 0; i < config.numAbstractAccounts; i++) {
+  const ecdsaAccounts = [];
+  for (let i = 0; i < config.numECDSAAccounts; i++) {
     const signer = new ethers.Wallet(ethers.hexlify(ethers.randomBytes(32)));
     const account = await ethers.deployContract(
-      'AbstractAccount',
+      'ECDSAAccount',
       [entrypointAddress, await signer.getAddress()],
       deployer,
     );
-    abstractAccounts.push({
-      contract: account,
-      contractAddress: await account.getAddress(),
-      signer,
-    });
+    ecdsaAccounts.push({ contract: account, contractAddress: await account.getAddress(), signer });
+  }
+
+  // deploy BLS wallets
+  const abi = new ethers.AbiCoder();
+  const blsDomain = ethers.getBytes(ethers.keccak256(abi.encode(['string'], ['eip7521.bls.domain'])));
+  const BLSOpenLib = await new BLSOpen__factory(deployer).deploy();
+
+  const blsAggregator = await new BLSSignatureAggregator__factory(
+    {
+      'src/wallet/bls/lib/BLSOpen.sol:BLSOpen': await BLSOpenLib.getAddress(),
+    },
+    deployer,
+  ).deploy(entrypointAddress);
+  let factory = await BlsSignerFactory.new();
+
+  const blsAccounts = [];
+  for (let i = 0; i < config.numBLSAccounts; i++) {
+    const signer = factory.getSigner(blsDomain, ethers.hexlify(ethers.randomBytes(32)));
+
+    const blsAccount = await ethers.deployContract(
+      'BLSAccount',
+      [entrypointAddress, await blsAggregator.getAddress(), signer.pubkey],
+      deployer,
+    );
+
+    blsAccounts.push({ contract: blsAccount, contractAddress: await blsAccount.getAddress(), signer });
   }
 
   //fund exchange
@@ -221,6 +258,9 @@ export async function deployTestEnvironment(
       solverUtilsAddress,
     },
     solverUtils,
-    abstractAccounts,
+    ecdsaAccounts,
+    blsAccounts,
+    blsAggregator,
+    blsDomain,
   };
 }
