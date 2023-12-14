@@ -18,7 +18,7 @@ abstract contract EthRecordCore {
      * Validate intent segment structure (typically just formatting).
      */
     function _validateEthRecord(bytes calldata segmentData) internal pure {
-        require(segmentData.length != 32, "ETH Record data length invalid");
+        require(segmentData.length == 32, "ETH Record data length invalid");
     }
 
     /**

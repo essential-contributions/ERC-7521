@@ -77,20 +77,12 @@ export async function deployTestEnvironment(
   const callStdId = '0x0000000000000000000000000000000000000000000000000000000000000000';
   const erc20RecordStdId = '0x0000000000000000000000000000000000000000000000000000000000000001';
   const erc20ReleaseStdId = '0x0000000000000000000000000000000000000000000000000000000000000002';
-  const erc20ReleaseExpStdId = '0x0000000000000000000000000000000000000000000000000000000000000003';
-  const erc20ReleaseLinStdId = '0x0000000000000000000000000000000000000000000000000000000000000004';
-  const erc20RequireStdId = '0x0000000000000000000000000000000000000000000000000000000000000005';
-  const erc20RequireExpStdId = '0x0000000000000000000000000000000000000000000000000000000000000006';
-  const erc20RequireLinStdId = '0x0000000000000000000000000000000000000000000000000000000000000007';
-  const ethRecordStdId = '0x0000000000000000000000000000000000000000000000000000000000000008';
-  const ethReleaseStdId = '0x0000000000000000000000000000000000000000000000000000000000000009';
-  const ethReleaseExpStdId = '0x000000000000000000000000000000000000000000000000000000000000000a';
-  const ethReleaseLinStdId = '0x000000000000000000000000000000000000000000000000000000000000000b';
-  const ethRequireStdId = '0x000000000000000000000000000000000000000000000000000000000000000c';
-  const ethRequireExpStdId = '0x000000000000000000000000000000000000000000000000000000000000000d';
-  const ethRequireLinStdId = '0x000000000000000000000000000000000000000000000000000000000000000e';
-  const sequentialNonceStdId = '0x000000000000000000000000000000000000000000000000000000000000000f';
-  const userOperationStdId = '0x0000000000000000000000000000000000000000000000000000000000000010';
+  const erc20RequireStdId = '0x0000000000000000000000000000000000000000000000000000000000000003';
+  const ethRecordStdId = '0x0000000000000000000000000000000000000000000000000000000000000004';
+  const ethReleaseStdId = '0x0000000000000000000000000000000000000000000000000000000000000005';
+  const ethRequireStdId = '0x0000000000000000000000000000000000000000000000000000000000000006';
+  const sequentialNonceStdId = '0x0000000000000000000000000000000000000000000000000000000000000007';
+  const userOperationStdId = '0x0000000000000000000000000000000000000000000000000000000000000008';
 
   //deploy misc test contracts
   const testERC20 = await ethers.deployContract('TestERC20', [], deployer);
@@ -140,27 +132,11 @@ export async function deployTestEnvironment(
       userOp: (callData: string, gasLimit: number) => new UserOperationSegment(userOperationStdId, callData, gasLimit),
       sequentialNonce: (nonce: number) => new SequentialNonceSegment(sequentialNonceStdId, nonce),
       ethRecord: () => new EthRecordSegment(ethRecordStdId),
-      ethRelease: (curve: Curve) => {
-        if (curve instanceof ExponentialCurve) return new EthReleaseSegment(ethReleaseExpStdId, curve);
-        if (curve instanceof LinearCurve) return new EthReleaseSegment(ethReleaseLinStdId, curve);
-        return new EthReleaseSegment(ethReleaseStdId, curve);
-      },
-      ethRequire: (curve: Curve) => {
-        if (curve instanceof ExponentialCurve) return new EthRequireSegment(ethRequireExpStdId, curve);
-        if (curve instanceof LinearCurve) return new EthRequireSegment(ethRequireLinStdId, curve);
-        return new EthRequireSegment(ethRequireStdId, curve);
-      },
+      ethRelease: (curve: Curve) => new EthReleaseSegment(ethReleaseStdId, curve),
+      ethRequire: (curve: Curve) => new EthRequireSegment(ethRequireStdId, curve),
       erc20Record: (contract: string) => new Erc20RecordSegment(erc20RecordStdId, contract),
-      erc20Release: (contract: string, curve: Curve) => {
-        if (curve instanceof ExponentialCurve) return new Erc20ReleaseSegment(erc20ReleaseExpStdId, contract, curve);
-        if (curve instanceof LinearCurve) return new Erc20ReleaseSegment(erc20ReleaseLinStdId, contract, curve);
-        return new Erc20ReleaseSegment(erc20ReleaseStdId, contract, curve);
-      },
-      erc20Require: (contract: string, curve: Curve) => {
-        if (curve instanceof ExponentialCurve) return new Erc20RequireSegment(erc20RequireExpStdId, contract, curve);
-        if (curve instanceof LinearCurve) return new Erc20RequireSegment(erc20RequireLinStdId, contract, curve);
-        return new Erc20RequireSegment(erc20RequireStdId, contract, curve);
-      },
+      erc20Release: (contract: string, curve: Curve) => new Erc20ReleaseSegment(erc20ReleaseStdId, contract, curve),
+      erc20Require: (contract: string, curve: Curve) => new Erc20RequireSegment(erc20RequireStdId, contract, curve),
     },
     test: {
       erc20: testERC20,

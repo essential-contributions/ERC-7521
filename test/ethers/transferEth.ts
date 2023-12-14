@@ -4,7 +4,7 @@ import { deployTestEnvironment, Environment, SmartContractAccount } from './util
 import { buildSolution, UserIntent } from './utils/intent';
 import { Curve, LinearCurve } from './utils/curveCoder';
 
-const LOGGING_ENABLED = true;
+const LOGGING_ENABLED = false;
 
 describe('Transfer ETH Test', () => {
   const MAX_INTENTS = 4;
@@ -47,14 +47,12 @@ describe('Transfer ETH Test', () => {
   });
 
   it('Should run single intent', async () => {
-    // intent transfer (1252bytes, 194913gas)
-    // intent transfer (1252bytes, 186582gas) - embedded standards
-    // intent transfer (1252bytes, 164520gas) - refactored embedded standards
+    // intent transfer (1380bytes, 146371gas)
     const timestamp = (await env.provider.getBlock('latest'))?.timestamp || 0;
     const account = env.abstractAccounts[0];
     const to = ethers.hexlify(ethers.randomBytes(20));
     const amount = ethers.parseEther('1');
-    const gas = ethers.parseEther('0.1');
+    const gas = roundForEncoding(ethers.parseEther('0.1'));
     const previousSolverBalanceErc20 = await env.test.erc20.balanceOf(env.deployerAddress);
     const previousFromBalanceErc20 = await env.test.erc20.balanceOf(account.contractAddress);
     const previousToBalance = await env.provider.getBalance(to);
@@ -67,7 +65,8 @@ describe('Transfer ETH Test', () => {
     await intent.sign(env.chainId, env.entrypointAddress, account.signer);
 
     const solverIntent = new UserIntent(env.deployerAddress);
-    const tx = env.entrypoint.handleIntents(buildSolution(timestamp, [intent, solverIntent], []));
+    const order = [0, 0, 1, 0];
+    const tx = env.entrypoint.handleIntents(buildSolution(timestamp, [intent, solverIntent], order));
     await expect(tx).to.not.be.reverted;
 
     if (LOGGING_ENABLED) {
@@ -91,12 +90,10 @@ describe('Transfer ETH Test', () => {
   });
 
   it('Should run multi intent', async () => {
-    // intent transfer (1065bytes, 167613gas)
-    // intent transfer (1065bytes, 158943gas) - embedded standards
-    // intent transfer (1065bytes, 127884gas) - refactored embedded standards
+    // intent transfer (1065bytes, 117618gas)
     const timestamp = (await env.provider.getBlock('latest'))?.timestamp || 0;
     const amount = ethers.parseEther('1');
-    const gas = ethers.parseEther('0.1');
+    const gas = roundForEncoding(ethers.parseEther('0.1'));
     const previousSolverBalanceErc20 = await env.test.erc20.balanceOf(env.deployerAddress);
     const toAddresses: string[] = [];
     const previousToBalances: bigint[] = [];
@@ -177,5 +174,12 @@ describe('Transfer ETH Test', () => {
     const startAmount = 0n;
     const endAmount = amount * BigInt(duration / evaluateAt);
     return new LinearCurve(startTime, duration, startAmount, endAmount);
+  }
+
+  // helper function to round to the nearest encoded value
+  function roundForEncoding(amount: bigint): bigint {
+    const timestamp = Math.round(new Date().getTime() / 1000);
+    const curve = generateLinearRelease(timestamp, amount);
+    return curve.evaluate(timestamp);
   }
 });

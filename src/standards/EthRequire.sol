@@ -1,46 +1,49 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.22;
 
-/* solhint-disable private-vars-leading-underscore */
-
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
 import {pop} from "./utils/ContextData.sol";
 import {getSegmentWord} from "./utils/SegmentData.sol";
-import {
-    evaluateConstantCurve, encodeConstantCurve, isConstantCurveRelative, encodeAsUint96
-} from "./utils/CurveCoder.sol";
+import {evaluateCurve, encodeConstantCurve, encodeComplexCurve, isCurveRelative} from "./utils/CurveCoder.sol";
 
 /**
- * Eth Require Intent Standard core logic
+ * Eth Require with Exponential Curve Intent Standard core logic
  * @dev data
  *   [bytes32] standard - the intent standard identifier
- *   [uint96]  amount - amount required
- *   [uint8]   amountMult - amount multiplier (final_amount = amount << amountMult)
- *   [bytes1]  flags - negative, relative or absolute [nrxx xxxx]
+ *   [uint40]  startTime - start time of the curve (in seconds)
+ *   [uint32]  deltaTime - amount of time from start until curve caps (in seconds)
+ *   [uint96]  startAmount - starting amount
+ *   [uint8]   startAmountMult - starting amount multiplier (final_amount = amount * (amountMult * 10))
+ *   [uint64]  deltaAmount - amount of change after each second
+ *   [uint8]   deltaAmountMult - delta amount multiplier (final_amount = amount * (amountMult * 10))
+ *   [bytes1]  flags/exponent - evaluate backwards, negatives, relative or absolute, exponent [bnnr eeee]
  */
 abstract contract EthRequireCore {
     /**
      * Validate intent segment structure (typically just formatting).
      */
     function _validateEthRequire(bytes calldata segmentData) internal pure {
-        require(segmentData.length != 46, "ETH Require data length invalid");
+        require(segmentData.length == 38 || segmentData.length == 48, "ETH Release data length invalid");
     }
 
     /**
      * Performs part or all of the execution for an intent.
      */
-    function _executeEthRequire(address intentSender, bytes calldata segmentData, bytes memory context)
-        internal
-        view
-        returns (bytes memory newContext)
-    {
+    function _executeEthRequire(
+        uint256 timestamp,
+        address intentSender,
+        bytes calldata segmentData,
+        bytes memory context
+    ) internal view returns (bytes memory newContext) {
         //evaluate data
-        bytes32 curve = getSegmentWord(segmentData, 32);
-        int256 requiredBalance = evaluateConstantCurve(curve);
-        if (isConstantCurveRelative(curve)) {
+        bytes16 curve = segmentData.length < 48
+            ? bytes16(getSegmentWord(segmentData, 6) << (26 * 8))
+            : bytes16(getSegmentWord(segmentData, 16) << (16 * 8));
+        int256 requiredBalance = evaluateCurve(curve, timestamp);
+        if (isCurveRelative(curve)) {
             //relative to previous balance
             bytes32 previousBalance;
             (newContext, previousBalance) = pop(context);
@@ -68,7 +71,7 @@ abstract contract EthRequireCore {
 }
 
 /**
- * Eth Release Intent Standard that can be deployed and registered to the entry point
+ * Eth Require with Exponential Curve Intent Standard that can be deployed and registered to the entry point
  */
 contract EthRequire is EthRequireCore, IIntentStandard {
     using IntentSolutionLib for IntentSolution;
@@ -96,7 +99,7 @@ contract EthRequire is EthRequireCore, IIntentStandard {
         bytes calldata context
     ) external view override returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
-        return _executeEthRequire(intent.sender, intent.intentData[segmentIndex], context);
+        return _executeEthRequire(solution.timestamp, intent.sender, intent.intentData[segmentIndex], context);
     }
 }
 
@@ -108,7 +111,32 @@ contract EthRequire is EthRequireCore, IIntentStandard {
  * @return the fully encoded intent standard segment data
  */
 function encodeEthRequireData(bytes32 standardId, int256 amount, bool isRelative) pure returns (bytes memory) {
-    (uint96 adjustedAmount, uint8 amountMult, bool amountNegative) = encodeAsUint96(amount);
-    bytes32 data = encodeConstantCurve(uint96(adjustedAmount), amountMult, amountNegative, isRelative);
-    return abi.encodePacked(standardId, bytes14(data));
+    bytes6 data = encodeConstantCurve(amount, isRelative);
+    return abi.encodePacked(standardId, data);
+}
+
+/**
+ * Helper function to encode intent standard segment data.
+ * @param standardId the entry point identifier for this standard
+ * @param startTime start time of the curve (in seconds)
+ * @param deltaTime amount of time from start until curve caps (in seconds)
+ * @param startAmount starting amount
+ * @param deltaAmount amount of change after each second
+ * @param exponent the exponent order of the curve
+ * @param backwards evaluate curve from right to left
+ * @param isRelative meant to be evaluated relatively
+ * @return the fully encoded intent standard segment data
+ */
+function encodeEthRequireComplexData(
+    bytes32 standardId,
+    uint32 startTime,
+    uint24 deltaTime,
+    int256 startAmount,
+    int256 deltaAmount,
+    uint8 exponent,
+    bool backwards,
+    bool isRelative
+) pure returns (bytes memory) {
+    bytes16 data = encodeComplexCurve(startTime, deltaTime, startAmount, deltaAmount, exponent, backwards, isRelative);
+    return abi.encodePacked(standardId, data);
 }

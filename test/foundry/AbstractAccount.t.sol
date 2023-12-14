@@ -22,7 +22,7 @@ contract AbstractAccountTest is ScenarioTestEnvironment {
         intent = _addSimpleCall(intent, badCallData);
         intent = _signIntent(intent);
 
-        IntentSolution memory solution = _solution(intent, _solverIntent("", "", "", 0));
+        IntentSolution memory solution = _solution(intent, _solverIntent());
 
         vm.expectRevert("invalid multi call inputs");
         _entryPoint.handleIntents(solution);
@@ -39,7 +39,7 @@ contract AbstractAccountTest is ScenarioTestEnvironment {
         intent = _addSimpleCall(intent, badCallData);
         intent = _signIntent(intent);
 
-        IntentSolution memory solution = _solution(intent, _solverIntent("", "", "", 0));
+        IntentSolution memory solution = _solution(intent, _solverIntent());
 
         vm.expectRevert("invalid multi call inputs");
         _entryPoint.handleIntents(solution);

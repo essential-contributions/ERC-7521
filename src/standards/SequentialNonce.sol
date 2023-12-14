@@ -19,7 +19,7 @@ abstract contract SequentialNonceCore {
      * Validate intent segment structure (typically just formatting).
      */
     function _validateSequentialNonce(bytes calldata segmentData) internal pure {
-        require(segmentData.length != 64, "Sequential Nonce data length invalid");
+        require(segmentData.length == 64, "Sequential Nonce data length invalid");
     }
 
     /**

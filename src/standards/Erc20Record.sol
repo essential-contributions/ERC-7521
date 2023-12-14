@@ -19,7 +19,7 @@ abstract contract Erc20RecordCore {
      * Validate intent segment structure (typically just formatting).
      */
     function _validateErc20Record(bytes calldata segmentData) internal pure {
-        require(segmentData.length != 52, "ERC-20 Record data length invalid");
+        require(segmentData.length == 52, "ERC-20 Record data length invalid");
     }
 
     /**

@@ -7,10 +7,10 @@ import "forge-std/Test.sol";
 import {EntryPoint} from "../../../src/core/EntryPoint.sol";
 import {UserIntent, UserIntentLib} from "../../../src/interfaces/UserIntent.sol";
 import {IntentBuilder} from "./IntentBuilder.sol";
-import {EthReleaseLinear, encodeEthReleaseLinearData} from "../../../src/standards/EthReleaseLinear.sol";
-import {ETH_RELEASE_LINEAR_STD_ID} from "../../../src/core/EmbeddedIntentStandards.sol";
+import {EthRelease, encodeEthReleaseComplexData} from "../../../src/standards/EthRelease.sol";
+import {ETH_RELEASE_STD_ID} from "../../../src/core/EntryPoint.sol";
 import {EthRequire, encodeEthRequireData} from "../../../src/standards/EthRequire.sol";
-import {ETH_REQUIRE_STD_ID} from "../../../src/core/EmbeddedIntentStandards.sol";
+import {ETH_REQUIRE_STD_ID} from "../../../src/core/EntryPoint.sol";
 import {SimpleCall} from "../../../src/standards/SimpleCall.sol";
 import {AbstractAccount} from "../../../src/wallet/AbstractAccount.sol";
 import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
@@ -21,7 +21,7 @@ abstract contract TestEnvironment is Test {
     using ECDSA for bytes32;
 
     EntryPoint internal _entryPoint;
-    EthReleaseLinear internal _ethReleaseLinear;
+    EthRelease internal _ethRelease;
     EthRequire internal _ethRequire;
     SimpleCall internal _simpleCall;
     AbstractAccount internal _account;
@@ -32,30 +32,30 @@ abstract contract TestEnvironment is Test {
         _entryPoint = new EntryPoint();
         _simpleCall = new SimpleCall();
         _ethRequire = new EthRequire();
-        _ethReleaseLinear = new EthReleaseLinear();
+        _ethRelease = new EthRelease();
         _account = new AbstractAccount(_entryPoint, _publicAddress);
 
         //register intent standards to entry point
-        _entryPoint.registerIntentStandard(_ethReleaseLinear);
+        _entryPoint.registerIntentStandard(_ethRelease);
     }
 
     function _intent() internal view returns (UserIntent memory) {
         UserIntent memory intent = IntentBuilder.create(address(_account));
-        intent = _addEthReleaseLinear(intent, uint40(block.timestamp), uint32(20), 10, 2);
+        intent = _addEthRelease(intent, uint32(block.timestamp), 20, 10, 2);
         intent = _addEthRequire(intent, 10, false);
 
         return intent;
     }
 
-    function _addEthReleaseLinear(
+    function _addEthRelease(
         UserIntent memory intent,
-        uint40 startTime,
-        uint32 deltaTime,
+        uint32 startTime,
+        uint24 deltaTime,
         int256 startAmount,
         int256 deltaAmount
     ) internal pure returns (UserIntent memory) {
         return intent.addSegment(
-            encodeEthReleaseLinearData(ETH_RELEASE_LINEAR_STD_ID, startTime, deltaTime, startAmount, deltaAmount)
+            encodeEthReleaseComplexData(ETH_RELEASE_STD_ID, startTime, deltaTime, startAmount, deltaAmount, 0, false)
         );
     }
 
