@@ -13,7 +13,7 @@ import {evaluateCurve, encodeConstantCurve, encodeComplexCurve} from "./utils/Cu
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
 /**
- * ERC20 Release with Exponential Curve Intent Standard core logic
+ * ERC20 Release Intent Standard core logic
  * @dev data
  *   [bytes32] standard - the intent standard identifier
  *   [address] token - the ERC20 token contract address

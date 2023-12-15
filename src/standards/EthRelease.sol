@@ -12,7 +12,7 @@ import {getSegmentWord} from "./utils/SegmentData.sol";
 import {evaluateCurve, encodeConstantCurve, encodeComplexCurve} from "./utils/CurveCoder.sol";
 
 /**
- * Eth Release with Exponential Curve Intent Standard core logic
+ * Eth Release Intent Standard core logic
  * @dev data
  *   [bytes32] standard - the intent standard identifier
  *   [bytes1]  flags - curve type, evaluate backwards (flip), negatives [c--- fnnn]
@@ -56,7 +56,7 @@ abstract contract EthReleaseCore is EthReleaseDelegate {
 }
 
 /**
- * Eth Release with Exponential Curve Intent Standard that can be deployed and registered to the entry point
+ * Eth Release Intent Standard that can be deployed and registered to the entry point
  */
 contract EthRelease is EthReleaseCore, IIntentStandard {
     using IntentSolutionLib for IntentSolution;

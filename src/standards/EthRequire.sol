@@ -10,7 +10,7 @@ import {getSegmentWord} from "./utils/SegmentData.sol";
 import {evaluateCurve, encodeConstantCurve, encodeComplexCurve, isCurveRelative} from "./utils/CurveCoder.sol";
 
 /**
- * Eth Require with Exponential Curve Intent Standard core logic
+ * Eth Require Intent Standard core logic
  * @dev data
  *   [bytes32] standard - the intent standard identifier
  *   [uint40]  startTime - start time of the curve (in seconds)
@@ -71,7 +71,7 @@ abstract contract EthRequireCore {
 }
 
 /**
- * Eth Require with Exponential Curve Intent Standard that can be deployed and registered to the entry point
+ * Eth Require Intent Standard that can be deployed and registered to the entry point
  */
 contract EthRequire is EthRequireCore, IIntentStandard {
     using IntentSolutionLib for IntentSolution;
