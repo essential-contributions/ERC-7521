@@ -24,7 +24,7 @@ describe('Transfer ETH Test', () => {
   });
 
   it('Should run normal', async () => {
-    // intent transfer (0bytes, 51354gas)
+    // intent transfer (0bytes, 2100gas)
     const to = ethers.hexlify(ethers.randomBytes(20));
     const amount = ethers.parseEther('1');
     const previousToBalance = await env.provider.getBalance(to);
@@ -47,7 +47,7 @@ describe('Transfer ETH Test', () => {
   });
 
   it('Should run single intent', async () => {
-    // intent transfer (1380bytes, 146371gas)
+    // intent transfer (1380bytes, 147108gas)
     const timestamp = (await env.provider.getBlock('latest'))?.timestamp || 0;
     const account = env.abstractAccounts[0];
     const to = ethers.hexlify(ethers.randomBytes(20));
@@ -90,7 +90,7 @@ describe('Transfer ETH Test', () => {
   });
 
   it('Should run multi intent', async () => {
-    // intent transfer (1065bytes, 117618gas)
+    // intent transfer (1065bytes, 118353gas)
     const timestamp = (await env.provider.getBlock('latest'))?.timestamp || 0;
     const amount = ethers.parseEther('1');
     const gas = roundForEncoding(ethers.parseEther('0.1'));

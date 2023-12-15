@@ -84,64 +84,72 @@ function encodeComplexCurve(
     bool backwards,
     bool isRelative
 ) pure returns (bytes16) {
-    //convert params
-    uint256 adjustedStartAmount;
-    bool startAmountNegative;
-    if (startAmount < 0) {
-        startAmountNegative = true;
-        adjustedStartAmount = uint256(0 - startAmount);
-    } else {
-        startAmountNegative = false;
-        adjustedStartAmount = uint256(startAmount);
-    }
-    uint8 startMult = 0;
-    while (adjustedStartAmount > 0x00000000000000000000000000000000000000000000000000000000ffffffff) {
-        adjustedStartAmount = adjustedStartAmount >> 1;
-        startMult++;
-    }
-    uint256 adjustedDeltaAmount;
-    bool deltaAmountNegative;
-    if (deltaAmount < 0) {
-        deltaAmountNegative = true;
-        adjustedDeltaAmount = uint256(0 - deltaAmount);
-    } else {
-        deltaAmountNegative = false;
-        adjustedDeltaAmount = uint256(deltaAmount);
-    }
-    int256 deltaMult = 0;
-    while (adjustedDeltaAmount > 0x0000000000000000000000000000000000000000000000000000000000ffffff) {
-        adjustedDeltaAmount = adjustedDeltaAmount >> 1;
-        deltaMult++;
-    }
-    if (startAmount == 0) {
-        startMult = uint8(uint256(deltaMult));
-        deltaMult = 0;
-    } else {
-        deltaMult = int256(uint256(startMult)) - deltaMult;
-        require(deltaMult > -16, "delta too small in comparison to start");
-        require(deltaMult < 16, "delta too large in comparison to start");
-    }
-    uint8 adjustedDeltaMult;
-    bool deltaMultNegative;
-    if (deltaMult < 0) {
-        deltaMultNegative = true;
-        adjustedDeltaMult = uint8(uint256(0 - deltaMult));
-    } else {
-        deltaMultNegative = false;
-        adjustedDeltaMult = uint8(uint256(deltaMult));
-    }
-
-    //encode
-    bytes16 encoding = MASK_FLAGS_CURVE_TYPE | (bytes16(uint128(adjustedStartAmount)) << SHIFT_START_AMOUNT)
-        | (bytes16(uint128(startMult)) << SHIFT_START_AMT_MULT) | (bytes16(uint128(startTime)) << SHIFT_START_TIME)
-        | (bytes16(uint128(deltaTime)) << SHIFT_DELTA_TIME) | (bytes16(uint128(adjustedDeltaAmount)) << SHIFT_DELTA_AMOUNT)
-        | (bytes16(uint128(adjustedDeltaMult & 0x0f)) << SHIFT_DELTA_AMT_MULT)
-        | (bytes16(uint128(exponent & 0x0f)) << SHIFT_EXPONENT);
-    if (startAmountNegative) encoding = encoding | MASK_FLAGS_NEG_START_AMT;
-    if (deltaMultNegative) encoding = encoding | MASK_FLAGS_NEG_DELTA_MULT;
-    if (deltaAmountNegative) encoding = encoding | MASK_FLAGS_NEG_DELTA;
+    //start encode
+    bytes16 encoding = MASK_FLAGS_CURVE_TYPE | (bytes16(uint128(startTime)) << SHIFT_START_TIME)
+        | (bytes16(uint128(deltaTime)) << SHIFT_DELTA_TIME) | (bytes16(uint128(exponent & 0x0f)) << SHIFT_EXPONENT);
     if (isRelative) encoding = encoding | MASK_FLAGS_RELATIVE;
     if (backwards) encoding = encoding | MASK_FLAGS_FLIP;
+
+    //encode start amount
+    uint8 startMult = 0;
+    {
+        uint256 adjustedStartAmount;
+        bool startAmountNegative;
+        if (startAmount < 0) {
+            startAmountNegative = true;
+            adjustedStartAmount = uint256(0 - startAmount);
+        } else {
+            startAmountNegative = false;
+            adjustedStartAmount = uint256(startAmount);
+        }
+        while (adjustedStartAmount > 0x00000000000000000000000000000000000000000000000000000000ffffffff) {
+            adjustedStartAmount = adjustedStartAmount >> 1;
+            startMult++;
+        }
+        encoding |= (bytes16(uint128(adjustedStartAmount)) << SHIFT_START_AMOUNT)
+            | (bytes16(uint128(startMult)) << SHIFT_START_AMT_MULT);
+        if (startAmountNegative) encoding = encoding | MASK_FLAGS_NEG_START_AMT;
+    }
+
+    //encode delta amount
+    {
+        uint256 adjustedDeltaAmount;
+        bool deltaAmountNegative;
+        if (deltaAmount < 0) {
+            deltaAmountNegative = true;
+            adjustedDeltaAmount = uint256(0 - deltaAmount);
+        } else {
+            deltaAmountNegative = false;
+            adjustedDeltaAmount = uint256(deltaAmount);
+        }
+        int256 deltaMult = 0;
+        while (adjustedDeltaAmount > 0x0000000000000000000000000000000000000000000000000000000000ffffff) {
+            adjustedDeltaAmount = adjustedDeltaAmount >> 1;
+            deltaMult++;
+        }
+        if (startAmount == 0) {
+            startMult = uint8(uint256(deltaMult));
+            deltaMult = 0;
+        } else {
+            deltaMult = int256(uint256(startMult)) - deltaMult;
+            require(deltaMult > -16, "delta too small in comparison to start");
+            require(deltaMult < 16, "delta too large in comparison to start");
+        }
+        uint8 adjustedDeltaMult;
+        bool deltaMultNegative;
+        if (deltaMult < 0) {
+            deltaMultNegative = true;
+            adjustedDeltaMult = uint8(uint256(0 - deltaMult));
+        } else {
+            deltaMultNegative = false;
+            adjustedDeltaMult = uint8(uint256(deltaMult));
+        }
+        encoding |= (bytes16(uint128(adjustedDeltaAmount)) << SHIFT_DELTA_AMOUNT)
+            | (bytes16(uint128(adjustedDeltaMult & 0x0f)) << SHIFT_DELTA_AMT_MULT);
+        if (deltaMultNegative) encoding = encoding | MASK_FLAGS_NEG_DELTA_MULT;
+        if (deltaAmountNegative) encoding = encoding | MASK_FLAGS_NEG_DELTA;
+    }
+
     return encoding;
 }
 

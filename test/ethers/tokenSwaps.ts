@@ -29,7 +29,7 @@ describe('Token Swaps Test', () => {
   });
 
   it('Should run normal', async () => {
-    // intent transfer (260bytes, 117437gas)
+    // intent transfer (260bytes, 116380gas)
     const amount = ethers.parseEther('1');
     const previousFromBalance = await env.test.erc20.balanceOf(env.deployerAddress);
     const previousToBalance = await env.provider.getBalance(env.deployerAddress);
@@ -70,7 +70,7 @@ describe('Token Swaps Test', () => {
   });
 
   it('Should run single intent', async () => {
-    // intent transfer (1732bytes, 199716gas)
+    // intent transfer (1732bytes, 200230gas)
     const timestamp = (await env.provider.getBlock('latest'))?.timestamp || 0;
     const account = env.abstractAccounts[0];
     const amount = roundForEncoding(ethers.parseEther('1'));
@@ -115,7 +115,7 @@ describe('Token Swaps Test', () => {
   });
 
   it('Should run multi intent', async () => {
-    // intent transfer (1297bytes, 114010gas)
+    // intent transfer (1297bytes, 114450gas)
     const timestamp = (await env.provider.getBlock('latest'))?.timestamp || 0;
     const amount = roundForEncoding(ethers.parseEther('1'));
     const previousFromBalances: bigint[] = [];

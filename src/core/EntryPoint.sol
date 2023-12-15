@@ -113,96 +113,9 @@ contract EntryPoint is
                 uint256 numSegments = solution.intents[intentIndex].intentData.length;
 
                 if (segmentIndex < numSegments) {
-                    UserIntent calldata intent = solution.intents[intentIndex];
-                    if (intent.sender != address(0) && intent.intentData.length > 0) {
-                        bytes32 standardId = getSegmentStandard(intent.intentData[segmentIndex]);
-
-                        // check if this is an embedded standard
-                        if (uint256(standardId) < NUM_EMBEDDED_STANDARDS) {
-                            _executionState = keccak256(abi.encodePacked(intent.sender, address(this)));
-                            if (standardId == SIMPLE_CALL_STD_ID) {
-                                _executeSimpleCall(intent.sender, intent.intentData[segmentIndex]);
-                            } else if (standardId == ERC20_RECORD_STD_ID) {
-                                contextData[intentIndex] = _executeErc20Record(
-                                    intent.sender, intent.intentData[segmentIndex], contextData[intentIndex]
-                                );
-                            } else if (standardId == ERC20_RELEASE_STD_ID) {
-                                _executeErc20Release(
-                                    solution.timestamp,
-                                    intent.sender,
-                                    solution.intents[solution.getIntentIndex(executionIndex + 1)].sender,
-                                    intent.intentData[segmentIndex]
-                                );
-                            } else if (standardId == ERC20_REQUIRE_STD_ID) {
-                                contextData[intentIndex] = _executeErc20Require(
-                                    solution.timestamp,
-                                    intent.sender,
-                                    intent.intentData[segmentIndex],
-                                    contextData[intentIndex]
-                                );
-                            } else if (standardId == ETH_RECORD_STD_ID) {
-                                contextData[intentIndex] = _executeEthRecord(intent.sender, contextData[intentIndex]);
-                            } else if (standardId == ETH_RELEASE_STD_ID) {
-                                _executeEthRelease(
-                                    solution.timestamp,
-                                    intent.sender,
-                                    solution.intents[solution.getIntentIndex(executionIndex + 1)].sender,
-                                    intent.intentData[segmentIndex]
-                                );
-                            } else if (standardId == ETH_REQUIRE_STD_ID) {
-                                contextData[intentIndex] = _executeEthRequire(
-                                    solution.timestamp,
-                                    intent.sender,
-                                    intent.intentData[segmentIndex],
-                                    contextData[intentIndex]
-                                );
-                            } else if (standardId == SEQUENTIAL_NONCE_STD_ID) {
-                                _executeSequentialNonce(intent.sender, intent.intentData[segmentIndex]);
-                            } else if (standardId == USER_OPERATION_STD_ID) {
-                                _executeUserOperation(intent.sender, intent.intentData[segmentIndex]);
-                            } else {
-                                revert FailedIntent(intentIndex, segmentIndex, "AA82 unknown standard");
-                            }
-                        } else {
-                            // execute as a registered standard
-                            IIntentStandard intentStandard = _registeredStandards[standardId];
-                            if (intentStandard == IIntentStandard(address(0))) {
-                                revert FailedIntent(intentIndex, segmentIndex, "AA82 unknown standard");
-                            }
-                            _executionState = keccak256(abi.encodePacked(intent.sender, address(intentStandard)));
-                            bool success = Exec.call(
-                                address(intentStandard),
-                                0,
-                                abi.encodeWithSelector(
-                                    IIntentStandard.executeIntentSegment.selector,
-                                    solution,
-                                    executionIndex,
-                                    segmentIndex,
-                                    contextData[intentIndex]
-                                ),
-                                gasleft()
-                            );
-                            if (success) {
-                                if (Exec.getReturnDataSize() > CONTEXT_DATA_MAX_LEN) {
-                                    revert FailedIntent(intentIndex, segmentIndex, "AA60 invalid execution context");
-                                }
-                                contextData[intentIndex] = Exec.getReturnDataMax(0x40, CONTEXT_DATA_MAX_LEN);
-                            } else {
-                                bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
-                                if (reason.length > 0) {
-                                    revert FailedIntent(
-                                        intentIndex,
-                                        segmentIndex,
-                                        string.concat(
-                                            "AA61 execution failed: ", string(reason.revertReasonWithoutPadding())
-                                        )
-                                    );
-                                } else {
-                                    revert FailedIntent(intentIndex, segmentIndex, "AA61 execution failed (or OOG)");
-                                }
-                            }
-                        }
-                    }
+                    contextData[intentIndex] = _handleIntentSegment(
+                        solution, intentIndex, segmentIndex, executionIndex, contextData[intentIndex]
+                    );
 
                     // keep track of what segments have been executed and if there are any remaining
                     segmentIndex++;
@@ -229,6 +142,105 @@ contract EntryPoint is
             // no longer executing
             _executionState = EX_STATE_NOT_ACTIVE;
         } //unchecked
+    }
+
+    /**
+     * Handle an individual intent segment.
+     * @dev about 800 gas can be saved by embedding this into _handleIntents, but breaks coverage
+     * @param solution the UserIntents solution.
+     * @param intentIndex the index of the intent.
+     * @param segmentIndex the index of the segment in the intent.
+     * @param executionIndex the index of all segments executing in the entire solution.
+     * @param contextData the current intent processing context data.
+     * @return contextData the updated context data.
+     */
+    function _handleIntentSegment(
+        IntentSolution calldata solution,
+        uint256 intentIndex,
+        uint256 segmentIndex,
+        uint256 executionIndex,
+        bytes memory contextData
+    ) private returns (bytes memory) {
+        UserIntent calldata intent = solution.intents[intentIndex];
+        if (intent.sender != address(0) && intent.intentData.length > 0) {
+            bytes32 standardId = getSegmentStandard(intent.intentData[segmentIndex]);
+
+            // check if this is an embedded standard
+            if (uint256(standardId) < NUM_EMBEDDED_STANDARDS) {
+                _executionState = keccak256(abi.encodePacked(intent.sender, address(this)));
+                if (standardId == SIMPLE_CALL_STD_ID) {
+                    _executeSimpleCall(intent.sender, intent.intentData[segmentIndex]);
+                } else if (standardId == ERC20_RECORD_STD_ID) {
+                    return _executeErc20Record(intent.sender, intent.intentData[segmentIndex], contextData);
+                } else if (standardId == ERC20_RELEASE_STD_ID) {
+                    _executeErc20Release(
+                        solution.timestamp,
+                        intent.sender,
+                        solution.intents[solution.getIntentIndex(executionIndex + 1)].sender,
+                        intent.intentData[segmentIndex]
+                    );
+                } else if (standardId == ERC20_REQUIRE_STD_ID) {
+                    return _executeErc20Require(
+                        solution.timestamp, intent.sender, intent.intentData[segmentIndex], contextData
+                    );
+                } else if (standardId == ETH_RECORD_STD_ID) {
+                    return _executeEthRecord(intent.sender, contextData);
+                } else if (standardId == ETH_RELEASE_STD_ID) {
+                    _executeEthRelease(
+                        solution.timestamp,
+                        intent.sender,
+                        solution.intents[solution.getIntentIndex(executionIndex + 1)].sender,
+                        intent.intentData[segmentIndex]
+                    );
+                } else if (standardId == ETH_REQUIRE_STD_ID) {
+                    return _executeEthRequire(
+                        solution.timestamp, intent.sender, intent.intentData[segmentIndex], contextData
+                    );
+                } else if (standardId == SEQUENTIAL_NONCE_STD_ID) {
+                    _executeSequentialNonce(intent.sender, intent.intentData[segmentIndex]);
+                } else if (standardId == USER_OPERATION_STD_ID) {
+                    _executeUserOperation(intent.sender, intent.intentData[segmentIndex]);
+                } else {
+                    revert FailedIntent(intentIndex, segmentIndex, "AA82 unknown standard");
+                }
+            } else {
+                // execute as a registered standard
+                IIntentStandard intentStandard = _registeredStandards[standardId];
+                if (intentStandard == IIntentStandard(address(0))) {
+                    revert FailedIntent(intentIndex, segmentIndex, "AA82 unknown standard");
+                }
+                _executionState = keccak256(abi.encodePacked(intent.sender, address(intentStandard)));
+                bool success = Exec.call(
+                    address(intentStandard),
+                    0,
+                    abi.encodeWithSelector(
+                        IIntentStandard.executeIntentSegment.selector,
+                        solution,
+                        executionIndex,
+                        segmentIndex,
+                        contextData
+                    ),
+                    gasleft()
+                );
+                if (success) {
+                    if (Exec.getReturnDataSize() > CONTEXT_DATA_MAX_LEN) {
+                        revert FailedIntent(intentIndex, segmentIndex, "AA60 invalid execution context");
+                    }
+                    return Exec.getReturnDataMax(0x40, CONTEXT_DATA_MAX_LEN);
+                } else {
+                    bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
+                    if (reason.length > 0) {
+                        revert FailedIntent(
+                            intentIndex,
+                            segmentIndex,
+                            string.concat("AA61 execution failed: ", string(reason.revertReasonWithoutPadding()))
+                        );
+                    }
+                    revert FailedIntent(intentIndex, segmentIndex, "AA61 execution failed (or OOG)");
+                }
+            }
+        }
+        return contextData;
     }
 
     /**
