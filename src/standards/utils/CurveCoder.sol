@@ -145,7 +145,8 @@ function encodeComplexCurve(
             adjustedDeltaMult = uint8(uint256(deltaMult));
         }
         encoding |= (bytes16(uint128(adjustedDeltaAmount)) << SHIFT_DELTA_AMOUNT)
-            | (bytes16(uint128(adjustedDeltaMult & 0x0f)) << SHIFT_DELTA_AMT_MULT);
+            | (bytes16(uint128(adjustedDeltaMult & 0x0f)) << SHIFT_DELTA_AMT_MULT)
+            | (bytes16(uint128(startMult)) << SHIFT_START_AMT_MULT);
         if (deltaMultNegative) encoding = encoding | MASK_FLAGS_NEG_DELTA_MULT;
         if (deltaAmountNegative) encoding = encoding | MASK_FLAGS_NEG_DELTA;
     }

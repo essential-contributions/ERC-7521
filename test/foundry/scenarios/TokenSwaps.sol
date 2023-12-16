@@ -18,9 +18,9 @@ contract TokenSwaps is ScenarioTestEnvironment {
 
     function _constantExpectationIntent(
         uint256 erc20ReleaseAmount,
+        uint256 ethRequireAmount,
         uint256 releaseDuration,
-        uint256 releaseAt,
-        uint256 ethRequireAmount
+        uint256 releaseAt
     ) private view returns (UserIntent memory) {
         int256 releaseStartAmount = 0;
         int256 releaseEndAmount = int256((erc20ReleaseAmount * releaseDuration) / releaseAt);
@@ -95,19 +95,18 @@ contract TokenSwaps is ScenarioTestEnvironment {
         vm.warp(1700952587);
     }
 
-    function testFuzz_constantRelease(
-        uint72 erc20ReleaseAmount,
-        uint72 ethRequireAmount,
-        uint16 requireDuration,
-        uint16 requireAt
-    ) public {
-        vm.assume(0 < erc20ReleaseAmount);
-        vm.assume(0 < ethRequireAmount);
+    function testFuzz_constantRelease(uint32 erc20Release, uint32 ethRequire, uint16 requireDuration, uint16 requireAt)
+        public
+    {
+        vm.assume(0 < erc20Release);
+        vm.assume(0 < ethRequire);
         vm.assume(0 < requireDuration);
         vm.assume(0 < requireAt);
         vm.assume(requireAt < requireDuration);
-        vm.assume(ethRequireAmount < erc20ReleaseAmount);
-        vm.assume(erc20ReleaseAmount < _accountInitialERC20Balance);
+        vm.assume(ethRequire < erc20Release);
+        vm.assume(erc20Release < _accountInitialERC20Balance);
+        uint256 erc20ReleaseAmount = uint256(erc20Release) * 1_000_000_000;
+        uint256 ethRequireAmount = uint256(ethRequire) * 100_000_000;
         uint256 slippage = 5;
 
         //build intent
@@ -139,25 +138,22 @@ contract TokenSwaps is ScenarioTestEnvironment {
         assertEq(userERC20Tokens, expectedUserERC20Balance, "The user released more ERC20 tokens than expected");
     }
 
-    function test_constantExpectation()
-        //uint72 erc20ReleaseAmount,
-        //uint72 ethRequireAmount,
-        //uint16 releaseDuration,
-        //uint16 releaseAt
-        public
-    {
-        //vm.assume(0 < erc20ReleaseAmount);
-        //vm.assume(0 < ethRequireAmount);
-        //vm.assume(0 < releaseDuration);
-        //vm.assume(0 < releaseAt);
-        //vm.assume(releaseAt < releaseDuration);
-        //vm.assume(ethRequireAmount < erc20ReleaseAmount);
-        //vm.assume(erc20ReleaseAmount < _accountInitialERC20Balance);
-        uint72 erc20ReleaseAmount = 10571;
-        uint72 ethRequireAmount = 5591;
-        uint16 releaseDuration = 7492;
-        uint16 releaseAt = 1297;
+    function testFuzz_constantExpectation(
+        uint32 erc20Release,
+        uint32 ethRequire,
+        uint16 releaseDuration,
+        uint16 releaseAt
+    ) public {
+        vm.assume(0 < erc20Release);
+        vm.assume(0 < ethRequire);
+        vm.assume(0 < releaseDuration);
+        vm.assume(0 < releaseAt);
+        vm.assume(releaseAt < releaseDuration);
+        vm.assume(ethRequire < erc20Release);
+        vm.assume(erc20Release < _accountInitialERC20Balance);
         uint256 slippage = 5;
+        uint256 erc20ReleaseAmount = uint256(erc20Release) * 1_000_000_000;
+        uint256 ethRequireAmount = uint256(ethRequire) * 100_000_000;
 
         //build intent
         UserIntent memory intent =
