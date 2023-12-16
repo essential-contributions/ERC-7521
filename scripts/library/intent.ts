@@ -1,4 +1,4 @@
-import { IntentSolutionStruct, UserIntentStruct } from '../../../typechain/src/core/EntryPoint';
+import { IntentSolutionStruct, UserIntentStruct } from '../../typechain/src/core/EntryPoint';
 import { ethers, AddressLike, BytesLike, Provider, Signer } from 'ethers';
 
 // The intent object
