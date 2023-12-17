@@ -1,245 +1,189 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.22;
 
+/*
+ * Encoding masks
+ *   [bytes1]  flags - curve type, relative, evaluate backwards (flip), negatives [c--r fnnn]
+ *   [uint32]  startAmount - starting amount
+ *   [uint8]   amountMult - amount multiplier (final_amount = amount * (amountMult * 10))
+ * --only for linear or exponential--
+ *   [uint32]  startTime -  start time of the curve (in seconds)
+ *   [uint16]  deltaTime - amount of time from start until curve caps (in seconds)
+ *   [uint24]  deltaAmount - amount of change after each second
+ *   [bytes1]  misc - delta amount mult, exponent [mmmm eeee]
+ */
+bytes16 constant MASK_FLAGS_CURVE_TYPE = 0x80000000000000000000000000000000;
+bytes16 constant MASK_FLAGS_RELATIVE = 0x10000000000000000000000000000000;
+bytes16 constant MASK_FLAGS_FLIP = 0x08000000000000000000000000000000;
+bytes16 constant MASK_FLAGS_NEG_START_AMT = 0x04000000000000000000000000000000;
+bytes16 constant MASK_FLAGS_NEG_DELTA = 0x02000000000000000000000000000000;
+bytes16 constant MASK_FLAGS_NEG_DELTA_MULT = 0x01000000000000000000000000000000;
+bytes16 constant MASK_START_AMOUNT = 0x00ffffffff0000000000000000000000;
+bytes16 constant MASK_START_AMT_MULT = 0x0000000000ff00000000000000000000;
+bytes16 constant MASK_START_TIME = 0x000000000000ffffffff000000000000;
+bytes16 constant MASK_DELTA_TIME = 0x00000000000000000000ffff00000000;
+bytes16 constant MASK_DELTA_AMOUNT = 0x000000000000000000000000ffffff00;
+bytes16 constant MASK_DELTA_AMT_MULT = 0x000000000000000000000000000000f0;
+bytes16 constant MASK_EXPONENT = 0x0000000000000000000000000000000f;
+uint8 constant SHIFT_START_AMOUNT = 11 * 8;
+uint8 constant SHIFT_START_AMT_MULT = 10 * 8;
+uint8 constant SHIFT_START_TIME = 6 * 8;
+uint8 constant SHIFT_DELTA_TIME = 4 * 8;
+uint8 constant SHIFT_DELTA_AMOUNT = 1 * 8;
+uint8 constant SHIFT_DELTA_AMT_MULT = 4;
+uint8 constant SHIFT_EXPONENT = 0;
+
 /**
- * Encodes the given fileds into the constant curve parameter encoding
- * @param amount constant amount
- * @param amountMult amount multiplier (final_amount = amount << amountMult)
- * @param amountNegative indicates that amount is negative
+ * Encodes the parameters into a constant curve
+ * @param amount the amount to encode
  * @param isRelative indicate the curve is to be evaluated relatively
  * @return encoding the parameter encoding
  */
-function encodeConstantCurve(uint96 amount, uint8 amountMult, bool amountNegative, bool isRelative)
-    pure
-    returns (bytes32 encoding)
-{
-    encoding = (bytes32(uint256(amount)) << 160) | (bytes32(uint256(amountMult)) << 152);
-    if (amountNegative) encoding = encoding | 0x0000000000000000000000000080000000000000000000000000000000000000;
-    if (isRelative) encoding = encoding | 0x0000000000000000000000000040000000000000000000000000000000000000;
-}
-
-/**
- * Decodes the given constant curve parameter encoding and evaluates it
- * @param data the encoded parameters
- * @dev data
- *   [uint96]  amount - amount required
- *   [uint8]   amountMult - amount multiplier (final_amount = amount << amountMult)
- *   [bytes1]  flags - negative, relative or absolute [nrxx xxxx]
- * @return value the evaluated value
- */
-function evaluateConstantCurve(bytes32 data) pure returns (int256) {
-    unchecked {
-        uint256 value = uint256((data & 0xffffffffffffffffffffffff0000000000000000000000000000000000000000) >> 160);
-
-        //multiplier
-        uint256 amountMult = uint256(data & 0x000000000000000000000000ff00000000000000000000000000000000000000);
-        if (amountMult > 0) value = value << (amountMult >> 152);
-
-        //evaluate
-        if (uint256(data & 0x0000000000000000000000000080000000000000000000000000000000000000) > 0) {
-            return 0 - int256(value);
-        }
-        return int256(value);
+function encodeConstantCurve(int256 amount, bool isRelative) pure returns (bytes6) {
+    //convert params
+    uint256 adjustedAmount;
+    bool amountNegative;
+    if (amount < 0) {
+        amountNegative = true;
+        adjustedAmount = uint256(0 - amount);
+    } else {
+        amountNegative = false;
+        adjustedAmount = uint256(amount);
     }
+    uint8 amountMult = 0;
+    while (adjustedAmount > 0x00000000000000000000000000000000000000000000000000000000ffffffff) {
+        adjustedAmount = adjustedAmount >> 1;
+        amountMult++;
+    }
+
+    //encode
+    bytes16 encoding = (bytes16(uint128(adjustedAmount)) << SHIFT_START_AMOUNT)
+        | (bytes16(uint128(amountMult)) << SHIFT_START_AMT_MULT);
+    if (amountNegative) encoding = encoding | MASK_FLAGS_NEG_START_AMT;
+    if (isRelative) encoding = encoding | MASK_FLAGS_RELATIVE;
+    return bytes6(encoding);
 }
 
 /**
- * Gets if the constant curve is flagged as relative from the given parameter encoding
- * @param data the encoded parameters
- * @return isRelative true if curve is meant to be evaluated relatively
- */
-function isConstantCurveRelative(bytes32 data) pure returns (bool isRelative) {
-    return uint256(data & 0x0000000000000000000000000040000000000000000000000000000000000000) > 0;
-}
-
-/**
- * Encodes the given fileds into the linear curve parameter encoding (1 of 2 parts)
- * @param encoding current encoding from previous steps
+ * Encodes the given fileds into the complex curve parameter encoding
  * @param startTime start time of the curve (in seconds)
  * @param deltaTime amount of time from start until curve caps (in seconds)
  * @param startAmount starting amount
- * @param startMult starting amount multiplier (final_amount = amount << amountMult)
- * @param startNegative indicates that start amount is negative
- * @return encoding the parameter encoding
- */
-function encodeLinearCurve1(
-    bytes32 encoding,
-    uint40 startTime,
-    uint32 deltaTime,
-    uint96 startAmount,
-    uint8 startMult,
-    bool startNegative
-) pure returns (bytes32) {
-    encoding = encoding | (bytes32(uint256(startTime)) << 216) | (bytes32(uint256(deltaTime)) << 184)
-        | (bytes32(uint256(startAmount)) << 88) | (bytes32(uint256(startMult)) << 80);
-    if (startNegative) encoding = encoding | 0x0000000000000000000000000000000000000000000000000000000000000080;
-    return encoding;
-}
-
-/**
- * Encodes the given fileds into the linear curve parameter encoding (1 of 2 parts)
- * @param encoding current encoding from previous steps
  * @param deltaAmount amount of change after each second
- * @param deltaMult delta amount multiplier (final_amount = amount << amountMult)
- * @param deltaNegative indicates that start amount is negative
- * @param isRelative indicate the curve is to be evaluated relatively
- * @return encoding the parameter encoding
- */
-function encodeLinearCurve2(bytes32 encoding, uint64 deltaAmount, uint8 deltaMult, bool deltaNegative, bool isRelative)
-    pure
-    returns (bytes32)
-{
-    encoding = encoding | (bytes32(uint256(deltaAmount)) << 16) | (bytes32(uint256(deltaMult)) << 8);
-    if (deltaNegative) encoding = encoding | 0x0000000000000000000000000000000000000000000000000000000000000040;
-    if (isRelative) encoding = encoding | 0x0000000000000000000000000000000000000000000000000000000000000020;
-    return encoding;
-}
-
-/**
- * Decodes the given linear curve parameter encoding and evaluates it
- * @param data the encoded parameters
- * @dev data
- *   [uint40]  startTime - start time of the curve (in seconds)
- *   [uint32]  deltaTime - amount of time from start until curve caps (in seconds)
- *   [uint96]  startAmount - starting amount
- *   [uint8]   startAmountMult - starting amount multiplier (final_amount = amount << amountMult)
- *   [uint64]  deltaAmount - amount of change after each second
- *   [uint8]   deltaAmountMult - delta amount multiplier (final_amount = amount << amountMult)
- *   [bytes1]  flags - negatives, relative or absolute [nnrx xxxx]
- * @param solutionTimestamp the time of evaluation specified by the solution
- * @return value the evaluated value
- */
-function evaluateLinearCurve(bytes32 data, uint256 solutionTimestamp) pure returns (int256 value) {
-    unchecked {
-        //time parameters
-        uint48 startTime =
-            uint48(uint256((data & 0xffffffffff000000000000000000000000000000000000000000000000000000) >> 216));
-        uint48 deltaTime =
-            uint48(uint256((data & 0x0000000000ffffffff0000000000000000000000000000000000000000000000) >> 184));
-        uint48 endTime = startTime + deltaTime;
-        uint256 evaluateAt = 0;
-        if (solutionTimestamp > startTime) {
-            if (solutionTimestamp < endTime) evaluateAt = solutionTimestamp - startTime;
-            else evaluateAt = deltaTime;
-        }
-
-        //starting amount
-        uint256 startAmount = uint256((data & 0x000000000000000000ffffffffffffffffffffffff0000000000000000000000) >> 88);
-        uint256 startMult = uint256(data & 0x000000000000000000000000000000000000000000ff00000000000000000000);
-        if (startMult > 0) startAmount = startAmount << (startMult >> 80);
-
-        //delta amount
-        uint256 deltaAmount = uint256((data & 0x00000000000000000000000000000000000000000000ffffffffffffffff0000) >> 16);
-        uint256 deltaMult = uint256(data & 0x000000000000000000000000000000000000000000000000000000000000ff00);
-        if (deltaMult > 0) deltaAmount = deltaAmount << (deltaMult >> 8);
-
-        //evaluate curve
-        if (uint256(data & 0x0000000000000000000000000000000000000000000000000000000000000080) > 0) {
-            if (uint256(data & 0x0000000000000000000000000000000000000000000000000000000000000040) > 0) {
-                return (0 - int256(startAmount)) - int256(evaluateAt * deltaAmount);
-            } else {
-                return (0 - int256(startAmount)) + int256(evaluateAt * deltaAmount);
-            }
-        } else {
-            if (uint256(data & 0x0000000000000000000000000000000000000000000000000000000000000040) > 0) {
-                return int256(startAmount) - int256(evaluateAt * deltaAmount);
-            } else {
-                return int256(startAmount) + int256(evaluateAt * deltaAmount);
-            }
-        }
-    }
-}
-
-/**
- * Gets if the linear curve is flagged as relative from the given parameter encoding
- * @param data the encoded parameters
- * @return isRelative true if curve is meant to be evaluated relatively
- */
-function isLinearCurveRelative(bytes32 data) pure returns (bool isRelative) {
-    return uint256(data & 0x0000000000000000000000000000000000000000000000000000000000000020) > 0;
-}
-
-/**
- * Encodes the given fileds into the exponential curve parameter encoding (1 of 3 parts)
- * @param encoding current encoding from previous steps
- * @param startTime start time of the curve (in seconds)
- * @param deltaTime amount of time from start until curve caps (in seconds)
  * @param exponent the exponent order of the curve
  * @param backwards evaluate curve from right to left
  * @param isRelative indicate the curve is to be evaluated relatively
- * @return encoding the parameter encoding
+ * @return the fully encoded intent standard segment data
  */
-function encodeExponentialCurve1(
-    bytes32 encoding,
-    uint40 startTime,
-    uint32 deltaTime,
+function encodeComplexCurve(
+    uint32 startTime,
+    uint24 deltaTime,
+    int256 startAmount,
+    int256 deltaAmount,
     uint8 exponent,
     bool backwards,
     bool isRelative
-) pure returns (bytes32) {
-    encoding = encoding | (bytes32(uint256(startTime)) << 216) | (bytes32(uint256(deltaTime)) << 184);
-    if (backwards) encoding = encoding | 0x0000000000000000000000000000000000000000000000000000000000000080;
-    if (isRelative) encoding = encoding | 0x0000000000000000000000000000000000000000000000000000000000000010;
-    if (exponent > uint8(0x0f)) exponent = uint8(0x0f);
-    encoding = encoding | bytes32(uint256(exponent));
+) pure returns (bytes16) {
+    //start encode
+    bytes16 encoding = MASK_FLAGS_CURVE_TYPE | (bytes16(uint128(startTime)) << SHIFT_START_TIME)
+        | (bytes16(uint128(deltaTime)) << SHIFT_DELTA_TIME) | (bytes16(uint128(exponent & 0x0f)) << SHIFT_EXPONENT);
+    if (isRelative) encoding = encoding | MASK_FLAGS_RELATIVE;
+    if (backwards) encoding = encoding | MASK_FLAGS_FLIP;
+
+    //encode start amount
+    uint8 startMult = 0;
+    {
+        uint256 adjustedStartAmount;
+        bool startAmountNegative;
+        if (startAmount < 0) {
+            startAmountNegative = true;
+            adjustedStartAmount = uint256(0 - startAmount);
+        } else {
+            startAmountNegative = false;
+            adjustedStartAmount = uint256(startAmount);
+        }
+        while (adjustedStartAmount > 0x00000000000000000000000000000000000000000000000000000000ffffffff) {
+            adjustedStartAmount = adjustedStartAmount >> 1;
+            startMult++;
+        }
+        encoding |= (bytes16(uint128(adjustedStartAmount)) << SHIFT_START_AMOUNT)
+            | (bytes16(uint128(startMult)) << SHIFT_START_AMT_MULT);
+        if (startAmountNegative) encoding = encoding | MASK_FLAGS_NEG_START_AMT;
+    }
+
+    //encode delta amount
+    {
+        uint256 adjustedDeltaAmount;
+        bool deltaAmountNegative;
+        if (deltaAmount < 0) {
+            deltaAmountNegative = true;
+            adjustedDeltaAmount = uint256(0 - deltaAmount);
+        } else {
+            deltaAmountNegative = false;
+            adjustedDeltaAmount = uint256(deltaAmount);
+        }
+        int256 deltaMult = 0;
+        while (adjustedDeltaAmount > 0x0000000000000000000000000000000000000000000000000000000000ffffff) {
+            adjustedDeltaAmount = adjustedDeltaAmount >> 1;
+            deltaMult++;
+        }
+        if (startAmount == 0) {
+            startMult = uint8(uint256(deltaMult));
+            deltaMult = 0;
+        } else {
+            deltaMult = int256(uint256(startMult)) - deltaMult;
+            require(deltaMult > -16, "delta too small in comparison to start");
+            require(deltaMult < 16, "delta too large in comparison to start");
+        }
+        uint8 adjustedDeltaMult;
+        bool deltaMultNegative;
+        if (deltaMult < 0) {
+            deltaMultNegative = true;
+            adjustedDeltaMult = uint8(uint256(0 - deltaMult));
+        } else {
+            deltaMultNegative = false;
+            adjustedDeltaMult = uint8(uint256(deltaMult));
+        }
+        encoding |= (bytes16(uint128(adjustedDeltaAmount)) << SHIFT_DELTA_AMOUNT)
+            | (bytes16(uint128(adjustedDeltaMult & 0x0f)) << SHIFT_DELTA_AMT_MULT)
+            | (bytes16(uint128(startMult)) << SHIFT_START_AMT_MULT);
+        if (deltaMultNegative) encoding = encoding | MASK_FLAGS_NEG_DELTA_MULT;
+        if (deltaAmountNegative) encoding = encoding | MASK_FLAGS_NEG_DELTA;
+    }
+
     return encoding;
 }
 
 /**
- * Encodes the given fileds into the exponential curve parameter encoding (1 of 3 parts)
- * @param encoding current encoding from previous steps
- * @param startAmount starting amount
- * @param startMult starting amount multiplier (final_amount = amount << amountMult)
- * @param startNegative indicates that start amount is negative
- * @return encoding the parameter encoding
- */
-function encodeExponentialCurve2(bytes32 encoding, uint96 startAmount, uint8 startMult, bool startNegative)
-    pure
-    returns (bytes32)
-{
-    encoding = encoding | (bytes32(uint256(startAmount)) << 88) | (bytes32(uint256(startMult)) << 80);
-    if (startNegative) encoding = encoding | 0x0000000000000000000000000000000000000000000000000000000000000040;
-    return encoding;
-}
-
-/**
- * Encodes the given fileds into the exponential curve parameter encoding (1 of 3 parts)
- * @param encoding current encoding from previous steps
- * @param deltaAmount amount of change after each second
- * @param deltaMult delta amount multiplier (final_amount = amount << amountMult)
- * @param deltaNegative indicates that start amount is negative
- * @return encoding the parameter encoding
- */
-function encodeExponentialCurve3(bytes32 encoding, uint64 deltaAmount, uint8 deltaMult, bool deltaNegative)
-    pure
-    returns (bytes32)
-{
-    encoding = encoding | (bytes32(uint256(deltaAmount)) << 16) | (bytes32(uint256(deltaMult)) << 8);
-    if (deltaNegative) encoding = encoding | 0x0000000000000000000000000000000000000000000000000000000000000020;
-    return encoding;
-}
-
-/**
- * Decodes the given exponential curve parameter encoding and evaluates it
- * @param data the encoded parameters
- * @dev data
- *   [uint40]  startTime - start time of the curve (in seconds)
- *   [uint32]  deltaTime - amount of time from start until curve caps (in seconds)
- *   [uint96]  startAmount - starting amount
- *   [uint8]   startAmountMult - starting amount multiplier (final_amount = amount * (amountMult * 10))
- *   [uint64]  deltaAmount - amount of change after each second
- *   [uint8]   deltaAmountMult - delta amount multiplier (final_amount = amount * (amountMult * 10))
- *   [bytes1]  flags/exponent - evaluate backwards, negatives, relative or absolute, exponent [bnnr eeee]
+ * Decodes the given curve parameter encoding and evaluates it
+ * @param curve the encoded parameters
+ * @dev curve
+ *   [bytes1]  flags - curve type, relative, evaluate backwards (flip), negatives [c--r fnnn]
+ *   [uint32]  startAmount - starting amount
+ *   [uint8]   amountMult - amount multiplier (final_amount = amount * (amountMult * 10))
+ * --only for linear or exponential--
+ *   [uint32]  startTime -  start time of the curve (in seconds)
+ *   [uint16]  deltaTime - amount of time from start until curve caps (in seconds)
+ *   [uint24]  deltaAmount - amount of change after each second
+ *   [bytes1]  misc - delta amount mult, exponent [eeee mmmm]
  * @param solutionTimestamp the time of evaluation specified by the solution
  * @return value the evaluated value
  */
-function evaluateExponentialCurve(bytes32 data, uint256 solutionTimestamp) pure returns (int256 value) {
+function evaluateCurve(bytes16 curve, uint256 solutionTimestamp) pure returns (int256) {
     unchecked {
+        //constant curve evaluation
+        if (uint128(curve & MASK_FLAGS_CURVE_TYPE) == 0) {
+            uint256 amount = uint128((curve & MASK_START_AMOUNT) >> SHIFT_START_AMOUNT);
+            uint256 mult = uint128((curve & MASK_START_AMT_MULT) >> SHIFT_START_AMT_MULT);
+            amount = amount << mult;
+
+            if (uint128(curve & MASK_FLAGS_NEG_START_AMT) > 0) return (0 - int256(amount));
+            return int256(amount);
+        }
+
         //time parameters
-        uint48 startTime =
-            uint48(uint256((data & 0xffffffffff000000000000000000000000000000000000000000000000000000) >> 216));
-        uint48 deltaTime =
-            uint48(uint256((data & 0x0000000000ffffffff0000000000000000000000000000000000000000000000) >> 184));
+        uint48 startTime = uint48(uint128((curve & MASK_START_TIME) >> SHIFT_START_TIME));
+        uint48 deltaTime = uint48(uint128((curve & MASK_DELTA_TIME) >> SHIFT_DELTA_TIME));
         uint48 endTime = startTime + deltaTime;
         uint256 evaluateAt = 0;
         if (solutionTimestamp > startTime) {
@@ -248,93 +192,78 @@ function evaluateExponentialCurve(bytes32 data, uint256 solutionTimestamp) pure 
         }
 
         //evaluate backwards
-        if (uint256(data & 0x0000000000000000000000000000000000000000000000000000000000000080) > 0) {
+        if (uint128(curve & MASK_FLAGS_FLIP) > 0) {
             evaluateAt = deltaTime - evaluateAt;
         }
 
         //starting amount
-        uint256 startAmount = uint256((data & 0x000000000000000000ffffffffffffffffffffffff0000000000000000000000) >> 88);
-        uint256 startMult = uint256(data & 0x000000000000000000000000000000000000000000ff00000000000000000000);
-        if (startMult > 0) startAmount = startAmount << (startMult >> 80);
+        uint256 startAmount = uint128((curve & MASK_START_AMOUNT) >> SHIFT_START_AMOUNT);
+        uint256 startMult = uint128((curve & MASK_START_AMT_MULT) >> SHIFT_START_AMT_MULT);
+        startAmount = startAmount << startMult;
 
         //delta amount
-        uint256 deltaAmount = uint256((data & 0x00000000000000000000000000000000000000000000ffffffffffffffff0000) >> 16);
-        uint256 deltaMult = uint256(data & 0x000000000000000000000000000000000000000000000000000000000000ff00);
-        if (deltaMult > 0) deltaAmount = deltaAmount << (deltaMult >> 8);
+        uint256 deltaAmount = uint128((curve & MASK_DELTA_AMOUNT) >> SHIFT_DELTA_AMOUNT);
+        uint256 deltaMult = uint128((curve & MASK_DELTA_AMT_MULT) >> SHIFT_DELTA_AMT_MULT);
+        if (deltaMult > 0 || startMult > 0) {
+            if (uint128(curve & MASK_FLAGS_NEG_DELTA_MULT) > 0) {
+                deltaMult = startMult - deltaMult;
+            } else {
+                deltaMult = startMult + deltaMult;
+            }
+            deltaAmount = deltaAmount << deltaMult;
+        }
 
         //evaluate curve
-        uint256 exponent = uint256(data & 0x000000000000000000000000000000000000000000000000000000000000000f);
-        if (uint256(data & 0x0000000000000000000000000000000000000000000000000000000000000040) > 0) {
-            if (uint256(data & 0x0000000000000000000000000000000000000000000000000000000000000020) > 0) {
-                return (0 - int256(startAmount)) - int256((evaluateAt ** exponent) * deltaAmount);
+        uint256 exponent = uint128((curve & MASK_EXPONENT) >> SHIFT_EXPONENT);
+        if (exponent > 1) {
+            //exponential curve evaluation
+            if (uint128(curve & MASK_FLAGS_NEG_START_AMT) > 0) {
+                if (uint128(curve & MASK_FLAGS_NEG_DELTA) > 0) {
+                    return (0 - int256(startAmount)) - int256((evaluateAt ** exponent) * deltaAmount);
+                } else {
+                    return (0 - int256(startAmount)) + int256((evaluateAt ** exponent) * deltaAmount);
+                }
             } else {
-                return (0 - int256(startAmount)) + int256((evaluateAt ** exponent) * deltaAmount);
+                if (uint128(curve & MASK_FLAGS_NEG_DELTA) > 0) {
+                    return int256(startAmount) - int256((evaluateAt ** exponent) * deltaAmount);
+                } else {
+                    return int256(startAmount) + int256((evaluateAt ** exponent) * deltaAmount);
+                }
             }
         } else {
-            if (uint256(data & 0x0000000000000000000000000000000000000000000000000000000000000020) > 0) {
-                return int256(startAmount) - int256((evaluateAt ** exponent) * deltaAmount);
+            //linear curve evaluation
+            if (uint128(curve & MASK_FLAGS_NEG_START_AMT) > 0) {
+                if (uint128(curve & MASK_FLAGS_NEG_DELTA) > 0) {
+                    return (0 - int256(startAmount)) - int256(evaluateAt * deltaAmount);
+                } else {
+                    return (0 - int256(startAmount)) + int256(evaluateAt * deltaAmount);
+                }
             } else {
-                return int256(startAmount) + int256((evaluateAt ** exponent) * deltaAmount);
+                if (uint128(curve & MASK_FLAGS_NEG_DELTA) > 0) {
+                    return int256(startAmount) - int256(evaluateAt * deltaAmount);
+                } else {
+                    return int256(startAmount) + int256(evaluateAt * deltaAmount);
+                }
             }
         }
     }
 }
 
 /**
- * Gets if the exponential curve is flagged as relative from the given parameter encoding
- * @param data the encoded parameters
+ * Gets if the constant curve is flagged as relative from the given parameter encoding
+ * @param curve the curve data
  * @return isRelative true if curve is meant to be evaluated relatively
  */
-function isExponentialCurveRelative(bytes32 data) pure returns (bool isRelative) {
-    return uint256(data & 0x0000000000000000000000000000000000000000000000000000000000000010) > 0;
+function isCurveRelative(bytes16 curve) pure returns (bool isRelative) {
+    return uint128(curve & MASK_FLAGS_RELATIVE) > 0;
 }
 
 /**
- * Encodes the signed int256 value into smaller pieces for encoding into 12 bytes
- * @param amount the amount to encode
- * @return value the encoded amount value
- * @return mult the amount multiplier
- * @return negative the amount negative flag
+ * Gets the curve byte size given the first byte
+ * @param firstByte the first byte
+ * @return curve size in bytes
  */
-function encodeAsUint96(int256 amount) pure returns (uint96 value, uint8 mult, bool negative) {
-    uint256 adjustedAmount;
-    bool amountNegative;
-    if (amount < 0) {
-        amountNegative = true;
-        adjustedAmount = uint256(0 - amount);
-    } else {
-        amountNegative = false;
-        adjustedAmount = uint256(amount);
-    }
-    uint8 amountMult = 0;
-    while (adjustedAmount > 0x0000000000000000000000000000000000000000ffffffffffffffffffffffff) {
-        adjustedAmount = adjustedAmount >> 1;
-        amountMult++;
-    }
-    return (uint96(adjustedAmount), amountMult, amountNegative);
-}
-
-/**
- * Encodes the signed int256 value into smaller pieces for encoding into 8 bytes
- * @param amount the amount to encode
- * @return value the encoded amount value
- * @return mult the amount multiplier
- * @return negative the amount negative flag
- */
-function encodeAsUint64(int256 amount) pure returns (uint64 value, uint8 mult, bool negative) {
-    uint256 adjustedAmount;
-    bool amountNegative;
-    if (amount < 0) {
-        amountNegative = true;
-        adjustedAmount = uint256(0 - amount);
-    } else {
-        amountNegative = false;
-        adjustedAmount = uint256(amount);
-    }
-    uint8 amountMult = 0;
-    while (adjustedAmount > 0x000000000000000000000000000000000000000000000000ffffffffffffffff) {
-        adjustedAmount = adjustedAmount >> 1;
-        amountMult++;
-    }
-    return (uint64(adjustedAmount), amountMult, amountNegative);
+function curveByteSize(bytes1 firstByte) pure returns (uint8) {
+    if (firstByte & (MASK_FLAGS_CURVE_TYPE >> ((16 - 1) * 8)) == bytes1(0)) return 6;
+    return 16;
 }

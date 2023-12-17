@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.22;
 
-import {BaseIntentStandard} from "./BaseIntentStandard.sol";
 import {IIntentStandardRegistry} from "./IIntentStandardRegistry.sol";
 import {INonceManager} from "./INonceManager.sol";
 import {IntentSolution} from "./IntentSolution.sol";
+import {IIntentStandard} from "./IIntentStandard.sol";
 import {IAggregator} from "./IAggregator.sol";
 import {UserIntent} from "./UserIntent.sol";
 
@@ -69,5 +69,5 @@ interface IEntryPoint is INonceManager, IIntentStandardRegistry {
     /**
      * returns true if the given standard is currently executing an intent segment for the msg.sender.
      */
-    function verifyExecutingIntentSegmentForStandard(BaseIntentStandard intentStandard) external returns (bool);
+    function verifyExecutingIntentSegmentForStandard(IIntentStandard intentStandard) external returns (bool);
 }

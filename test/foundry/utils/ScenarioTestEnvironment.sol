@@ -9,24 +9,24 @@ import {IntentBuilder} from "./IntentBuilder.sol";
 import {EntryPoint} from "../../../src/core/EntryPoint.sol";
 import {UserIntent} from "../../../src/interfaces/UserIntent.sol";
 import {IntentSolution} from "../../../src/interfaces/IntentSolution.sol";
-import {Erc20Record} from "../../../src/standards/Erc20Record.sol";
-import {Erc20Release} from "../../../src/standards/Erc20Release.sol";
-import {Erc20ReleaseExponential} from "../../../src/standards/Erc20ReleaseExponential.sol";
-import {Erc20ReleaseLinear} from "../../../src/standards/Erc20ReleaseLinear.sol";
-import {Erc20Require} from "../../../src/standards/Erc20Require.sol";
-import {Erc20RequireExponential} from "../../../src/standards/Erc20RequireExponential.sol";
-import {Erc20RequireLinear} from "../../../src/standards/Erc20RequireLinear.sol";
-import {EthReleaseExponential} from "../../../src/standards/EthReleaseExponential.sol";
-import {EthReleaseLinear} from "../../../src/standards/EthReleaseLinear.sol";
-import {EthRequireExponential} from "../../../src/standards/EthRequireExponential.sol";
-import {EthRequireLinear} from "../../../src/standards/EthRequireLinear.sol";
-import {SequentialNonce} from "../../../src/standards/SequentialNonce.sol";
-import {EmbeddableSimpleCall} from "../../../src/standards/SimpleCall.sol";
-import {EmbeddableUserOperation} from "../../../src/standards/UserOperation.sol";
-import {EmbeddableEthRequire} from "../../../src/standards/EthRequire.sol";
-import {EmbeddableEthRecord} from "../../../src/standards/EthRecord.sol";
-import {EmbeddableEthRelease} from "../../../src/standards/EthRelease.sol";
-import {BaseIntentStandard} from "../../../src/interfaces/BaseIntentStandard.sol";
+import {encodeErc20RecordData} from "../../../src/standards/Erc20Record.sol";
+import {ERC20_RECORD_STD_ID} from "../../../src/core/EntryPoint.sol";
+import {encodeErc20ReleaseData, encodeErc20ReleaseComplexData} from "../../../src/standards/Erc20Release.sol";
+import {ERC20_RELEASE_STD_ID} from "../../../src/core/EntryPoint.sol";
+import {encodeErc20RequireData, encodeErc20RequireComplexData} from "../../../src/standards/Erc20Require.sol";
+import {ERC20_REQUIRE_STD_ID} from "../../../src/core/EntryPoint.sol";
+import {encodeEthRecordData} from "../../../src/standards/EthRecord.sol";
+import {ETH_RECORD_STD_ID} from "../../../src/core/EntryPoint.sol";
+import {encodeEthReleaseData, encodeEthReleaseComplexData} from "../../../src/standards/EthRelease.sol";
+import {ETH_RELEASE_STD_ID} from "../../../src/core/EntryPoint.sol";
+import {encodeEthRequireData, encodeEthRequireComplexData} from "../../../src/standards/EthRequire.sol";
+import {ETH_REQUIRE_STD_ID} from "../../../src/core/EntryPoint.sol";
+import {encodeSequentialNonceData} from "../../../src/standards/SequentialNonce.sol";
+import {SEQUENTIAL_NONCE_STD_ID} from "../../../src/core/EntryPoint.sol";
+import {encodeSimpleCallData} from "../../../src/standards/SimpleCall.sol";
+import {SIMPLE_CALL_STD_ID} from "../../../src/core/EntryPoint.sol";
+import {encodeUserOperationData} from "../../../src/standards/UserOperation.sol";
+import {USER_OPERATION_STD_ID} from "../../../src/core/EntryPoint.sol";
 import {TestERC20} from "../../../src/test/TestERC20.sol";
 import {TestUniswap} from "../../../src/test/TestUniswap.sol";
 import {TestWrappedNativeToken} from "../../../src/test/TestWrappedNativeToken.sol";
@@ -41,25 +41,6 @@ abstract contract ScenarioTestEnvironment is Test {
     //main contracts
     EntryPoint internal _entryPoint;
     AbstractAccount internal _account;
-
-    //intent standard contracts
-    Erc20Record internal _erc20Record;
-    Erc20Release internal _erc20Release;
-    Erc20ReleaseExponential internal _erc20ReleaseExponential;
-    Erc20ReleaseLinear internal _erc20ReleaseLinear;
-    Erc20Require internal _erc20Require;
-    Erc20RequireExponential internal _erc20RequireExponential;
-    Erc20RequireLinear internal _erc20RequireLinear;
-    EthReleaseExponential internal _ethReleaseExponential;
-    EthReleaseLinear internal _ethReleaseLinear;
-    EthRequireExponential internal _ethRequireExponential;
-    EthRequireLinear internal _ethRequireLinear;
-    SequentialNonce internal _sequentialNonce;
-    EmbeddableSimpleCall internal _simpleCall;
-    EmbeddableUserOperation internal _userOperation;
-    EmbeddableEthRecord internal _ethRecord;
-    EmbeddableEthRelease internal _ethRelease;
-    EmbeddableEthRequire internal _ethRequire;
 
     //testing contracts
     TestERC20 internal _testERC20;
@@ -85,39 +66,6 @@ abstract contract ScenarioTestEnvironment is Test {
         //deploy contracts
         _entryPoint = new EntryPoint();
         _account = new AbstractAccount(_entryPoint, _publicAddress);
-
-        //intent standards
-        _erc20Record = new Erc20Record();
-        _erc20Release = new Erc20Release();
-        _erc20ReleaseExponential = new Erc20ReleaseExponential();
-        _erc20ReleaseLinear = new Erc20ReleaseLinear();
-        _erc20Require = new Erc20Require();
-        _erc20RequireExponential = new Erc20RequireExponential();
-        _erc20RequireLinear = new Erc20RequireLinear();
-        _ethRecord = EmbeddableEthRecord(address(_entryPoint));
-        _ethRelease = EmbeddableEthRelease(address(_entryPoint));
-        _ethReleaseExponential = new EthReleaseExponential();
-        _ethReleaseLinear = new EthReleaseLinear();
-        _ethRequire = EmbeddableEthRequire(address(_entryPoint));
-        _ethRequireExponential = new EthRequireExponential();
-        _ethRequireLinear = new EthRequireLinear();
-        _sequentialNonce = new SequentialNonce();
-        _simpleCall = EmbeddableSimpleCall(address(_entryPoint));
-        _userOperation = EmbeddableUserOperation(address(_entryPoint));
-
-        //register intent standards to entry point
-        _entryPoint.registerIntentStandard(_erc20Record);
-        _entryPoint.registerIntentStandard(_erc20Release);
-        _entryPoint.registerIntentStandard(_erc20ReleaseExponential);
-        _entryPoint.registerIntentStandard(_erc20ReleaseLinear);
-        _entryPoint.registerIntentStandard(_erc20Require);
-        _entryPoint.registerIntentStandard(_erc20RequireExponential);
-        _entryPoint.registerIntentStandard(_erc20RequireLinear);
-        _entryPoint.registerIntentStandard(_ethReleaseExponential);
-        _entryPoint.registerIntentStandard(_ethReleaseLinear);
-        _entryPoint.registerIntentStandard(_ethRequireExponential);
-        _entryPoint.registerIntentStandard(_ethRequireLinear);
-        _entryPoint.registerIntentStandard(_sequentialNonce);
 
         //deploy test contracts
         _testERC20 = new TestERC20();
@@ -199,32 +147,10 @@ abstract contract ScenarioTestEnvironment is Test {
 
     /**
      * Private helper function to build a call intent struct for the solver.
-     * @param callData1 Optoinal calldata for segment1.
-     * @param callData2 Optoinal calldata for segment2.
-     * @param callData3 Optoinal calldata for segment3.
-     * @param numSegments The number of segments for the intent.
      * @return The created UserIntent struct.
      */
-    function _solverIntent(bytes memory callData1, bytes memory callData2, bytes memory callData3, uint256 numSegments)
-        internal
-        view
-        returns (UserIntent memory)
-    {
-        UserIntent memory intent = IntentBuilder.create(address(_solverUtils));
-        if (numSegments > 0) {
-            intent = _addSimpleCall(intent, callData1);
-        }
-        if (numSegments > 1) {
-            intent = _addSimpleCall(intent, callData2);
-        }
-        if (numSegments > 2) {
-            intent = _addSimpleCall(intent, callData3);
-        }
-        for (uint256 i = 3; i < numSegments; i++) {
-            intent = _addSimpleCall(intent, "");
-        }
-
-        return intent;
+    function _solverIntent() internal view returns (UserIntent memory) {
+        return IntentBuilder.create(address(_solverUtils));
     }
 
     /**
@@ -236,42 +162,40 @@ abstract contract ScenarioTestEnvironment is Test {
     }
 
     function _addErc20Record(UserIntent memory intent) internal view returns (UserIntent memory) {
-        bytes32 standardId = _entryPoint.getIntentStandardId(_erc20Record);
-        return intent.addSegment(_erc20Record.encodeData(standardId, _token));
+        return intent.addSegment(encodeErc20RecordData(ERC20_RECORD_STD_ID, _token));
     }
 
     function _addErc20Release(UserIntent memory intent, int256 amount) internal view returns (UserIntent memory) {
-        bytes32 standardId = _entryPoint.getIntentStandardId(_erc20Release);
-        return intent.addSegment(_erc20Release.encodeData(standardId, _token, amount));
+        return intent.addSegment(encodeErc20ReleaseData(ERC20_RELEASE_STD_ID, _token, amount));
+    }
+
+    function _addErc20ReleaseLinear(
+        UserIntent memory intent,
+        uint32 startTime,
+        uint24 deltaTime,
+        int256 startAmount,
+        int256 deltaAmount
+    ) internal view returns (UserIntent memory) {
+        return intent.addSegment(
+            encodeErc20ReleaseComplexData(
+                ERC20_RELEASE_STD_ID, _token, startTime, deltaTime, startAmount, deltaAmount, 0, false
+            )
+        );
     }
 
     function _addErc20ReleaseExponential(
         UserIntent memory intent,
-        uint40 startTime,
-        uint32 deltaTime,
+        uint32 startTime,
+        uint24 deltaTime,
         int256 startAmount,
         int256 deltaAmount,
         uint8 exponent,
         bool backwards
     ) internal view returns (UserIntent memory) {
-        bytes32 standardId = _entryPoint.getIntentStandardId(_erc20ReleaseExponential);
         return intent.addSegment(
-            _erc20ReleaseExponential.encodeData(
-                standardId, _token, startTime, deltaTime, startAmount, deltaAmount, exponent, backwards
+            encodeErc20ReleaseComplexData(
+                ERC20_RELEASE_STD_ID, _token, startTime, deltaTime, startAmount, deltaAmount, exponent, backwards
             )
-        );
-    }
-
-    function _addErc20ReleaseLinear(
-        UserIntent memory intent,
-        uint40 startTime,
-        uint32 deltaTime,
-        int256 startAmount,
-        int256 deltaAmount
-    ) internal view returns (UserIntent memory) {
-        bytes32 standardId = _entryPoint.getIntentStandardId(_erc20ReleaseLinear);
-        return intent.addSegment(
-            _erc20ReleaseLinear.encodeData(standardId, _token, startTime, deltaTime, startAmount, deltaAmount)
         );
     }
 
@@ -280,142 +204,143 @@ abstract contract ScenarioTestEnvironment is Test {
         view
         returns (UserIntent memory)
     {
-        bytes32 standardId = _entryPoint.getIntentStandardId(_erc20Require);
-        return intent.addSegment(_erc20Require.encodeData(standardId, _token, amount, isRelative));
-    }
-
-    function _addErc20RequireExponential(
-        UserIntent memory intent,
-        uint40 startTime,
-        uint32 deltaTime,
-        int256 startAmount,
-        int256 deltaAmount,
-        uint8 exponent,
-        bool backwards,
-        bool isRelative
-    ) internal view returns (UserIntent memory) {
-        bytes32 standardId = _entryPoint.getIntentStandardId(_erc20RequireExponential);
-        return intent.addSegment(
-            _erc20RequireExponential.encodeData(
-                standardId, _token, startTime, deltaTime, startAmount, deltaAmount, exponent, backwards, isRelative
-            )
-        );
+        return intent.addSegment(encodeErc20RequireData(ERC20_REQUIRE_STD_ID, _token, amount, isRelative));
     }
 
     function _addErc20RequireLinear(
         UserIntent memory intent,
-        uint40 startTime,
-        uint32 deltaTime,
+        uint32 startTime,
+        uint24 deltaTime,
         int256 startAmount,
         int256 deltaAmount,
         bool isRelative
     ) internal view returns (UserIntent memory) {
-        bytes32 standardId = _entryPoint.getIntentStandardId(_erc20RequireLinear);
         return intent.addSegment(
-            _erc20RequireLinear.encodeData(
-                standardId, _token, startTime, deltaTime, startAmount, deltaAmount, isRelative
+            encodeErc20RequireComplexData(
+                ERC20_REQUIRE_STD_ID, _token, startTime, deltaTime, startAmount, deltaAmount, 0, false, isRelative
             )
         );
     }
 
-    function _addEthRecord(UserIntent memory intent) internal view returns (UserIntent memory) {
-        return intent.addSegment(_ethRecord.encodeData(_entryPoint.getEthRecordStandardId()));
-    }
-
-    function _addEthRelease(UserIntent memory intent, int256 amount) internal view returns (UserIntent memory) {
-        return intent.addSegment(_ethRelease.encodeData(_entryPoint.getEthReleaseStandardId(), amount));
-    }
-
-    function _addEthReleaseExponential(
+    function _addErc20RequireExponential(
         UserIntent memory intent,
-        uint40 startTime,
-        uint32 deltaTime,
-        int256 startAmount,
-        int256 deltaAmount,
-        uint8 exponent,
-        bool backwards
-    ) internal view returns (UserIntent memory) {
-        bytes32 standardId = _entryPoint.getIntentStandardId(_ethReleaseExponential);
-        return intent.addSegment(
-            _ethReleaseExponential.encodeData(
-                standardId, startTime, deltaTime, startAmount, deltaAmount, exponent, backwards
-            )
-        );
-    }
-
-    function _addEthReleaseLinear(
-        UserIntent memory intent,
-        uint40 startTime,
-        uint32 deltaTime,
-        int256 startAmount,
-        int256 deltaAmount
-    ) internal view returns (UserIntent memory) {
-        bytes32 standardId = _entryPoint.getIntentStandardId(_ethReleaseLinear);
-        return
-            intent.addSegment(_ethReleaseLinear.encodeData(standardId, startTime, deltaTime, startAmount, deltaAmount));
-    }
-
-    function _addEthRequire(UserIntent memory intent, int256 amount, bool isRelative)
-        internal
-        view
-        returns (UserIntent memory)
-    {
-        return intent.addSegment(_ethRequire.encodeData(_entryPoint.getEthRequireStandardId(), amount, isRelative));
-    }
-
-    function _addEthRequireExponential(
-        UserIntent memory intent,
-        uint40 startTime,
-        uint32 deltaTime,
+        uint32 startTime,
+        uint24 deltaTime,
         int256 startAmount,
         int256 deltaAmount,
         uint8 exponent,
         bool backwards,
         bool isRelative
     ) internal view returns (UserIntent memory) {
-        bytes32 standardId = _entryPoint.getIntentStandardId(_ethRequireExponential);
         return intent.addSegment(
-            _ethRequireExponential.encodeData(
-                standardId, startTime, deltaTime, startAmount, deltaAmount, exponent, backwards, isRelative
+            encodeErc20RequireComplexData(
+                ERC20_REQUIRE_STD_ID,
+                _token,
+                startTime,
+                deltaTime,
+                startAmount,
+                deltaAmount,
+                exponent,
+                backwards,
+                isRelative
             )
         );
     }
 
-    function _addEthRequireLinear(
+    function _addEthRecord(UserIntent memory intent) internal pure returns (UserIntent memory) {
+        return intent.addSegment(encodeEthRecordData(ETH_RECORD_STD_ID));
+    }
+
+    function _addEthRelease(UserIntent memory intent, int256 amount) internal pure returns (UserIntent memory) {
+        return intent.addSegment(encodeEthReleaseData(ETH_RELEASE_STD_ID, amount));
+    }
+
+    function _addEthReleaseLinear(
         UserIntent memory intent,
-        uint40 startTime,
-        uint32 deltaTime,
+        uint32 startTime,
+        uint24 deltaTime,
         int256 startAmount,
-        int256 deltaAmount,
-        bool isRelative
-    ) internal view returns (UserIntent memory) {
-        bytes32 standardId = _entryPoint.getIntentStandardId(_ethRequireLinear);
+        int256 deltaAmount
+    ) internal pure returns (UserIntent memory) {
         return intent.addSegment(
-            _ethRequireLinear.encodeData(standardId, startTime, deltaTime, startAmount, deltaAmount, isRelative)
+            encodeEthReleaseComplexData(ETH_RELEASE_STD_ID, startTime, deltaTime, startAmount, deltaAmount, 0, false)
         );
     }
 
-    function _addSequentialNonce(UserIntent memory intent, uint256 nonce) internal view returns (UserIntent memory) {
-        bytes32 standardId = _entryPoint.getIntentStandardId(_sequentialNonce);
-        return intent.addSegment(_sequentialNonce.encodeData(standardId, nonce));
+    function _addEthReleaseExponential(
+        UserIntent memory intent,
+        uint32 startTime,
+        uint24 deltaTime,
+        int256 startAmount,
+        int256 deltaAmount,
+        uint8 exponent,
+        bool backwards
+    ) internal pure returns (UserIntent memory) {
+        return intent.addSegment(
+            encodeEthReleaseComplexData(
+                ETH_RELEASE_STD_ID, startTime, deltaTime, startAmount, deltaAmount, exponent, backwards
+            )
+        );
+    }
+
+    function _addEthRequire(UserIntent memory intent, int256 amount, bool isRelative)
+        internal
+        pure
+        returns (UserIntent memory)
+    {
+        return intent.addSegment(encodeEthRequireData(ETH_REQUIRE_STD_ID, amount, isRelative));
+    }
+
+    function _addEthRequireLinear(
+        UserIntent memory intent,
+        uint32 startTime,
+        uint24 deltaTime,
+        int256 startAmount,
+        int256 deltaAmount,
+        bool isRelative
+    ) internal pure returns (UserIntent memory) {
+        return intent.addSegment(
+            encodeEthRequireComplexData(
+                ETH_REQUIRE_STD_ID, startTime, deltaTime, startAmount, deltaAmount, 0, false, isRelative
+            )
+        );
+    }
+
+    function _addEthRequireExponential(
+        UserIntent memory intent,
+        uint32 startTime,
+        uint24 deltaTime,
+        int256 startAmount,
+        int256 deltaAmount,
+        uint8 exponent,
+        bool backwards,
+        bool isRelative
+    ) internal pure returns (UserIntent memory) {
+        return intent.addSegment(
+            encodeEthRequireComplexData(
+                ETH_REQUIRE_STD_ID, startTime, deltaTime, startAmount, deltaAmount, exponent, backwards, isRelative
+            )
+        );
+    }
+
+    function _addSequentialNonce(UserIntent memory intent, uint256 nonce) internal pure returns (UserIntent memory) {
+        return intent.addSegment(encodeSequentialNonceData(SEQUENTIAL_NONCE_STD_ID, nonce));
     }
 
     function _addSimpleCall(UserIntent memory intent, bytes memory callData)
         internal
-        view
+        pure
         returns (UserIntent memory)
     {
-        return intent.addSegment(_simpleCall.encodeData(_entryPoint.getSimpleCallStandardId(), callData));
+        return intent.addSegment(encodeSimpleCallData(SIMPLE_CALL_STD_ID, callData));
     }
 
     function _addUserOp(UserIntent memory intent, uint32 callGasLimit, bytes memory callData)
         internal
-        view
+        pure
         returns (UserIntent memory)
     {
-        return intent.addSegment(
-            _userOperation.encodeData(_entryPoint.getUserOperationStandardId(), callGasLimit, callData)
-        );
+        return intent.addSegment(encodeUserOperationData(USER_OPERATION_STD_ID, callGasLimit, callData));
     }
 
     /**
@@ -432,7 +357,24 @@ abstract contract ScenarioTestEnvironment is Test {
         UserIntent[] memory intents = new UserIntent[](2);
         intents[0] = intent1;
         intents[1] = intent2;
-        uint256[] memory order = new uint256[](0);
+
+        uint256 len1 = intent1.intentData.length;
+        uint256 len2 = intent2.intentData.length;
+        uint256[] memory order = new uint256[](len1 + len2);
+        uint256 index = 0;
+        while (len1 > 0 || len2 > 0) {
+            if (len1 > 0) {
+                order[index] = 0;
+                len1--;
+                index++;
+            }
+            if (len2 > 0) {
+                order[index] = 1;
+                len2--;
+                index++;
+            }
+        }
+
         return IntentSolution({timestamp: block.timestamp, intents: intents, order: order});
     }
 
@@ -522,6 +464,21 @@ abstract contract ScenarioTestEnvironment is Test {
         bytes32 digest = keccak256(abi.encodePacked("test data"));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
         return ecrecover(digest, v, r, s);
+    }
+
+    /**
+     * Private helper function to get bytes (usefule for analyzing segment data).
+     * @param data The data to pull from.
+     * @param from The start index.
+     * @param to The end index.
+     * @return result the bytes.
+     */
+    function _getBytes(bytes memory data, uint256 from, uint256 to) internal pure returns (bytes32 result) {
+        result = bytes32(0);
+        for (uint256 i = from; i < to; i++) {
+            result = (result << 8) | (bytes32(data[i]) >> (31 * 8));
+        }
+        result = result << ((32 - (to - from)) * 8);
     }
 
     /**

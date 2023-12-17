@@ -5,13 +5,11 @@ pragma solidity ^0.8.22;
 /* solhint-disable no-inline-assembly */
 /* solhint-disable private-vars-leading-underscore */
 
-import {EmbeddedIntentStandards} from "./EmbeddedIntentStandards.sol";
 import {IntentStandardRegistry} from "./IntentStandardRegistry.sol";
 import {NonceManager} from "./NonceManager.sol";
 import {IAccount} from "../interfaces/IAccount.sol";
 import {IAggregator} from "../interfaces/IAggregator.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
-import {BaseIntentStandard} from "../interfaces/BaseIntentStandard.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
 import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
@@ -19,22 +17,55 @@ import {getSegmentStandard} from "../standards/utils/SegmentData.sol";
 import {Exec, RevertReason} from "../utils/Exec.sol";
 import {ReentrancyGuard} from "openzeppelin/security/ReentrancyGuard.sol";
 
-contract EntryPoint is IEntryPoint, NonceManager, IntentStandardRegistry, EmbeddedIntentStandards, ReentrancyGuard {
+// embedded intent standards
+import {Erc20RecordCore} from "../standards/Erc20Record.sol";
+import {Erc20ReleaseCore} from "../standards/Erc20Release.sol";
+import {Erc20RequireCore} from "../standards/Erc20Require.sol";
+import {EthRecordCore} from "../standards/EthRecord.sol";
+import {EthReleaseCore} from "../standards/EthRelease.sol";
+import {EthRequireCore} from "../standards/EthRequire.sol";
+import {SequentialNonceManagerCore} from "../standards/SequentialNonce.sol";
+import {SimpleCallCore} from "../standards/SimpleCall.sol";
+import {UserOperationCore} from "../standards/UserOperation.sol";
+
+// embedded intent standard IDs
+bytes32 constant SIMPLE_CALL_STD_ID = bytes32(uint256(0));
+bytes32 constant ERC20_RECORD_STD_ID = bytes32(uint256(1));
+bytes32 constant ERC20_RELEASE_STD_ID = bytes32(uint256(2));
+bytes32 constant ERC20_REQUIRE_STD_ID = bytes32(uint256(3));
+bytes32 constant ETH_RECORD_STD_ID = bytes32(uint256(4));
+bytes32 constant ETH_RELEASE_STD_ID = bytes32(uint256(5));
+bytes32 constant ETH_REQUIRE_STD_ID = bytes32(uint256(6));
+bytes32 constant SEQUENTIAL_NONCE_STD_ID = bytes32(uint256(7));
+bytes32 constant USER_OPERATION_STD_ID = bytes32(uint256(8));
+uint256 constant NUM_EMBEDDED_STANDARDS = uint256(9);
+
+contract EntryPoint is
+    IEntryPoint,
+    NonceManager,
+    IntentStandardRegistry,
+    ReentrancyGuard,
+    SimpleCallCore,
+    Erc20RecordCore,
+    Erc20ReleaseCore,
+    Erc20RequireCore,
+    EthRecordCore,
+    EthReleaseCore,
+    EthRequireCore,
+    SequentialNonceManagerCore,
+    UserOperationCore
+{
     using IntentSolutionLib for IntentSolution;
     using UserIntentLib for UserIntent;
     using RevertReason for bytes;
 
+    // data limits
     uint256 private constant REVERT_REASON_MAX_LEN = 2048;
     uint256 private constant CONTEXT_DATA_MAX_LEN = 2048;
 
-    address private constant EX_STANDARD_NOT_ACTIVE = address(0);
-    address private constant EX_STATE_NOT_ACTIVE = address(0);
-    address private constant EX_STATE_VALIDATION_EXECUTING =
-        address(uint160(uint256(keccak256("EX_STATE_VALIDATION_EXECUTING"))));
-
-    //flag for applications to check current context of execution
-    address private _executionStateContext;
-    address private _executionIntentStandard;
+    // flag for applications to check current context of execution
+    bytes32 private _executionState;
+    bytes32 private constant EX_STATE_NOT_ACTIVE = bytes32(0);
 
     /**
      * Execute a batch of UserIntents with given solution.
@@ -48,90 +79,137 @@ contract EntryPoint is IEntryPoint, NonceManager, IntentStandardRegistry, Embedd
     {
         uint256 intsLen = solution.intents.length;
         require(intsLen > 0, "AA70 no intents");
-
-        // validate timestamp
-        uint256 timestamp = solution.getTimestamp();
-        require(timestamp > 0, "AA71 invalid timestamp");
+        require(intsLen <= 32, "AA72 too many intents");
+        require(solution.getTimestamp() > 0, "AA71 invalid timestamp");
 
         unchecked {
             // validate intents
             for (uint256 i = 0; i < intsLen; i++) {
                 UserIntent calldata intent = solution.intents[i];
                 bytes32 intentHash = _generateUserIntentHash(intent);
-                if (intent.sender != address(0) && intent.intentData.length > 0) {
-                    _validateUserIntentWithAccount(intent, intentHash, i, signatureAggregator, validatedIntents);
+                uint256 numSegments = intent.intentData.length;
+                if (numSegments > 256) {
+                    revert FailedIntent(i, 0, string.concat("AA63 too many segments"));
                 }
-
-                emit UserIntentEvent(intentHash, intent.sender, msg.sender);
+                if (intent.sender != address(0) && numSegments > 0) {
+                    _validateUserIntentWithAccount(intent, intentHash, i, signatureAggregator, validatedIntents);
+                    emit UserIntentEvent(intentHash, intent.sender, msg.sender);
+                }
             }
 
             // execute solution
             bytes[] memory contextData = new bytes[](solution.intents.length);
-            uint256[] memory intentDataIndexes = new uint256[](solution.intents.length);
+            uint256 segmentIndexes = 0x0000000000000000000000000000000000000000000000000000000000000000;
+            uint256 stillNeedToExecute =
+                0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff >> (256 - intsLen);
             uint256 executionIndex = 0;
 
-            // first loop through the order specified by the solution
-            for (; executionIndex < solution.order.length; executionIndex++) {
+            // loop through the order specified by the solution
+            uint256 orderLen = solution.order.length;
+            for (; executionIndex < orderLen; executionIndex++) {
                 uint256 intentIndex = solution.order[executionIndex];
-                if (intentDataIndexes[intentIndex] < solution.intents[intentIndex].intentData.length) {
-                    contextData[intentIndex] = _executeIntent(
-                        solution, executionIndex, intentIndex, intentDataIndexes[intentIndex], contextData[intentIndex]
+                uint256 shift = intentIndex * 8;
+                uint256 segmentIndex = (segmentIndexes >> shift) & 0xff;
+                uint256 numSegments = solution.intents[intentIndex].intentData.length;
+
+                if (segmentIndex < numSegments) {
+                    contextData[intentIndex] = _handleIntentSegment(
+                        solution, intentIndex, segmentIndex, executionIndex, contextData[intentIndex]
                     );
-                    intentDataIndexes[intentIndex]++;
+
+                    // keep track of what segments have been executed and if there are any remaining
+                    segmentIndex++;
+                    segmentIndexes = segmentIndexes & ~(0xff << shift);
+                    segmentIndexes = segmentIndexes | (segmentIndex << shift);
+                    if (segmentIndex >= numSegments) {
+                        stillNeedToExecute = stillNeedToExecute & ~(0x01 << intentIndex);
+                    }
+                } else if (segmentIndex == 0) {
+                    stillNeedToExecute = stillNeedToExecute & ~(0x01 << intentIndex);
                 }
             }
 
-            // continue looping until all intents have finished executing
-            while (true) {
-                bool finished = true;
-                for (uint256 i = 0; i < solution.intents.length; i++) {
-                    if (intentDataIndexes[i] < solution.intents[i].intentData.length) {
-                        finished = false;
-                        contextData[i] =
-                            _executeIntent(solution, executionIndex, i, intentDataIndexes[i], contextData[i]);
-                        intentDataIndexes[i]++;
-                    }
-                    executionIndex++;
+            // require all segments to have executed
+            if (stillNeedToExecute != 0x0000000000000000000000000000000000000000000000000000000000000000) {
+                uint256 intentIndex = 0;
+                for (; intentIndex < intsLen; intentIndex++) {
+                    if (stillNeedToExecute & (0x01 << intentIndex) > 0) break;
                 }
-                if (finished) break;
+                uint256 segmentIndex = (segmentIndexes >> (intentIndex * 8)) & 0xff;
+                revert FailedIntent(intentIndex, segmentIndex, string.concat("AA69 not fully executed"));
             }
 
             // no longer executing
-            _executionStateContext = EX_STATE_NOT_ACTIVE;
-            _executionIntentStandard = EX_STANDARD_NOT_ACTIVE;
+            _executionState = EX_STATE_NOT_ACTIVE;
         } //unchecked
     }
 
     /**
-     * Execute a user intent.
-     * @param solution the full solution context
-     * @param executionIndex the current intent execution index
-     * @param intentIndex the user intent index in the solution
-     * @param segmentIndex the user intent segment index to execute
-     * @param contextData the user intent execution context data
+     * Handle an individual intent segment.
+     * @dev about 800 gas can be saved by embedding this into _handleIntents, but breaks coverage
+     * @param solution the UserIntents solution.
+     * @param intentIndex the index of the intent.
+     * @param segmentIndex the index of the segment in the intent.
+     * @param executionIndex the index of all segments executing in the entire solution.
+     * @param contextData the current intent processing context data.
+     * @return contextData the updated context data.
      */
-    function _executeIntent(
+    function _handleIntentSegment(
         IntentSolution calldata solution,
-        uint256 executionIndex,
         uint256 intentIndex,
         uint256 segmentIndex,
+        uint256 executionIndex,
         bytes memory contextData
     ) private returns (bytes memory) {
         UserIntent calldata intent = solution.intents[intentIndex];
         if (intent.sender != address(0) && intent.intentData.length > 0) {
             bytes32 standardId = getSegmentStandard(intent.intentData[segmentIndex]);
-            if (isEmbeddedIntentStandard(standardId)) {
-                _executionStateContext = intent.sender;
-                _executionIntentStandard = address(this);
-                contextData = _executeIntentSegment(solution, executionIndex, segmentIndex, contextData);
+
+            // check if this is an embedded standard
+            if (uint256(standardId) < NUM_EMBEDDED_STANDARDS) {
+                _executionState = keccak256(abi.encodePacked(intent.sender, address(this)));
+                if (standardId == SIMPLE_CALL_STD_ID) {
+                    _executeSimpleCall(intent.sender, intent.intentData[segmentIndex]);
+                } else if (standardId == ERC20_RECORD_STD_ID) {
+                    return _executeErc20Record(intent.sender, intent.intentData[segmentIndex], contextData);
+                } else if (standardId == ERC20_RELEASE_STD_ID) {
+                    _executeErc20Release(
+                        solution.timestamp,
+                        intent.sender,
+                        solution.intents[solution.getIntentIndex(executionIndex + 1)].sender,
+                        intent.intentData[segmentIndex]
+                    );
+                } else if (standardId == ERC20_REQUIRE_STD_ID) {
+                    return _executeErc20Require(
+                        solution.timestamp, intent.sender, intent.intentData[segmentIndex], contextData
+                    );
+                } else if (standardId == ETH_RECORD_STD_ID) {
+                    return _executeEthRecord(intent.sender, contextData);
+                } else if (standardId == ETH_RELEASE_STD_ID) {
+                    _executeEthRelease(
+                        solution.timestamp,
+                        intent.sender,
+                        solution.intents[solution.getIntentIndex(executionIndex + 1)].sender,
+                        intent.intentData[segmentIndex]
+                    );
+                } else if (standardId == ETH_REQUIRE_STD_ID) {
+                    return _executeEthRequire(
+                        solution.timestamp, intent.sender, intent.intentData[segmentIndex], contextData
+                    );
+                } else if (standardId == SEQUENTIAL_NONCE_STD_ID) {
+                    _executeSequentialNonce(intent.sender, intent.intentData[segmentIndex]);
+                } else if (standardId == USER_OPERATION_STD_ID) {
+                    _executeUserOperation(intent.sender, intent.intentData[segmentIndex]);
+                } else {
+                    revert FailedIntent(intentIndex, segmentIndex, "AA82 unknown standard");
+                }
             } else {
+                // execute as a registered standard
                 IIntentStandard intentStandard = _registeredStandards[standardId];
                 if (intentStandard == IIntentStandard(address(0))) {
                     revert FailedIntent(intentIndex, segmentIndex, "AA82 unknown standard");
                 }
-
-                _executionStateContext = intent.sender;
-                _executionIntentStandard = address(intentStandard);
+                _executionState = keccak256(abi.encodePacked(intent.sender, address(intentStandard)));
                 bool success = Exec.call(
                     address(intentStandard),
                     0,
@@ -148,7 +226,7 @@ contract EntryPoint is IEntryPoint, NonceManager, IntentStandardRegistry, Embedd
                     if (Exec.getReturnDataSize() > CONTEXT_DATA_MAX_LEN) {
                         revert FailedIntent(intentIndex, segmentIndex, "AA60 invalid execution context");
                     }
-                    contextData = Exec.getReturnDataMax(0x40, CONTEXT_DATA_MAX_LEN);
+                    return Exec.getReturnDataMax(0x40, CONTEXT_DATA_MAX_LEN);
                 } else {
                     bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
                     if (reason.length > 0) {
@@ -157,9 +235,8 @@ contract EntryPoint is IEntryPoint, NonceManager, IntentStandardRegistry, Embedd
                             segmentIndex,
                             string.concat("AA61 execution failed: ", string(reason.revertReasonWithoutPadding()))
                         );
-                    } else {
-                        revert FailedIntent(intentIndex, segmentIndex, "AA61 execution failed (or OOG)");
                     }
+                    revert FailedIntent(intentIndex, segmentIndex, "AA61 execution failed (or OOG)");
                 }
             }
         }
@@ -242,9 +319,29 @@ contract EntryPoint is IEntryPoint, NonceManager, IntentStandardRegistry, Embedd
         // validate intent standards are recognized and formatted correctly
         for (uint256 i = 0; i < intent.intentData.length; i++) {
             bytes32 standardId = getSegmentStandard(intent.intentData[i]);
-            if (isEmbeddedIntentStandard(standardId)) {
-                // validate the intent segment itself
-                _validateIntentSegment(intent.intentData[i]);
+            // validate the intent segment itself
+            if (uint256(standardId) < NUM_EMBEDDED_STANDARDS) {
+                if (standardId == SIMPLE_CALL_STD_ID) {
+                    _validateSimpleCall(intent.intentData[i]);
+                } else if (standardId == ERC20_RECORD_STD_ID) {
+                    _validateErc20Record(intent.intentData[i]);
+                } else if (standardId == ERC20_RELEASE_STD_ID) {
+                    _validateErc20Release(intent.intentData[i]);
+                } else if (standardId == ERC20_REQUIRE_STD_ID) {
+                    _validateErc20Require(intent.intentData[i]);
+                } else if (standardId == ETH_RECORD_STD_ID) {
+                    _validateEthRecord(intent.intentData[i]);
+                } else if (standardId == ETH_RELEASE_STD_ID) {
+                    _validateEthRelease(intent.intentData[i]);
+                } else if (standardId == ETH_REQUIRE_STD_ID) {
+                    _validateEthRequire(intent.intentData[i]);
+                } else if (standardId == SEQUENTIAL_NONCE_STD_ID) {
+                    _validateSequentialNonce(intent.intentData[i]);
+                } else if (standardId == USER_OPERATION_STD_ID) {
+                    _validateUserOperation(intent.intentData[i]);
+                } else {
+                    revert("Cannot validate invalid standard");
+                }
             } else {
                 IIntentStandard standard = _registeredStandards[standardId];
                 if (standard == IIntentStandard(address(0))) {
@@ -277,8 +374,17 @@ contract EntryPoint is IEntryPoint, NonceManager, IntentStandardRegistry, Embedd
     /**
      * returns true if the given standard is currently executing an intent segment for the msg.sender.
      */
-    function verifyExecutingIntentSegmentForStandard(BaseIntentStandard intentStandard) external view returns (bool) {
-        return _executionStateContext == msg.sender && _executionIntentStandard == address(intentStandard);
+    function verifyExecutingIntentSegmentForStandard(IIntentStandard intentStandard) external view returns (bool) {
+        return _executionState == keccak256(abi.encodePacked(msg.sender, address(intentStandard)));
+    }
+
+    /**
+     * Manually set the nonce of the sender.
+     * @dev this method should only be allowed to be called by the currently executing intent standard contract
+     */
+    function setNonce(address sender, uint256 key, uint256 nonce) external override {
+        require(_executionState == keccak256(abi.encodePacked(sender, msg.sender)), "Invalid nonce access");
+        _setNonce(sender, key, nonce);
     }
 
     /**
@@ -323,14 +429,5 @@ contract EntryPoint is IEntryPoint, NonceManager, IntentStandardRegistry, Embedd
      */
     function _generateUserIntentHash(UserIntent calldata intent) private view returns (bytes32) {
         return keccak256(abi.encode(intent.hash(), address(this), block.chainid));
-    }
-
-    /**
-     * Manually set the nonce of the sender.
-     * @dev this method should only be allowed to be called by the currently executing intent standard contract
-     */
-    function _setNonce(uint256 key, uint256 nonce) internal override {
-        require(msg.sender == _executionIntentStandard, "Invalid nonce access");
-        nonceValues[_executionStateContext][key] = nonce;
     }
 }

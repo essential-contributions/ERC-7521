@@ -24,7 +24,7 @@ describe('Transfer ETH Test', () => {
   });
 
   it('Should run normal', async () => {
-    // intent transfer (0bytes, 51354gas)
+    // intent transfer (0bytes, 2100gas)
     const to = ethers.hexlify(ethers.randomBytes(20));
     const amount = ethers.parseEther('1');
     const previousToBalance = await env.provider.getBalance(to);
@@ -47,12 +47,12 @@ describe('Transfer ETH Test', () => {
   });
 
   it('Should run single intent', async () => {
-    // intent transfer (1252bytes, 194913gas)
+    // intent transfer (1380bytes, 147108gas)
     const timestamp = (await env.provider.getBlock('latest'))?.timestamp || 0;
     const account = env.abstractAccounts[0];
     const to = ethers.hexlify(ethers.randomBytes(20));
     const amount = ethers.parseEther('1');
-    const gas = ethers.parseEther('0.1');
+    const gas = roundForEncoding(ethers.parseEther('0.1'));
     const previousSolverBalanceErc20 = await env.test.erc20.balanceOf(env.deployerAddress);
     const previousFromBalanceErc20 = await env.test.erc20.balanceOf(account.contractAddress);
     const previousToBalance = await env.provider.getBalance(to);
@@ -65,7 +65,8 @@ describe('Transfer ETH Test', () => {
     await intent.sign(env.chainId, env.entrypointAddress, account.signer);
 
     const solverIntent = new UserIntent(env.deployerAddress);
-    const tx = env.entrypoint.handleIntents(buildSolution(timestamp, [intent, solverIntent], []));
+    const order = [0, 0, 1, 0];
+    const tx = env.entrypoint.handleIntents(buildSolution(timestamp, [intent, solverIntent], order));
     await expect(tx).to.not.be.reverted;
 
     if (LOGGING_ENABLED) {
@@ -89,10 +90,10 @@ describe('Transfer ETH Test', () => {
   });
 
   it('Should run multi intent', async () => {
-    // intent transfer (1065bytes, 167613gas)
+    // intent transfer (1065bytes, 118353gas)
     const timestamp = (await env.provider.getBlock('latest'))?.timestamp || 0;
     const amount = ethers.parseEther('1');
-    const gas = ethers.parseEther('0.1');
+    const gas = roundForEncoding(ethers.parseEther('0.1'));
     const previousSolverBalanceErc20 = await env.test.erc20.balanceOf(env.deployerAddress);
     const toAddresses: string[] = [];
     const previousToBalances: bigint[] = [];
@@ -173,5 +174,12 @@ describe('Transfer ETH Test', () => {
     const startAmount = 0n;
     const endAmount = amount * BigInt(duration / evaluateAt);
     return new LinearCurve(startTime, duration, startAmount, endAmount);
+  }
+
+  // helper function to round to the nearest encoded value
+  function roundForEncoding(amount: bigint): bigint {
+    const timestamp = Math.round(new Date().getTime() / 1000);
+    const curve = generateLinearRelease(timestamp, amount);
+    return curve.evaluate(timestamp);
   }
 });

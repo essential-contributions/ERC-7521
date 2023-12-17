@@ -10,6 +10,7 @@ const config: HardhatUserConfig = {
         enabled: true,
         runs: 1_000_000_000,
       },
+      viaIR: true,
     },
   },
   paths: {

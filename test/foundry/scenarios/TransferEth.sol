@@ -4,6 +4,7 @@ pragma solidity ^0.8.22;
 /* solhint-disable func-name-mixedcase */
 
 import "../utils/ScenarioTestEnvironment.sol";
+import "../../../src/standards/utils/CurveCoder.sol";
 
 /*
  * In this scenario, a user wants to transfer ETH and compensate for gas in an ERC-20 token
@@ -28,16 +29,16 @@ contract TransferEth is ScenarioTestEnvironment {
 
         //build intent
         UserIntent memory intent = _intent();
+        intent = _addSequentialNonce(intent, 1);
         intent = _addErc20ReleaseLinear(
             intent,
-            uint40(block.timestamp - releaseAt),
-            uint32(releaseDuration),
+            uint32(block.timestamp - releaseAt),
+            uint24(releaseDuration),
             releaseStartAmount,
             (releaseEndAmount - releaseStartAmount) / int256(releaseDuration)
         );
         bytes memory executeTransferETH = abi.encodeWithSelector(_account.execute.selector, ethRecipient, ethAmount, "");
         intent = _addUserOp(intent, callGasLimit, executeTransferETH);
-        intent = _addSequentialNonce(intent, 1);
         return intent;
     }
 
@@ -47,7 +48,12 @@ contract TransferEth is ScenarioTestEnvironment {
         returns (IntentSolution memory)
     {
         UserIntent memory solverIntent = IntentBuilder.create(erc20Recipient);
-        return _solution(intent, solverIntent);
+        uint256[] memory order = new uint256[](4);
+        order[0] = 0;
+        order[1] = 0;
+        order[2] = 1;
+        order[3] = 0;
+        return _solution(intent, solverIntent, order);
     }
 
     function setUp() public override {
@@ -67,34 +73,31 @@ contract TransferEth is ScenarioTestEnvironment {
         uint256 ethAmount = 0.1 ether;
         address ethRecipient = _publicAddress;
 
-        //build intent, solution and execute
-        {
-            UserIntent memory intent = _intentForCase(erc20ReleaseAmount, ethRecipient, ethAmount);
-            intent = _signIntent(intent);
+        //build intent
+        UserIntent memory intent = _intentForCase(erc20ReleaseAmount, ethRecipient, ethAmount);
+        intent = _signIntent(intent);
+        uint256 erc20ReleaseAmountEncoded =
+            uint256(evaluateCurve(bytes16(_getBytes(intent.intentData[1], 52, 68)), block.timestamp));
 
-            IntentSolution memory solution = _solutionForCase(intent, erc20Recipient);
+        //build solution
+        IntentSolution memory solution = _solutionForCase(intent, erc20Recipient);
 
-            _entryPoint.handleIntents(solution);
-        }
+        //execute
+        _entryPoint.handleIntents(solution);
 
         //verify end state
-        {
-            uint256 solverBalance = _testERC20.balanceOf(_publicAddressSolver);
-            assertEq(solverBalance, erc20ReleaseAmount, "The solver ended up with incorrect token balance");
-        }
-        {
-            uint256 solverBalance = _testERC20.balanceOf(address(_account));
-            uint256 expectedUserBalance = _accountInitialERC20Balance - erc20ReleaseAmount;
-            assertEq(solverBalance, expectedUserBalance, "The user ended up with incorrect token balance");
-        }
-        {
-            uint256 recipientBalance = address(_publicAddress).balance;
-            assertEq(recipientBalance, ethAmount, "The recipient didn't get the expected ETH");
-        }
-        {
-            uint256 userBalance = address(_account).balance;
-            uint256 expectedUserBalance = _accountInitialETHBalance - ethAmount;
-            assertEq(userBalance, expectedUserBalance, "The user ended up with incorrect ETH balance");
-        }
+        uint256 solverTokenBalance = _testERC20.balanceOf(_publicAddressSolver);
+        assertEq(solverTokenBalance, erc20ReleaseAmountEncoded, "The solver ended up with incorrect token balance");
+
+        uint256 userTokenBalance = _testERC20.balanceOf(address(_account));
+        uint256 expectedUserTokenBalance = _accountInitialERC20Balance - erc20ReleaseAmountEncoded;
+        assertEq(userTokenBalance, expectedUserTokenBalance, "The user ended up with incorrect token balance");
+
+        uint256 recipientBalance = address(_publicAddress).balance;
+        assertEq(recipientBalance, ethAmount, "The recipient didn't get the expected ETH");
+
+        uint256 userBalance = address(_account).balance;
+        uint256 expectedUserBalance = _accountInitialETHBalance - ethAmount;
+        assertEq(userBalance, expectedUserBalance, "The user ended up with incorrect ETH balance");
     }
 }

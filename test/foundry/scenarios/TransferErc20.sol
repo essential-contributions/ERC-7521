@@ -4,6 +4,7 @@ pragma solidity ^0.8.22;
 /* solhint-disable func-name-mixedcase */
 
 import "../utils/ScenarioTestEnvironment.sol";
+import "../../../src/standards/utils/CurveCoder.sol";
 
 /*
  * In this scenario, a user wants to transfer ERC-20 tokens and compensate for gas with the same tokens
@@ -27,10 +28,11 @@ contract TransferErc20 is ScenarioTestEnvironment {
 
         //build intent
         UserIntent memory intent = _intent();
+        intent = _addSequentialNonce(intent, 1);
         intent = _addErc20ReleaseLinear(
             intent,
-            uint40(block.timestamp - releaseAt),
-            uint32(releaseDuration),
+            uint32(block.timestamp - releaseAt),
+            uint24(releaseDuration),
             releaseStartAmount,
             (releaseEndAmount - releaseStartAmount) / int256(releaseDuration)
         );
@@ -39,7 +41,6 @@ contract TransferErc20 is ScenarioTestEnvironment {
         bytes memory executeTransferErc20 =
             abi.encodeWithSelector(_account.execute.selector, _testERC20, 0, transferErc20);
         intent = _addUserOp(intent, callGasLimit, executeTransferErc20);
-        intent = _addSequentialNonce(intent, 1);
         return intent;
     }
 
@@ -49,7 +50,12 @@ contract TransferErc20 is ScenarioTestEnvironment {
         returns (IntentSolution memory)
     {
         UserIntent memory solverIntent = IntentBuilder.create(erc20Recipient);
-        return _solution(intent, solverIntent);
+        uint256[] memory order = new uint256[](4);
+        order[0] = 0;
+        order[1] = 0;
+        order[2] = 1;
+        order[3] = 0;
+        return _solution(intent, solverIntent, order);
     }
 
     function setUp() public override {
@@ -68,29 +74,27 @@ contract TransferErc20 is ScenarioTestEnvironment {
         uint256 transferAmount = 1 ether;
         address transferRecipient = _publicAddress;
 
-        //build intent, solution and execute
-        {
-            UserIntent memory intent = _intentForCase(erc20ReleaseAmount, transferRecipient, transferAmount);
-            intent = _signIntent(intent);
+        //build intent
+        UserIntent memory intent = _intentForCase(erc20ReleaseAmount, transferRecipient, transferAmount);
+        intent = _signIntent(intent);
+        uint256 erc20ReleaseAmountEncoded =
+            uint256(evaluateCurve(bytes16(_getBytes(intent.intentData[1], 52, 68)), block.timestamp));
 
-            IntentSolution memory solution = _solutionForCase(intent, erc20Recipient);
+        //build solution
+        IntentSolution memory solution = _solutionForCase(intent, erc20Recipient);
 
-            _entryPoint.handleIntents(solution);
-        }
+        //execute
+        _entryPoint.handleIntents(solution);
 
         //verify end state
-        {
-            uint256 solverBalance = _testERC20.balanceOf(_publicAddressSolver);
-            assertEq(solverBalance, erc20ReleaseAmount, "The solver ended up with incorrect token balance");
-        }
-        {
-            uint256 userBalance = _testERC20.balanceOf(address(_account));
-            uint256 expectedUserBalance = _accountInitialERC20Balance - (erc20ReleaseAmount + transferAmount);
-            assertEq(userBalance, expectedUserBalance, "The user ended up with incorrect token balance");
-        }
-        {
-            uint256 recipientBalance = _testERC20.balanceOf(address(_publicAddress));
-            assertEq(recipientBalance, transferAmount, "The recipient didn't get the expected tokens");
-        }
+        uint256 solverBalance = _testERC20.balanceOf(_publicAddressSolver);
+        assertEq(solverBalance, erc20ReleaseAmountEncoded, "The solver ended up with incorrect token balance");
+
+        uint256 userBalance = _testERC20.balanceOf(address(_account));
+        uint256 expectedUserBalance = _accountInitialERC20Balance - (erc20ReleaseAmountEncoded + transferAmount);
+        assertEq(userBalance, expectedUserBalance, "The user ended up with incorrect token balance");
+
+        uint256 recipientBalance = _testERC20.balanceOf(address(_publicAddress));
+        assertEq(recipientBalance, transferAmount, "The recipient didn't get the expected tokens");
     }
 }

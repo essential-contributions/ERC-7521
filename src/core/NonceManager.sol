@@ -10,7 +10,7 @@ abstract contract NonceManager is INonceManager {
     /**
      * The next valid sequence number for a given nonce key.
      */
-    mapping(address => mapping(uint256 => uint256)) public nonceValues;
+    mapping(address => mapping(uint256 => uint256)) private _nonceValues;
 
     /**
      * Return the nonce for this sender and key.
@@ -20,22 +20,28 @@ abstract contract NonceManager is INonceManager {
      * @return nonce the nonce value
      */
     function getNonce(address sender, uint256 key) public view override returns (uint256 nonce) {
-        return nonceValues[sender][key];
+        return _nonceValues[sender][key];
     }
 
     /**
-     * Manually set the nonce of the sender.
-     * @dev this method should only be allowed to be called by the currently executing intent standard contract
+     * Return the nonce for this sender and key.
      *
+     * @param sender the account address
      * @param key the unique key that points to the nonce
+     * @return nonce the nonce value
      */
-    function setNonce(uint256 key, uint256 nonce) public override {
-        _setNonce(key, nonce);
+    function _getNonce(address sender, uint256 key) internal view returns (uint256 nonce) {
+        return _nonceValues[sender][key];
     }
 
     /**
      * Manually set the nonce of the sender.
-     * @dev this method should only be allowed to be called by the currently executing intent standard contract
+     *
+     * @param sender the account address
+     * @param key the unique key that points to the nonce
+     * @param nonce the nonce value
      */
-    function _setNonce(uint256 key, uint256 nonce) internal virtual;
+    function _setNonce(address sender, uint256 key, uint256 nonce) internal {
+        _nonceValues[sender][key] = nonce;
+    }
 }

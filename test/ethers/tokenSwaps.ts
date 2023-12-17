@@ -29,7 +29,7 @@ describe('Token Swaps Test', () => {
   });
 
   it('Should run normal', async () => {
-    // intent transfer (260bytes, 117437gas)
+    // intent transfer (260bytes, 116380gas)
     const amount = ethers.parseEther('1');
     const previousFromBalance = await env.test.erc20.balanceOf(env.deployerAddress);
     const previousToBalance = await env.provider.getBalance(env.deployerAddress);
@@ -70,10 +70,10 @@ describe('Token Swaps Test', () => {
   });
 
   it('Should run single intent', async () => {
-    // intent transfer (1732bytes, 269814gas)
+    // intent transfer (1732bytes, 200230gas)
     const timestamp = (await env.provider.getBlock('latest'))?.timestamp || 0;
     const account = env.abstractAccounts[0];
-    const amount = ethers.parseEther('1');
+    const amount = roundForEncoding(ethers.parseEther('1'));
     const previousFromBalance = await env.test.erc20.balanceOf(account.contractAddress);
     const previousToBalance = await env.provider.getBalance(account.contractAddress);
     const previousSolverBalance = await env.provider.getBalance(env.deployerAddress);
@@ -115,10 +115,9 @@ describe('Token Swaps Test', () => {
   });
 
   it('Should run multi intent', async () => {
-    // intent transfer (1297bytes, 201973gas)
+    // intent transfer (1297bytes, 114450gas)
     const timestamp = (await env.provider.getBlock('latest'))?.timestamp || 0;
-    const account = env.abstractAccounts[0];
-    const amount = ethers.parseEther('1');
+    const amount = roundForEncoding(ethers.parseEther('1'));
     const previousFromBalances: bigint[] = [];
     const previousToBalances: bigint[] = [];
     const previousSolverBalance = await env.provider.getBalance(env.deployerAddress);
@@ -226,6 +225,13 @@ describe('Token Swaps Test', () => {
     const startAmount = 0n;
     const endAmount = amount * BigInt(duration / evaluateAt);
     return new LinearCurve(startTime, duration, startAmount, endAmount);
+  }
+
+  // helper function to round to the nearest encoded value
+  function roundForEncoding(amount: bigint): bigint {
+    const timestamp = Math.round(new Date().getTime() / 1000);
+    const curve = generateLinearRelease(timestamp, amount);
+    return curve.evaluate(timestamp);
   }
 
   // helper function to get token swap params

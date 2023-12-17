@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.22;
 
-import {BaseIntentStandard} from "../interfaces/BaseIntentStandard.sol";
 import {IIntentDelegate} from "../interfaces/IIntentDelegate.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
@@ -10,7 +9,7 @@ import {Strings} from "openzeppelin/utils/Strings.sol";
 import {Erc20ReleaseDelegate} from "./delegates/Erc20ReleaseDelegate.sol";
 import {popFromCalldata} from "./utils/ContextData.sol";
 import {getSegmentWord} from "./utils/SegmentData.sol";
-import {evaluateConstantCurve, encodeConstantCurve, encodeAsUint96} from "./utils/CurveCoder.sol";
+import {evaluateCurve, encodeConstantCurve, encodeComplexCurve} from "./utils/CurveCoder.sol";
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
 /**
@@ -18,21 +17,59 @@ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
  * @dev data
  *   [bytes32] standard - the intent standard identifier
  *   [address] token - the ERC20 token contract address
- *   [uint96]  amount - amount required
- *   [uint8]   amountMult - amount multiplier (final_amount = amount << amountMult)
- *   [bytes1]  flags - negative [nxxx xxxx]
+ *   [bytes1]  flags - curve type, evaluate backwards (flip), negatives [c--- fnnn]
+ *   [uint32]  startAmount - starting amount
+ *   [uint8]   amountMult - amount multiplier (final_amount = amount * (amountMult * 10))
+ * --only for linear or exponential--
+ *   [uint32]  startTime -  start time of the curve (in seconds)
+ *   [uint16]  deltaTime - amount of time from start until curve caps (in seconds)
+ *   [uint24]  deltaAmount - amount of change after each second
+ *   [bytes1]  misc - delta amount mult, exponent [mmmm eeee]
  */
-abstract contract BaseErc20Release is BaseIntentStandard, Erc20ReleaseDelegate {
-    using IntentSolutionLib for IntentSolution;
+abstract contract Erc20ReleaseCore is Erc20ReleaseDelegate {
+    /**
+     * Validate intent segment structure (typically just formatting).
+     */
+    function _validateErc20Release(bytes calldata segmentData) internal pure {
+        require(segmentData.length == 58 || segmentData.length == 68, "ERC-20 Release data length invalid");
+    }
 
-    bytes32 private constant _TOKEN_ADDRESS_MASK = 0x000000000000000000000000ffffffffffffffffffffffffffffffffffffffff;
+    /**
+     * Performs part or all of the execution for an intent.
+     */
+    function _executeErc20Release(
+        uint256 timestamp,
+        address intentSender,
+        address nextExecutingIntentSender,
+        bytes calldata segmentData
+    ) internal {
+        address token = address(uint160(uint256(getSegmentWord(segmentData, 20))));
+        bytes16 curve = segmentData.length < 68
+            ? bytes16(getSegmentWord(segmentData, 26) << (26 * 8))
+            : bytes16(getSegmentWord(segmentData, 36) << (16 * 8));
+        int256 releaseAmount = evaluateCurve(curve, timestamp);
+
+        //release
+        if (releaseAmount > 0) {
+            bytes memory releaseEthDelegate =
+                _encodeReleaseErc20(token, nextExecutingIntentSender, uint256(releaseAmount));
+            IIntentDelegate(address(intentSender)).generalizedIntentDelegateCall(releaseEthDelegate);
+        }
+    }
+}
+
+/**
+ * ERC20 Release Intent Standard that can be deployed and registered to the entry point
+ */
+contract Erc20Release is Erc20ReleaseCore, IIntentStandard {
+    using IntentSolutionLib for IntentSolution;
 
     /**
      * Validate intent segment structure (typically just formatting).
      * @param segmentData the intent segment that is about to be solved.
      */
-    function _validateIntentSegment(bytes calldata segmentData) internal pure virtual override {
-        require(segmentData.length != 66, "ERC-20 Release data length invalid");
+    function validateIntentSegment(bytes calldata segmentData) external pure override {
+        _validateErc20Release(segmentData);
     }
 
     /**
@@ -43,60 +80,57 @@ abstract contract BaseErc20Release is BaseIntentStandard, Erc20ReleaseDelegate {
      * @param context context data from the previous step in execution (no data means execution is just starting).
      * @return newContext to remember for further execution.
      */
-    function _executeIntentSegment(
-        IntentSolution calldata solution,
-        uint256 executionIndex,
-        uint256 segmentIndex,
-        bytes memory context
-    ) internal virtual override returns (bytes memory) {
-        UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
-        address token =
-            address(uint160(uint256(getSegmentWord(intent.intentData[segmentIndex], 20) & _TOKEN_ADDRESS_MASK)));
-
-        //evaluate data
-        bytes32 data = getSegmentWord(intent.intentData[segmentIndex], 34) << 144;
-        int256 releaseAmount = evaluateConstantCurve(data);
-
-        //release
-        address nextExecutingIntentSender = solution.intents[solution.getIntentIndex(executionIndex + 1)].sender;
-        if (releaseAmount > 0) {
-            bytes memory releaseEthDelegate =
-                _encodeReleaseErc20(token, nextExecutingIntentSender, uint256(releaseAmount));
-            IIntentDelegate(address(intent.sender)).generalizedIntentDelegateCall(releaseEthDelegate);
-        }
-
-        //return context unchanged
-        return context;
-    }
-
-    /**
-     * Helper function to encode intent standard segment data.
-     * @param standardId the entry point identifier for this standard
-     * @param token the ERC20 token contract address
-     * @param amount amount required
-     * @return the fully encoded intent standard segment data
-     */
-    function encodeData(bytes32 standardId, address token, int256 amount) external pure returns (bytes memory) {
-        (uint96 adjustedAmount, uint8 amountMult, bool amountNegative) = encodeAsUint96(amount);
-        bytes32 data = encodeConstantCurve(uint96(adjustedAmount), amountMult, amountNegative, false);
-        return abi.encodePacked(standardId, token, bytes14(data));
-    }
-}
-
-/**
- * ERC20 Release Intent Standard that can be deployed and registered to the entry point
- */
-contract Erc20Release is BaseErc20Release, IIntentStandard {
-    function validateIntentSegment(bytes calldata segmentData) external pure override {
-        BaseErc20Release._validateIntentSegment(segmentData);
-    }
-
     function executeIntentSegment(
         IntentSolution calldata solution,
         uint256 executionIndex,
         uint256 segmentIndex,
         bytes calldata context
     ) external override returns (bytes memory) {
-        return BaseErc20Release._executeIntentSegment(solution, executionIndex, segmentIndex, context);
+        UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
+        _executeErc20Release(
+            solution.timestamp,
+            intent.sender,
+            solution.intents[solution.getIntentIndex(executionIndex + 1)].sender,
+            intent.intentData[segmentIndex]
+        );
+        return context;
     }
+}
+
+/**
+ * Helper function to encode intent standard segment data.
+ * @param standardId the entry point identifier for this standard
+ * @param token the ERC20 token contract address
+ * @param amount amount required
+ * @return the fully encoded intent standard segment data
+ */
+function encodeErc20ReleaseData(bytes32 standardId, address token, int256 amount) pure returns (bytes memory) {
+    bytes6 data = encodeConstantCurve(amount, false);
+    return abi.encodePacked(standardId, token, data);
+}
+
+/**
+ * Helper function to encode intent standard segment data.
+ * @param standardId the entry point identifier for this standard
+ * @param token the ERC20 token contract address
+ * @param startTime start time of the curve (in seconds)
+ * @param deltaTime amount of time from start until curve caps (in seconds)
+ * @param startAmount starting amount
+ * @param deltaAmount amount of change after each second
+ * @param exponent the exponent order of the curve
+ * @param backwards evaluate curve from right to left
+ * @return the fully encoded intent standard segment data
+ */
+function encodeErc20ReleaseComplexData(
+    bytes32 standardId,
+    address token,
+    uint32 startTime,
+    uint24 deltaTime,
+    int256 startAmount,
+    int256 deltaAmount,
+    uint8 exponent,
+    bool backwards
+) pure returns (bytes memory) {
+    bytes16 data = encodeComplexCurve(startTime, deltaTime, startAmount, deltaAmount, exponent, backwards, false);
+    return abi.encodePacked(standardId, token, data);
 }

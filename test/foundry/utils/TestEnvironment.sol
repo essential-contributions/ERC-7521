@@ -7,10 +7,11 @@ import "forge-std/Test.sol";
 import {EntryPoint} from "../../../src/core/EntryPoint.sol";
 import {UserIntent, UserIntentLib} from "../../../src/interfaces/UserIntent.sol";
 import {IntentBuilder} from "./IntentBuilder.sol";
-import {BaseIntentStandard} from "../../../src/interfaces/BaseIntentStandard.sol";
-import {EthReleaseLinear} from "../../../src/standards/EthReleaseLinear.sol";
-import {EmbeddableEthRequire} from "../../../src/standards/EthRequire.sol";
-import {EmbeddableSimpleCall} from "../../../src/standards/SimpleCall.sol";
+import {EthRelease, encodeEthReleaseComplexData} from "../../../src/standards/EthRelease.sol";
+import {ETH_RELEASE_STD_ID} from "../../../src/core/EntryPoint.sol";
+import {EthRequire, encodeEthRequireData} from "../../../src/standards/EthRequire.sol";
+import {ETH_REQUIRE_STD_ID} from "../../../src/core/EntryPoint.sol";
+import {SimpleCall} from "../../../src/standards/SimpleCall.sol";
 import {AbstractAccount} from "../../../src/wallet/AbstractAccount.sol";
 import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 
@@ -20,50 +21,50 @@ abstract contract TestEnvironment is Test {
     using ECDSA for bytes32;
 
     EntryPoint internal _entryPoint;
-    EthReleaseLinear internal _ethReleaseLinear;
-    EmbeddableEthRequire internal _ethRequire;
-    EmbeddableSimpleCall internal _simpleCall;
+    EthRelease internal _ethRelease;
+    EthRequire internal _ethRequire;
+    SimpleCall internal _simpleCall;
     AbstractAccount internal _account;
 
     address internal _publicAddress = _getPublicAddress(uint256(keccak256("account_private_key")));
 
     function setUp() public virtual {
         _entryPoint = new EntryPoint();
-        _simpleCall = EmbeddableSimpleCall(address(_entryPoint));
-        _ethRequire = EmbeddableEthRequire(address(_entryPoint));
-        _ethReleaseLinear = new EthReleaseLinear();
+        _simpleCall = new SimpleCall();
+        _ethRequire = new EthRequire();
+        _ethRelease = new EthRelease();
         _account = new AbstractAccount(_entryPoint, _publicAddress);
 
         //register intent standards to entry point
-        _entryPoint.registerIntentStandard(_ethReleaseLinear);
+        _entryPoint.registerIntentStandard(_ethRelease);
     }
 
     function _intent() internal view returns (UserIntent memory) {
         UserIntent memory intent = IntentBuilder.create(address(_account));
-        intent = _addEthReleaseLinear(intent, uint40(block.timestamp), uint32(20), 10, 2);
+        intent = _addEthRelease(intent, uint32(block.timestamp), 20, 10, 2);
         intent = _addEthRequire(intent, 10, false);
 
         return intent;
     }
 
-    function _addEthReleaseLinear(
+    function _addEthRelease(
         UserIntent memory intent,
-        uint40 startTime,
-        uint32 deltaTime,
+        uint32 startTime,
+        uint24 deltaTime,
         int256 startAmount,
         int256 deltaAmount
-    ) internal view returns (UserIntent memory) {
-        bytes32 standardId = _entryPoint.getIntentStandardId(_ethReleaseLinear);
-        return
-            intent.addSegment(_ethReleaseLinear.encodeData(standardId, startTime, deltaTime, startAmount, deltaAmount));
+    ) internal pure returns (UserIntent memory) {
+        return intent.addSegment(
+            encodeEthReleaseComplexData(ETH_RELEASE_STD_ID, startTime, deltaTime, startAmount, deltaAmount, 0, false)
+        );
     }
 
     function _addEthRequire(UserIntent memory intent, int256 amount, bool isRelative)
         internal
-        view
+        pure
         returns (UserIntent memory)
     {
-        return intent.addSegment(_ethRequire.encodeData(_entryPoint.getEthRequireStandardId(), amount, isRelative));
+        return intent.addSegment(encodeEthRequireData(ETH_REQUIRE_STD_ID, amount, isRelative));
     }
 
     function _getPublicAddress(uint256 privateKey) internal pure returns (address) {
