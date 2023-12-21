@@ -11,7 +11,7 @@ export class UserIntent {
     if (sender) this.validateSender(sender);
     this.sender = sender || '0x0000000000000000000000000000000000000000';
     this.segments = [];
-    this.signature = '0x0000000000000000000000000000000000000000000000000000000000000000';
+    this.signature = '0x';
   }
 
   //set the sender of the intent (smart contract account contract address)
