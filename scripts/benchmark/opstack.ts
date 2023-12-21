@@ -1,6 +1,6 @@
 import { TxFeeCalculator, TxResult } from './feeCalculator';
 
-// Mainnet transaction fee calculator
+// OP Stack transaction fee calculator
 export class OPStackCalculator extends TxFeeCalculator {
   private gasPriceGwei: number;
   private dataPriceGwei: number;
