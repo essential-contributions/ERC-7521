@@ -72,7 +72,7 @@ export class StatefulEncoding {
     function encodeRecursive(index: number): string {
       if (index >= bytes.length) return '';
       if (!encodingAtIndex.has(index)) {
-        let smallestEncoding = ''.padEnd(bytes.length, '0');
+        let smallestEncoding = ''.padEnd(bytes.length * 2, '0');
         for (let i = 64; i > 0; i -= 2) {
           const encoding = encodeSingle(bytes.substring(index, index + i)) + encodeRecursive(index + i);
           if (encoding.length < smallestEncoding.length) smallestEncoding = encoding;
@@ -200,7 +200,7 @@ export class StatefulEncoding {
     if (num !== undefined) {
       const enc = toHex(num.decimal, getPrecisionByteSize(num.precision));
       encodedViaNumber =
-        toHex(PF_NUMBER + (((num.size << 3) | num.precision) & ~PF_TYPE2_MASK), 1) + enc + toHex(num.shift, 1);
+        toHex(PF_NUMBER + (((num.size << 3) | num.precision) & ~PF_TYPE2_MASK), 1) + enc + toHex(num.mult, 1);
     }
 
     //encode by declaring raw bytes
@@ -285,7 +285,7 @@ export class StatefulEncoding {
       if (bytes.length > 2) {
         const data = bytes.substring(2, (dataLength + 1) * 2);
         const mult = parseInt(bytes.substring((dataLength + 1) * 2, (dataLength + 2) * 2), 16);
-        return { decoded: fromCompressedNumber(size, data, mult), bytesRead: dataLength + 2 };
+        return { decoded: fromCompressedNumber(size, parseInt(data, 16), mult), bytesRead: dataLength + 2 };
       }
       return { decoded: '', bytesRead: dataLength + 2 };
     }
@@ -357,21 +357,21 @@ function toHex(item: number | bigint | string, padBytes: number): string {
 }
 function toCompressedNumber(
   bytes: string,
-): { size: number; precision: number; decimal: string; shift: number } | undefined {
+): { size: number; precision: number; decimal: number; mult: number } | undefined {
   let decimal = ethers.toBigInt('0x' + bytes).toString();
-  let shift = 0;
+  let mult = 0;
   while (decimal[decimal.length - 1] == '0' && decimal.length > 1) {
     decimal = decimal.substring(0, decimal.length - 1);
-    shift++;
+    mult++;
   }
 
-  let size = 0;
+  let size: number | undefined;
   if (bytes.length / 2 <= 4) size = 0;
   else if (bytes.length / 2 <= 8) size = 1;
   else if (bytes.length / 2 <= 16) size = 2;
   else if (bytes.length / 2 <= 32) size = 3;
 
-  let precision = 0;
+  let precision: number | undefined;
   if (ethers.toBigInt(decimal) < 0xffn) precision = 0;
   else if (ethers.toBigInt(decimal) <= 0xffffn) precision = 1;
   else if (ethers.toBigInt(decimal) <= 0xffffffn) precision = 2;
@@ -381,9 +381,9 @@ function toCompressedNumber(
   else if (ethers.toBigInt(decimal) <= 0xffffffffffffffffffffffffn) precision = 6;
   else if (ethers.toBigInt(decimal) <= 0xffffffffffffffffffffffffffffffffn) precision = 7;
 
-  return { size, precision, decimal, shift };
+  if (precision !== undefined && size !== undefined) return { size, precision, decimal: parseInt(decimal), mult };
 }
-function fromCompressedNumber(size: number, decimal: string, mult: number): string {
+function fromCompressedNumber(size: number, decimal: number, mult: number): string {
   let paddedSize = 0;
   if (size == 0) paddedSize = 4;
   else if (size == 1) paddedSize = 8;
