@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.22;
-//TODO: add owner
+//TODO: experiment with assembly ("memory-safe")
 
 /*
  * Encoding prefixes
@@ -27,7 +27,7 @@ uint256 constant FN_SEL_BIN_START = 6144;
 /*
  * Contract that stores data to help with compression of common abi patterns
  */
-contract StatefulEncodingRegistry {
+contract StatefulEncoding {
     /**
      * Registry mappings
      */
@@ -97,11 +97,11 @@ contract StatefulEncodingRegistry {
     }
 
     /*
-    * Gets the decoded bytes of the encoded data
-    */
-    function decode(bytes calldata data, bytes memory out, uint256 outIndex) internal view {
+     * Gets the decoded bytes of the encoded data
+     */
+    function decode(bytes calldata data, bytes memory out, uint256 startIndex) internal view returns (uint256) {
         unchecked {
-            outIndex += 32; //add an extra slot so index can be directly used with mstore
+            uint256 outIndex = startIndex + 32; //add an extra slot so index can be directly used with mstore
             uint256 dataIndex = 0;
             while (dataIndex < data.length) {
                 bytes1 prefix = data[dataIndex];
@@ -229,13 +229,87 @@ contract StatefulEncodingRegistry {
                     }
                 }
             }
+            return (outIndex - 32) - startIndex;
         }
     }
 
-    function decodeSingle(bytes calldata data) internal view returns (bytes32) {
-        //TODO
-        //always assume padded with leading zeros
-        //always assume result is 32 bytes (not likely used for fn sel)
+    /*
+     * Gets the single decoded entry from the encoded data
+     */
+    function decodeSingle(bytes calldata data) internal view returns (bytes32, uint256) {
+        unchecked {
+            bytes1 prefix = data[0];
+            if ((prefix & 0x80) == 0x00) {
+                if ((prefix & 0x40) == 0x00) {
+                    //00x - 1 byte stateful common bytes [0-63]
+                    return (oneByteRegistry[uint256(uint8(prefix & ~PF_TYPE1_MASK))], 1);
+                } else {
+                    if ((prefix & 0x20) == 0x00) {
+                        //010 - 2 byte stateful common bytes [0-8192]
+                        bytes2 prefix2;
+                        assembly {
+                            prefix2 := calldataload(data.offset)
+                        }
+                        if (uint8(prefix & ~PF_TYPE2_MASK) < (FN_SEL_BIN_START >> 8)) {
+                            return (twoByteRegistry[uint256(uint16(prefix2 & ~bytes2(PF_TYPE2_MASK)))], 2);
+                        } else {
+                            return (
+                                bytes32(
+                                    fnSelRegistry[uint256(uint16(prefix2 & ~bytes2(PF_TYPE2_MASK))) - FN_SEL_BIN_START]
+                                    ),
+                                2
+                            );
+                        }
+                    } else {
+                        //011 - 4 byte stateful common bytes [0-536870911]
+                        bytes4 prefix4;
+                        assembly {
+                            prefix4 := calldataload(data.offset)
+                        }
+                        return (fourByteRegistry[uint256(uint32(prefix4 & ~bytes4(PF_TYPE2_MASK)))], 4);
+                    }
+                }
+            } else {
+                if ((prefix & 0x40) == 0x00) {
+                    if ((prefix & 0x20) == 0x00) {
+                        //100 - zeros [1-32]
+                        return (bytes32(0), 1);
+                    } else {
+                        //101 - zero padded bytes (to 32) [1-32 num bytes]
+                        uint256 numZeros = uint8(prefix & ~PF_TYPE2_MASK) + 1;
+                        bytes32 padded;
+                        assembly {
+                            padded := shr(shl(3, numZeros), calldataload(add(data.offset, 1)))
+                        }
+                        return (padded, 33 - numZeros);
+                    }
+                } else {
+                    if ((prefix & 0x20) == 0x00) {
+                        //110 - regular bytes [1-32 num bytes]
+                        uint256 numBytes = uint8(prefix & ~PF_TYPE2_MASK) + 1;
+                        bytes32 byts;
+                        assembly {
+                            byts := shr(sub(256, shl(3, numBytes)), calldataload(add(data.offset, 1)))
+                        }
+                        return (byts, numBytes + 1);
+                    } else {
+                        //111 - compressed decimal number
+                        uint8 precision = uint8(prefix & 0x07);
+                        if (precision < 4) precision = precision + 1;
+                        else if (precision < 6) precision = ((precision - 4) * 2) + 6;
+                        else precision = ((precision - 6) * 4) + 12;
+
+                        uint256 num;
+                        uint8 mult;
+                        assembly {
+                            num := shr(sub(256, shl(3, precision)), calldataload(add(data.offset, 1)))
+                            mult := shr(248, calldataload(add(data.offset, add(precision, 1))))
+                        }
+                        return (bytes32(num * tenToThePowerOf(mult)), precision + 2);
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -243,59 +317,104 @@ contract StatefulEncodingRegistry {
  * Gets the decoded size of the encoded data
  */
 function decodeSize(bytes calldata data) pure returns (uint256) {
-    uint256 decoded = 0;
-    uint256 index = 0;
-    while (index < data.length) {
-        bytes1 prefix = data[index];
+    unchecked {
+        uint256 decoded = 0;
+        uint256 index = 0;
+        while (index < data.length) {
+            bytes1 prefix = data[index];
+            if ((prefix & 0x80) == 0x00) {
+                if ((prefix & 0x40) == 0x00) {
+                    //00x - 1 byte stateful common bytes [0-63]
+                    decoded += 32;
+                    index += 1;
+                } else {
+                    if ((prefix & 0x20) == 0x00) {
+                        //010 - 2 byte stateful common bytes [0-8192]
+                        if (uint8(prefix & ~PF_TYPE2_MASK) < (FN_SEL_BIN_START >> 8)) decoded += 32;
+                        else decoded += 4;
+                        index += 2;
+                    } else {
+                        //011 - 4 byte stateful common bytes [0-536870911]
+                        decoded += 32;
+                        index += 4;
+                    }
+                }
+            } else {
+                if ((prefix & 0x40) == 0x00) {
+                    if ((prefix & 0x20) == 0x00) {
+                        //100 - zeros [1-32]
+                        decoded += uint8(prefix & ~PF_TYPE2_MASK) + 1;
+                        index += 1;
+                    } else {
+                        //101 - zero padded bytes (to 32) [1-32 num bytes]
+                        decoded += 32;
+                        index += 32 - uint8(prefix & ~PF_TYPE2_MASK);
+                    }
+                } else {
+                    if ((prefix & 0x20) == 0x00) {
+                        //110 - regular bytes [1-32 num bytes]
+                        decoded += uint8(prefix & ~PF_TYPE2_MASK) + 1;
+                        index += uint8(prefix & ~PF_TYPE2_MASK) + 2;
+                    } else {
+                        //111 - compressed decimal number
+                        uint8 size = uint8(prefix >> 3) & 0x03;
+                        if (size == 3) decoded += 32;
+                        else if (size == 2) decoded += 16;
+                        else decoded += (size * 4) + 4;
+
+                        uint8 precision = uint8(prefix & 0x07);
+                        if (precision < 4) index += precision + 3;
+                        else if (precision < 6) index += ((precision - 4) * 2) + 8;
+                        else index += ((precision - 6) * 4) + 14;
+                    }
+                }
+            }
+        }
+        return decoded;
+    }
+}
+
+/*
+ * Gets the size of the encoded data with the given prefix
+ */
+function encodeSize(bytes1 prefix) pure returns (uint256) {
+    unchecked {
         if ((prefix & 0x80) == 0x00) {
             if ((prefix & 0x40) == 0x00) {
                 //00x - 1 byte stateful common bytes [0-63]
-                decoded += 32;
-                index += 1;
+                return 1;
             } else {
                 if ((prefix & 0x20) == 0x00) {
                     //010 - 2 byte stateful common bytes [0-8192]
-                    if (uint8(prefix & ~PF_TYPE2_MASK) < (FN_SEL_BIN_START >> 8)) decoded += 32;
-                    else decoded += 4;
-                    index += 2;
+                    return 2;
                 } else {
                     //011 - 4 byte stateful common bytes [0-536870911]
-                    decoded += 32;
-                    index += 4;
+                    return 4;
                 }
             }
         } else {
             if ((prefix & 0x40) == 0x00) {
                 if ((prefix & 0x20) == 0x00) {
                     //100 - zeros [1-32]
-                    decoded += uint8(prefix & ~PF_TYPE2_MASK) + 1;
-                    index += 1;
+                    return 1;
                 } else {
                     //101 - zero padded bytes (to 32) [1-32 num bytes]
-                    decoded += 32;
-                    index += 32 - uint8(prefix & ~PF_TYPE2_MASK);
+                    return 32 - uint8(prefix & ~PF_TYPE2_MASK);
                 }
             } else {
                 if ((prefix & 0x20) == 0x00) {
                     //110 - regular bytes [1-32 num bytes]
-                    decoded += uint8(prefix & ~PF_TYPE2_MASK) + 1;
-                    index += uint8(prefix & ~PF_TYPE2_MASK) + 2;
+                    return uint8(prefix & ~PF_TYPE2_MASK) + 2;
                 } else {
                     //111 - compressed decimal number
-                    uint8 size = uint8(prefix >> 3) & 0x03;
-                    if (size == 3) decoded += 32;
-                    else if (size == 2) decoded += 16;
-                    else decoded += (size * 4) + 4;
-
                     uint8 precision = uint8(prefix & 0x07);
-                    if (precision < 4) index += precision + 3;
-                    else if (precision < 6) index += ((precision - 4) * 2) + 8;
-                    else index += ((precision - 6) * 4) + 14;
+                    if (precision < 4) return precision + 3;
+                    if (precision < 6) return ((precision - 4) * 2) + 8;
+                    return ((precision - 6) * 4) + 14;
                 }
             }
         }
     }
-    return decoded;
 }
 
 /*

@@ -3,14 +3,14 @@ import { IntentSolutionStruct, UserIntentStruct } from '../../typechain/src/core
 import { ethers } from 'ethers';
 
 // Solution template encoding
-// xxxxxx (timestamp) xx (num intents) [
-//     xx-xxxxxxxx (encoded sender)
+// xxxxxxxx (timestamp) xx (num intents) [
+//     xx..xx (encoded sender)
 //     xx (num segments) [
-//         xx (standard) xx (data length) xxxx...xxxx (data)
+//         xx..xx (encoded standard) xx-xxxx (data length) xx..xx (data)
 //     ] ( segments)
-//     xx (signature length) xxxx...xxxx (signature)
+//     xx (signature length) xx..xx (signature)
 // ] (intents)
-// xx... (execution order [each step is 5bits skipping the last bit if sequence goes beyond 256bits])
+// xx.. (execution order [each step is 5bits skipping the last bit if sequence goes beyond 256bits])
 
 // Common pieces for encoding
 const HANDLE_INTENTS_FN_SEL = '4bf114ff';
@@ -87,7 +87,10 @@ export class IntentCompression {
         //data length
         const data = solution.intents[i].intentData[j].toString().substring(66);
         const dataEncoded = this.statefulEncoding.encode(data);
-        encoded += toHex(dataEncoded.length / 2, 1);
+        const dataLength = dataEncoded.length / 2;
+        if (dataLength >= 32768) throw new Error('Segment data too large');
+        else if (dataLength >= 128) encoded += toHex(32768 + dataLength, 2);
+        else encoded += toHex(dataLength, 1);
 
         //data
         encoded += dataEncoded;
@@ -102,14 +105,20 @@ export class IntentCompression {
     }
 
     //execution steps
-    for (let i = solution.order.length - 1; i >= 0; ) {
+    for (let i = 0; i < solution.order.length; ) {
       let steps = 0n;
-      let j = 0;
-      for (; j < 51 && i >= 0; j++) {
-        steps = (steps << 5n) + BigInt(solution.order[i]);
-        i--;
+      for (let j = 0; j < 51; j++) {
+        steps = steps << 5n;
+        if (i < solution.order.length) {
+          steps += BigInt(solution.order[i]);
+          i++;
+        }
       }
-      encoded += toHex(steps, Math.ceil((j * 5) / 8));
+      steps = steps << 1n;
+      let byteLen = Math.ceil((i * 5) / 8);
+      steps = steps >> ((32n - BigInt(byteLen)) * 8n);
+
+      encoded += toHex(steps, byteLen);
     }
 
     return encoded;
@@ -158,7 +167,11 @@ export class IntentCompression {
           i += standardEncodedLength * 2;
 
           //data length
-          const compressedDataLength = parseInt(safeSubstring(bytes, i, i + 2), 16);
+          let compressedDataLength = parseInt(safeSubstring(bytes, i, i + 2), 16);
+          if (compressedDataLength >= 128) {
+            compressedDataLength = parseInt(safeSubstring(bytes, i, i + 4), 16) - 32768;
+            i += 2;
+          }
           i += 2;
 
           //data
@@ -217,10 +230,10 @@ export class IntentCompression {
       //execution steps
       let executionSteps = toHex(numExecutionSteps, 32);
       for (let k = 0; k < numExecutionSteps; ) {
-        let data = ethers.toBigInt('0x' + bytes.substring(i, i + 64));
+        let data = ethers.toBigInt('0x' + bytes.substring(i, i + 64).padEnd(64, '0'));
         for (let l = 0; l < 51 && k < numExecutionSteps; l++) {
-          executionSteps += toHex(data & 0x1fn, 32);
-          data = data >> 5n;
+          executionSteps += toHex(data >> 251n, 32);
+          data = (data << 5n) % 2n ** 256n;
           k++;
         }
         i += 64;
