@@ -112,8 +112,11 @@ export class StatefulAbiEncoding {
   public singleEncode(bytes: string, trimLeadingZeros: boolean = false): string {
     const fullEncode = this.doEncode(bytes);
     if (trimLeadingZeros) {
-      const trimmedEncode = this.doEncode(bytes.substring(leadingZeros(bytes) * 2));
-      return trimmedEncode.length < fullEncode.length ? trimmedEncode : fullEncode;
+      const trimmedBytes = bytes.substring(leadingZeros(bytes) * 2);
+      if (trimmedBytes) {
+        const trimmedEncode = this.doEncode(trimmedBytes);
+        return trimmedEncode.length < fullEncode.length ? trimmedEncode : fullEncode;
+      }
     }
     return fullEncode;
   }
@@ -382,10 +385,10 @@ function toCompressedNumber(
   }
 
   let size: number | undefined;
-  if (bytes.length / 2 <= 4) size = 0;
-  else if (bytes.length / 2 <= 8) size = 1;
-  else if (bytes.length / 2 <= 16) size = 2;
-  else if (bytes.length / 2 <= 32) size = 3;
+  if (bytes.length / 2 == 4) size = 0;
+  else if (bytes.length / 2 == 8) size = 1;
+  else if (bytes.length / 2 == 16) size = 2;
+  else if (bytes.length / 2 == 32) size = 3;
 
   let precision: number | undefined;
   if (ethers.toBigInt(decimal) < 0xffn) precision = 0;

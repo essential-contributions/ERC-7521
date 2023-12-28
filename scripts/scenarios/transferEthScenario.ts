@@ -1,12 +1,12 @@
 import { ethers } from 'hardhat';
 import { Transaction } from 'ethers';
-import { ScenarioOptions, ScenarioResult, TestScenario, DEFAULT_SCENARIO_OPTIONS } from './testScenario';
+import { ScenarioOptions, ScenarioResult, Scenario, DEFAULT_SCENARIO_OPTIONS } from './scenario';
 import { Environment, SmartContractAccount } from '../../scripts/scenarios/environment';
 import { buildSolution, UserIntent } from '../../scripts/library/intent';
 import { Curve, LinearCurve } from '../../scripts/library/curveCoder';
 
 // The scenario object
-export class TransferEthScenario extends TestScenario {
+export class TransferEthScenario extends Scenario {
   private env: Environment;
 
   constructor(environment: Environment) {
@@ -61,7 +61,7 @@ export class TransferEthScenario extends TestScenario {
       to = count;
       batchSize = count.length;
     }
-    if (options.useStatefulCompression) await this.env.utils.registerAddresses(to);
+    if (options.useStatefulCompression) await this.env.compression.registerAddresses(to);
 
     if (this.env.abstractAccounts.length < batchSize) throw new Error('not enough abstract accounts to run batch');
     const timestamp = (await this.env.provider.getBlock('latest'))?.timestamp || 0;
@@ -107,7 +107,10 @@ export class TransferEthScenario extends TestScenario {
       order.push(batchSize);
       order.push(i);
     }
-    const tx = await this.env.entrypoint.handleIntents(buildSolution(timestamp, intents, order));
+    const solution = buildSolution(timestamp, intents, order);
+    const tx = options.useCompression
+      ? await this.env.compression.general.handleIntents(solution, options.useStatefulCompression)
+      : await this.env.entrypoint.handleIntents(solution);
 
     const serialized = Transaction.from(tx).serialized;
     const bytesUsed = serialized.length / 2 - 1;

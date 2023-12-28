@@ -23,7 +23,7 @@ export const DEFAULT_SCENARIO_OPTIONS: ScenarioOptions = {
 };
 
 // The scenario object
-export abstract class TestScenario {
+export abstract class Scenario {
   //initialize the scenario
   public abstract init(): void;
 

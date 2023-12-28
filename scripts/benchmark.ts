@@ -2,7 +2,7 @@ import { TxFeeCalculator, TxResult } from './benchmark/feeCalculator';
 import { MainnetCalculator } from './benchmark/mainnet';
 import { OPStackCalculator } from './benchmark/opstack';
 import { Environment, deployTestEnvironment } from './scenarios/environment';
-import { ScenarioOptions } from './scenarios/testScenario';
+import { ScenarioOptions } from './scenarios/scenario';
 import { TokenSwapScenario } from './scenarios/tokenSwapScenario';
 import { TransferErc20Scenario } from './scenarios/transferErc20Scenario';
 import { TransferEthScenario } from './scenarios/transferEthScenario';
@@ -63,14 +63,6 @@ async function main() {
     };
   }
 
-  //registered
-  const registeredStandards: ScenarioOptions = {
-    useEmbeddedStandards: false,
-    useCompression: false,
-    useStatefulCompression: false,
-  };
-  logScenarios(await run(registeredStandards));
-
   //embedded
   const embeddedStandards: ScenarioOptions = {
     useEmbeddedStandards: true,
@@ -79,11 +71,37 @@ async function main() {
   };
   logScenarios(await run(embeddedStandards));
 
-  //TODO: embedded with compression
+  //embedded with compression
+  const nonStatefulCompression: ScenarioOptions = {
+    useEmbeddedStandards: true,
+    useCompression: true,
+    useStatefulCompression: false,
+  };
+  logScenarios(await run(nonStatefulCompression), 'Non-Stateful Compression');
 
-  //TODO: embedded with stateful compression
+  //embedded with stateful compression
+  const statefulCompression: ScenarioOptions = {
+    useEmbeddedStandards: true,
+    useCompression: true,
+    useStatefulCompression: true,
+  };
+  logScenarios(await run(statefulCompression), 'Stateful Compression');
 
-  //TODO: registered with stateful compression
+  //registered
+  const registeredStandards: ScenarioOptions = {
+    useEmbeddedStandards: false,
+    useCompression: false,
+    useStatefulCompression: false,
+  };
+  logScenarios(await run(registeredStandards), 'Using Registered Standards');
+
+  //registered with stateful compression
+  const registeredStatefulCompression: ScenarioOptions = {
+    useEmbeddedStandards: false,
+    useCompression: true,
+    useStatefulCompression: true,
+  };
+  logScenarios(await run(registeredStatefulCompression), 'Using Registered Standards w/ Stateful Compression');
 }
 
 // Log parameters
@@ -128,9 +146,9 @@ function logScenarios(results: ScenariosResults, subHeading?: string) {
       '|-----------------------|------------------|------------------|------------------|------------------|------------------|',
     );
   } else {
-    console.log(
-      '|                        ..................... Using Registered Standards .....................                        |',
-    );
+    subHeading = '..................... ' + subHeading + '  .....................';
+    const padding = (118 - subHeading.length) / 2;
+    console.log('|' + ''.padStart(Math.ceil(padding), ' ') + subHeading + ''.padStart(Math.floor(padding), ' ') + '|');
     console.log(
       '|                       |                  |                  |                  |                  |                  |',
     );
@@ -139,11 +157,11 @@ function logScenarios(results: ScenariosResults, subHeading?: string) {
   function line(name: string, results: ScenarioResults) {
     const n = name.padEnd(21, ' ');
     const b = results.base.gasUsed;
-    const xb = b.toString().padEnd(16, ' ');
-    const x1 = `${Math.round(results.r1.gasUsed / 1)}`.padEnd(16, ' ');
-    const x4 = `${Math.round(results.r2.gasUsed / 4)}`.padEnd(16, ' ');
-    const x8 = `${Math.round(results.r3.gasUsed / 8)}`.padEnd(16, ' ');
-    const x16 = `${Math.round(results.r4.gasUsed / 16)}`.padEnd(16, ' ');
+    const xb = `${b} (${results.base.bytesUsed})`.padEnd(16, ' ');
+    const x1 = `${Math.round(results.r1.gasUsed / 1)} (${Math.round(results.r1.bytesUsed / 1)})`.padEnd(16, ' ');
+    const x4 = `${Math.round(results.r2.gasUsed / 4)} (${Math.round(results.r2.bytesUsed / 4)})`.padEnd(16, ' ');
+    const x8 = `${Math.round(results.r3.gasUsed / 8)} (${Math.round(results.r3.bytesUsed / 8)})`.padEnd(16, ' ');
+    const x16 = `${Math.round(results.r4.gasUsed / 16)} (${Math.round(results.r4.bytesUsed / 16)})`.padEnd(16, ' ');
     console.log(`| ${n} | ${xb} | ${x1} | ${x4} | ${x8} | ${x16} |`);
 
     function subline(name: string, calculator: TxFeeCalculator, results: ScenarioResults) {

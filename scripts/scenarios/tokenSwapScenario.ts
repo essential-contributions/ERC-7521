@@ -1,13 +1,13 @@
 import { ethers } from 'hardhat';
 import { Transaction } from 'ethers';
-import { ScenarioOptions, ScenarioResult, TestScenario, DEFAULT_SCENARIO_OPTIONS } from './testScenario';
+import { ScenarioOptions, ScenarioResult, Scenario, DEFAULT_SCENARIO_OPTIONS } from './scenario';
 import { Environment } from '../../scripts/scenarios/environment';
 import { buildSolution, UserIntent } from '../../scripts/library/intent';
 import { ConstantCurve, Curve, LinearCurve } from '../../scripts/library/curveCoder';
 import { ExactInputSingleParamsStruct } from '../../typechain/src/test/TestUniswap';
 
 // The scenario object
-export class TokenSwapScenario extends TestScenario {
+export class TokenSwapScenario extends Scenario {
   private env: Environment;
   public TOKEN_SWAP_SLIPPAGE = 5n;
 
@@ -126,7 +126,10 @@ export class TokenSwapScenario extends TestScenario {
     for (let i = 0; i < batchSize; i++) {
       order.push(i);
     }
-    const tx = await this.env.entrypoint.handleIntents(buildSolution(timestamp, intents, order));
+    const solution = buildSolution(timestamp, intents, order);
+    const tx = options.useCompression
+      ? await this.env.compression.general.handleIntents(solution, options.useStatefulCompression)
+      : await this.env.entrypoint.handleIntents(solution);
 
     const serialized = Transaction.from(tx).serialized;
     const bytesUsed = serialized.length / 2 - 1;
@@ -172,8 +175,10 @@ export class TokenSwapScenario extends TestScenario {
     solverIntent.addSegment(
       this.env.standards.call(this.generateSolverSwapTx(this.env.deployerAddress, account.contractAddress, amount)),
     );
-    const order = [0, 0, 0, 1, 0];
-    const tx = await this.env.entrypoint.handleIntents(buildSolution(timestamp, [intent, solverIntent], order));
+    const solution = buildSolution(timestamp, [intent, solverIntent], [0, 0, 0, 1, 0]);
+    const tx = options.useCompression
+      ? await this.env.compression.general.handleIntents(solution, options.useStatefulCompression)
+      : await this.env.entrypoint.handleIntents(solution);
 
     const serialized = Transaction.from(tx).serialized;
     const bytesUsed = serialized.length / 2 - 1;

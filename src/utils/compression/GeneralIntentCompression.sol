@@ -4,6 +4,8 @@ pragma solidity ^0.8.22;
 //TODO: experiment with assembly ("memory-safe")
 
 import {StatefulAbiEncoding, decodeSize, encodeSize} from "./StatefulAbiEncoding.sol";
+import {Exec} from "../Exec.sol";
+import {IEntryPoint} from "../../interfaces/IEntryPoint.sol";
 import {DataRegistry} from "./DataRegistry.sol";
 
 /*
@@ -15,7 +17,7 @@ import {DataRegistry} from "./DataRegistry.sol";
  *     ] ( segments)
  *     xx (signature length) xx..xx (signature)
  * ] (intents)
- * xx.. (execution order [each step is 5bits skipping the last bit if sequence goes beyond 256bits])
+ * xx (execution order length) xx.. (order [each step is 5bits skipping the last bit if sequence goes beyond 256bits])
  */
 bytes4 constant HANDLE_INTENTS_FN_SEL = 0x4bf114ff;
 uint8 constant START_DATA_OFFSET = 0x20;
@@ -30,16 +32,23 @@ uint256 constant PTR_INTENT_OFFSETS = 32 + 4 + 32 + 32 + 32 + 32 + 32;
  */
 contract GeneralIntentCompression is StatefulAbiEncoding {
     /**
+     * EntryPoint
+     */
+    IEntryPoint public immutable entrypoint;
+
+    /**
      * Constructor
      */
-    constructor(DataRegistry registry) StatefulAbiEncoding(registry) {}
+    constructor(IEntryPoint entry, DataRegistry registry) StatefulAbiEncoding(registry) {
+        entrypoint = entry;
+    }
 
     /*
      * Calls the handle intents function after expanding the given compressed solution
      */
-    function handleIntents(bytes calldata data) external view returns (bytes memory) {
+    function handleIntents(bytes calldata data) external {
         bytes memory call = decompressHandleIntents(data);
-        return call;
+        Exec.call(address(entrypoint), 0, call, gasleft());
     }
 
     /*
@@ -94,8 +103,8 @@ contract GeneralIntentCompression is StatefulAbiEncoding {
             }
 
             //set order length
-            uint256 bytesLeft = data.length - dataIndex;
-            uint256 numExecutionOrder = ((bytesLeft * 8) / 5) - (bytesLeft / 160);
+            uint256 numExecutionOrder = uint256(uint8(data[dataIndex]));
+            dataIndex += 1;
             assembly {
                 mstore(add(out, outIndex), numExecutionOrder)
                 outIndex := add(outIndex, 32)
@@ -210,7 +219,7 @@ contract GeneralIntentCompression is StatefulAbiEncoding {
             uint256 dataLenEncoded = uint256(uint8(data[dataIndex]));
             if (dataLenEncoded >= 128) {
                 assembly {
-                    dataLenEncoded := shr(240, calldataload(add(data.offset, dataIndex)))
+                    dataLenEncoded := sub(shr(240, calldataload(add(data.offset, dataIndex))), 32768)
                 }
                 dataIndex += 2;
             } else {
@@ -274,7 +283,7 @@ function decompressSize(bytes calldata data) pure returns (uint256) {
                 uint256 dataLenEncoded = uint256(uint8(data[dataIndex]));
                 if (dataLenEncoded >= 128) {
                     assembly {
-                        dataLenEncoded := shr(240, calldataload(add(data.offset, dataIndex)))
+                        dataLenEncoded := sub(shr(240, calldataload(add(data.offset, dataIndex))), 32768)
                     }
                     dataIndex += 2;
                 } else {
@@ -292,8 +301,8 @@ function decompressSize(bytes calldata data) pure returns (uint256) {
         }
 
         //execution orders
-        uint256 bytesLeft = data.length - dataIndex;
-        decompressed += (((bytesLeft * 8) / 5) - (bytesLeft / 160)) * 32;
+        uint256 numExecutionOrder = uint256(uint8(data[dataIndex]));
+        decompressed += numExecutionOrder * 32;
 
         return decompressed;
     }

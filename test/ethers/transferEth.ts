@@ -1,11 +1,17 @@
 import { expect } from 'chai';
 import { deployTestEnvironment, Environment } from '../../scripts/scenarios/environment';
 import { TransferEthScenario } from '../../scripts/scenarios/transferEthScenario';
+import { ScenarioOptions } from '../../scripts/scenarios/scenario';
 
 describe('Transfer ETH Test', () => {
   const MAX_INTENTS = 4;
   let env: Environment;
   let scenario: TransferEthScenario;
+  const scenarioOptions: ScenarioOptions = {
+    useEmbeddedStandards: true,
+    useCompression: false,
+    useStatefulCompression: false,
+  };
 
   before(async () => {
     env = await deployTestEnvironment({ numAbstractAccounts: MAX_INTENTS });
@@ -40,7 +46,7 @@ describe('Transfer ETH Test', () => {
     const previousFromBalance = await env.provider.getBalance(account.contractAddress);
 
     //transfer
-    const transferResults = await scenario.run([to]);
+    const transferResults = await scenario.run([to], scenarioOptions);
 
     expect(await env.test.erc20.balanceOf(env.deployerAddress)).to.equal(
       previousSolverBalanceErc20 + transferResults.fee,
@@ -74,7 +80,7 @@ describe('Transfer ETH Test', () => {
     }
 
     //transfer
-    const transferResults = await scenario.run(to);
+    const transferResults = await scenario.run(to, scenarioOptions);
 
     expect(await env.test.erc20.balanceOf(env.deployerAddress)).to.equal(
       previousSolverBalanceErc20 + transferResults.fee * BigInt(MAX_INTENTS),

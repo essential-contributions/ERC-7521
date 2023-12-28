@@ -1,7 +1,7 @@
 import { StatefulAbiEncoding } from './statefulAbiEncoding';
 import { IntentSolutionStruct, UserIntentStruct } from '../../../typechain/src/core/EntryPoint';
 import { DataRegistry, GeneralIntentCompression as GeneralIntentCompressionContract } from '../../../typechain';
-import { ethers, Signer } from 'ethers';
+import { ethers, Signer, ContractTransactionResponse } from 'ethers';
 
 // Solution template encoding
 // xxxxxxxx (timestamp) xx (num intents) [
@@ -11,7 +11,7 @@ import { ethers, Signer } from 'ethers';
 //     ] ( segments)
 //     xx (signature length) xx..xx (signature)
 // ] (intents)
-// xx.. (execution order [each step is 5bits skipping the last bit if sequence goes beyond 256bits])
+// xx (execution order length) xx.. (order [each step is 5bits skipping the last bit if sequence goes beyond 256bits])
 
 // Common pieces for encoding
 const HANDLE_INTENTS_FN_SEL = '4bf114ff';
@@ -31,16 +31,20 @@ export class GeneralIntentCompression {
   }
 
   // Uses compressed data to call handleIntents on the entrypoint contract
-  public async handleIntents(solution: IntentSolutionStruct, signer?: Signer) {
+  public async handleIntents(
+    solution: IntentSolutionStruct,
+    stateful: boolean = true,
+    signer?: Signer,
+  ): Promise<ContractTransactionResponse> {
     await this.sync();
+    this.statefulEncoding.setStateful(stateful);
 
     //compress and call
     const compressed = this.compressHandleIntents(solution);
-    console.log(compressed);
     const contract = signer
       ? this.generalIntentCompressionContract.connect(signer)
       : this.generalIntentCompressionContract;
-    //contract.handleIntents(compressed);
+    return contract.handleIntents(compressed);
   }
 
   // Manually sync up with the on-chain data registry
@@ -132,6 +136,8 @@ export class GeneralIntentCompression {
     }
 
     //execution steps
+    if (solution.order.length > 256) throw new Error('Execution order too large');
+    encoded += toHex(solution.order.length, 1);
     for (let i = 0; i < solution.order.length; ) {
       let steps = 0n;
       for (let j = 0; j < 51; j++) {
@@ -251,8 +257,8 @@ export class GeneralIntentCompression {
       const orderOffsetHex = parseInt(INTENTS_OFFSET, 16) + 32 * (1 + numIntents) + intentsLengthTotal;
 
       //num execution steps
-      const bytesLeft = (bytes.length - i) / 2;
-      const numExecutionSteps = Math.floor((bytesLeft * 8) / 5) - Math.floor(bytesLeft / 160);
+      const numExecutionSteps = parseInt(safeSubstring(bytes, i, i + 2), 16);
+      i += 2;
 
       //execution steps
       let executionSteps = toHex(numExecutionSteps, 32);

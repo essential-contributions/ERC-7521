@@ -1,11 +1,17 @@
 import { expect } from 'chai';
 import { deployTestEnvironment, Environment } from '../../scripts/scenarios/environment';
 import { TokenSwapScenario } from '../../scripts/scenarios/tokenSwapScenario';
+import { ScenarioOptions } from '../../scripts/scenarios/scenario';
 
 describe('Token Swaps Test', () => {
   const MAX_INTENTS = 4;
   let env: Environment;
   let scenario: TokenSwapScenario;
+  const scenarioOptions: ScenarioOptions = {
+    useEmbeddedStandards: true,
+    useCompression: false,
+    useStatefulCompression: false,
+  };
 
   before(async () => {
     env = await deployTestEnvironment({ numAbstractAccounts: MAX_INTENTS });
@@ -37,7 +43,7 @@ describe('Token Swaps Test', () => {
     const previousSolverBalance = await env.provider.getBalance(env.deployerAddress);
 
     //swap
-    const swapResults = await scenario.run(1);
+    const swapResults = await scenario.run(1, scenarioOptions);
 
     expect(await env.test.erc20.balanceOf(account.contractAddress)).to.equal(
       previousFromBalance - swapResults.amount,
@@ -64,7 +70,7 @@ describe('Token Swaps Test', () => {
     }
 
     //swap
-    const swapResults = await scenario.run(MAX_INTENTS);
+    const swapResults = await scenario.run(MAX_INTENTS, scenarioOptions);
 
     expect(await env.provider.getBalance(env.deployerAddress)).to.equal(
       previousSolverBalance + scenario.TOKEN_SWAP_SLIPPAGE - swapResults.txFee,

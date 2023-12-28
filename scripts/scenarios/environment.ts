@@ -62,8 +62,8 @@ export type Environment = {
     solverUtilsAddress: string;
   };
   compression: {
-    dataRegistry: DataRegistry;
-    generalIntent: GeneralIntentCompression;
+    general: GeneralIntentCompression;
+    registerAddresses: (addresses: string[]) => Promise<void>;
   };
   solverUtils: SolverUtils;
   abstractAccounts: SmartContractAccount[];
@@ -77,7 +77,6 @@ export type Environment = {
     getNonce: (account: string) => Promise<number>;
     roundForEncoding: (amount: bigint) => bigint;
     randomAddresses: (num: number) => string[];
-    registerAddresses: (addresses: string[]) => Promise<void>;
   };
 };
 export type SmartContractAccount = {
@@ -179,7 +178,11 @@ export async function deployTestEnvironment(
   //deploy stateful encoding and intent compression helpers
   const dataRegistry = await ethers.deployContract('DataRegistry', [], deployer);
   const dataRegistryAddress = await dataRegistry.getAddress();
-  const generalCompression = await ethers.deployContract('GeneralIntentCompression', [dataRegistryAddress], deployer);
+  const generalCompression = await ethers.deployContract(
+    'GeneralIntentCompression',
+    [entrypointAddress, dataRegistryAddress],
+    deployer,
+  );
   const generalCompressionGasUsed = (await generalCompression.deploymentTransaction()?.wait())?.gasUsed || 0n;
   const generalIntentCompression = new GeneralIntentCompression(generalCompression, dataRegistry);
 
@@ -196,6 +199,15 @@ export async function deployTestEnvironment(
   (await dataRegistry.addOneByteItem(ethRequireStdId)).wait();
   (await dataRegistry.addOneByteItem(sequentialNonceStdId)).wait();
   (await dataRegistry.addOneByteItem(userOperationStdId)).wait();
+  (await dataRegistry.addOneByteItem(simpleCall.standardId)).wait();
+  (await dataRegistry.addOneByteItem(userOperation.standardId)).wait();
+  (await dataRegistry.addOneByteItem(sequentialNonce.standardId)).wait();
+  (await dataRegistry.addOneByteItem(ethRecord.standardId)).wait();
+  (await dataRegistry.addOneByteItem(ethRelease.standardId)).wait();
+  (await dataRegistry.addOneByteItem(ethRequire.standardId)).wait();
+  (await dataRegistry.addOneByteItem(erc20Record.standardId)).wait();
+  (await dataRegistry.addOneByteItem(erc20Release.standardId)).wait();
+  (await dataRegistry.addOneByteItem(erc20Require.standardId)).wait();
 
   //fill the data registry with medium frequency items
   (await dataRegistry.addTwoByteItem(ethers.hexlify(ethers.randomBytes(32)))).wait();
@@ -203,6 +215,7 @@ export async function deployTestEnvironment(
   (await dataRegistry.addTwoByteItem('0x' + solverUtilsAddress.substring(2).padStart(64, '0'))).wait();
   (await dataRegistry.addFunctionSelector('0xb61d27f6')).wait();
   (await dataRegistry.addFunctionSelector('0xa9059cbb')).wait();
+  (await dataRegistry.addFunctionSelector('0x18c6051a')).wait();
 
   //fill the data registry with low frequency items
   (await dataRegistry.addFourByteItem(ethers.hexlify(ethers.randomBytes(32)))).wait();
@@ -256,8 +269,12 @@ export async function deployTestEnvironment(
       solverUtilsAddress,
     },
     compression: {
-      dataRegistry,
-      generalIntent: generalIntentCompression,
+      general: generalIntentCompression,
+      registerAddresses: async (addresses: string[]) => {
+        for (const addr of addresses) {
+          (await dataRegistry.addFourByteItem('0x' + addr.substring(2).padStart(64, '0'))).wait();
+        }
+      },
     },
     solverUtils,
     abstractAccounts,
@@ -285,11 +302,6 @@ export async function deployTestEnvironment(
         const addresses: string[] = [];
         for (let i = 0; i < num; i++) addresses.push(ethers.hexlify(ethers.randomBytes(20)));
         return addresses;
-      },
-      registerAddresses: async (addresses: string[]) => {
-        for (const addr of addresses) {
-          (await dataRegistry.addFourByteItem('0x' + addr.substring(2).padStart(64, '0'))).wait();
-        }
       },
     },
   };
