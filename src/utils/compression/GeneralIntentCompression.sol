@@ -3,7 +3,8 @@ pragma solidity ^0.8.22;
 //TODO: implement custom abi
 //TODO: experiment with assembly ("memory-safe")
 
-import {StatefulEncoding, decodeSize, encodeSize} from "./StatefulEncoding.sol";
+import {StatefulAbiEncoding, decodeSize, encodeSize} from "./StatefulAbiEncoding.sol";
+import {DataRegistry} from "./DataRegistry.sol";
 
 /*
  * Solution template encoding
@@ -25,9 +26,14 @@ uint256 constant PTR_ORDER_OFFSET = 32 + 4 + 32 + 32 + 32;
 uint256 constant PTR_INTENT_OFFSETS = 32 + 4 + 32 + 32 + 32 + 32 + 32;
 
 /*
- * Contract that stores data to help with compression of common abi patterns
+ * Contract that inflates a compressed templated version of a general intent solution
  */
-contract IntentCompression is StatefulEncoding {
+contract GeneralIntentCompression is StatefulAbiEncoding {
+    /**
+     * Constructor
+     */
+    constructor(DataRegistry registry) StatefulAbiEncoding(registry) {}
+
     /*
      * Calls the handle intents function after expanding the given compressed solution
      */

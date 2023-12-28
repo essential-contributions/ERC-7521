@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-// TODO: eventually add a contract to shadow
+import { DataRegistry } from '../../../typechain';
 
 // Encoding Prefixes
 // 00x - 1 byte stateful common bytes [0-63] (extremely common addresses, function selectors, etc)
@@ -8,7 +8,7 @@ import { ethers } from 'ethers';
 // 100 - zeros [1-32]
 // 101 - zero padded bytes (to 32) [1-32 num bytes]
 // 110 - regular bytes [1-32 num bytes]
-// 111 - 6-10 byte compressed 256bit number
+// 111 - decimal number
 const PF_TYPE1_MASK = 0xc0;
 const PF_TYPE2_MASK = 0xe0;
 const PF_1BYTE_STATE = 0x00;
@@ -18,41 +18,41 @@ const PF_ZEROS = 0x80;
 const PF_ZERO_PADDED = 0xa0;
 const PF_NUM_BYTES = 0xc0;
 const PF_NUMBER = 0xe0;
+const FN_SEL_BIN_START = 6144;
 
 // Perform stateful encoding
-export class StatefulEncoding {
+export class StatefulAbiEncoding {
+  private dataRegistry: DataRegistry;
+  private statefulEnabled = true;
+
   private oneByteList: string[] = [];
   private twoByteList: string[] = [];
   private fourByteList: string[] = [];
+  private fnSelList: string[] = [];
 
-  //TODO: sync lists with a contract
-  public init() {}
-
-  //Adds an array of bytes to the single byte encoding registry
-  public addOneByteItem(bytes: string): number {
-    const index = this.oneByteList.indexOf(bytes);
-    if (index > -1) return index;
-    this.oneByteList.push(bytes);
-    return this.oneByteList.length - 1;
+  // Constructor
+  constructor(dataRegistry: DataRegistry) {
+    this.dataRegistry = dataRegistry;
   }
 
-  //Adds an array of bytes to the two byte encoding registry
-  public addTwoByteItem(bytes: string): number {
-    const index = this.twoByteList.indexOf(bytes);
-    if (index > -1) return index;
-    this.twoByteList.push(bytes);
-    return this.twoByteList.length - 1;
+  // Sets if encoding should utilize the stateful registry
+  public setStateful(stateful: boolean) {
+    this.statefulEnabled = stateful;
   }
 
-  //Adds an array of bytes to the four byte encoding registry
-  public addFourByteItem(bytes: string): number {
-    const index = this.fourByteList.indexOf(bytes);
-    if (index > -1) return index;
-    this.fourByteList.push(bytes);
-    return this.fourByteList.length - 1;
+  // Sync up with the on-chain data registry
+  public async sync() {
+    const one = await this.dataRegistry.queryFilter(this.dataRegistry.filters.OneByteRegistryAdd());
+    for (const o of one) this.oneByteList[Number(o.args[0])] = o.data.substring(2);
+    const two = await this.dataRegistry.queryFilter(this.dataRegistry.filters.TwoByteRegistryAdd());
+    for (const t of two) this.twoByteList[Number(t.args[0])] = t.data.substring(2);
+    const four = await this.dataRegistry.queryFilter(this.dataRegistry.filters.FourByteRegistryAdd());
+    for (const f of four) this.fourByteList[Number(f.args[0])] = f.data.substring(2);
+    const fnsel = await this.dataRegistry.queryFilter(this.dataRegistry.filters.FnSelRegistryAdd());
+    for (const s of fnsel) this.fnSelList[Number(s.args[0])] = s.data.substring(2);
   }
 
-  //Encodes the given array of bytes
+  // Encodes the given array of bytes
   public encode(bytes: string): string {
     let hexPrefix = false;
     if (bytes.indexOf('0x') == 0) {
@@ -91,7 +91,7 @@ export class StatefulEncoding {
     return (hexPrefix ? '0x' : '') + encodeRecursive(0);
   }
 
-  //Dencodes the given array of bytes
+  // Decodes the given array of bytes
   public decode(bytes: string): string {
     let hexPrefix = false;
     if (bytes.indexOf('0x') == 0) {
@@ -140,36 +140,52 @@ export class StatefulEncoding {
 
     //encode by one byte lookup
     let encodedViaLookup1: string | undefined;
-    const oneByteMatch = findMatch(bytes, this.oneByteList);
-    if (oneByteMatch !== undefined) {
-      encodedViaLookup1 = '';
-      for (const part of oneByteMatch) {
-        if (part.index > -1) encodedViaLookup1 += toHex(PF_1BYTE_STATE + (part.index & ~PF_TYPE1_MASK), 1);
-        else encodedViaLookup1 += this.doEncode(part.bytes);
+    if (this.statefulEnabled) {
+      const oneByteMatch = findMatch(bytes, this.oneByteList);
+      if (oneByteMatch !== undefined) {
+        encodedViaLookup1 = '';
+        for (const part of oneByteMatch) {
+          if (part.index > -1) encodedViaLookup1 += toHex(PF_1BYTE_STATE + (part.index & ~PF_TYPE1_MASK), 1);
+          else encodedViaLookup1 += this.doEncode(part.bytes);
+        }
       }
     }
 
     //encode by two byte lookup
     let encodedViaLookup2: string | undefined;
-    const twoByteMatch = findMatch(bytes, this.twoByteList);
-    if (twoByteMatch !== undefined) {
-      encodedViaLookup2 = '';
-      for (const part of twoByteMatch) {
-        if (part.index > -1)
-          encodedViaLookup2 += toHex((PF_2BYTE_STATE << 8) + (part.index & ~(PF_TYPE2_MASK << 8)), 2);
-        else encodedViaLookup2 += this.doEncode(part.bytes);
+    if (this.statefulEnabled) {
+      const twoByteMatch = findMatch(bytes, this.twoByteList);
+      if (twoByteMatch !== undefined) {
+        encodedViaLookup2 = '';
+        for (const part of twoByteMatch) {
+          if (part.index > -1)
+            encodedViaLookup2 += toHex((PF_2BYTE_STATE << 8) + (part.index & ~(PF_TYPE2_MASK << 8)), 2);
+          else encodedViaLookup2 += this.doEncode(part.bytes);
+        }
+      }
+      const fnSelMatch = findMatch(bytes, this.fnSelList);
+      if (fnSelMatch !== undefined) {
+        encodedViaLookup2 = '';
+        for (const part of fnSelMatch) {
+          if (part.index > -1) {
+            const index = part.index + FN_SEL_BIN_START;
+            encodedViaLookup2 += toHex((PF_2BYTE_STATE << 8) + (index & ~(PF_TYPE2_MASK << 8)), 2);
+          } else encodedViaLookup2 += this.doEncode(part.bytes);
+        }
       }
     }
 
     //encode by four byte lookup
     let encodedViaLookup4: string | undefined;
-    const fourByteMatch = findMatch(bytes, this.fourByteList);
-    if (fourByteMatch !== undefined) {
-      encodedViaLookup4 = '';
-      for (const part of fourByteMatch) {
-        if (part.index > -1)
-          encodedViaLookup4 += toHex((PF_4BYTE_STATE << 24) + (part.index & ~(PF_TYPE2_MASK << 24)), 4);
-        else encodedViaLookup4 += this.doEncode(part.bytes);
+    if (this.statefulEnabled) {
+      const fourByteMatch = findMatch(bytes, this.fourByteList);
+      if (fourByteMatch !== undefined) {
+        encodedViaLookup4 = '';
+        for (const part of fourByteMatch) {
+          if (part.index > -1)
+            encodedViaLookup4 += toHex((PF_4BYTE_STATE << 24) + (part.index & ~(PF_TYPE2_MASK << 24)), 4);
+          else encodedViaLookup4 += this.doEncode(part.bytes);
+        }
       }
     }
 

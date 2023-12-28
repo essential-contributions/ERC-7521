@@ -2,6 +2,8 @@
 pragma solidity ^0.8.22;
 //TODO: experiment with assembly ("memory-safe")
 
+import {DataRegistry} from "./DataRegistry.sol";
+
 /*
  * Encoding prefixes
  * 00x - 1 byte stateful common bytes [0-63] (extremely common addresses, function selectors, etc)
@@ -10,7 +12,7 @@ pragma solidity ^0.8.22;
  * 100 - zeros [1-32]
  * 101 - zero padded bytes (to 32) [1-32 num bytes]
  * 110 - regular bytes [1-32 num bytes]
- * 111 - 6-10 byte compressed 256bit number
+ * 111 - decimal number
  */
 bytes1 constant PF_TYPE1_MASK = 0xc0;
 bytes1 constant PF_TYPE2_MASK = 0xe0;
@@ -18,82 +20,22 @@ bytes1 constant PF_TYPE2_MASK = 0xe0;
 /*
  * Two byte registry has a special bin for different data lengths
  */
-uint256 constant MAX_ONE_BYTE = 64;
-uint256 constant MAX_TWO_BYTE = 6144;
-uint256 constant MAX_FOUR_BYTE = 536870912;
-uint256 constant MAX_FN_SEL_BIN = 2048;
 uint256 constant FN_SEL_BIN_START = 6144;
 
 /*
- * Contract that stores data to help with compression of common abi patterns
+ * Contract that decodes compressed data encoded via common solidity abi patterns
  */
-contract StatefulEncoding {
+abstract contract StatefulAbiEncoding {
     /**
-     * Registry mappings
+     * Data registry
      */
-    mapping(uint256 => bytes32) public oneByteRegistry;
-    mapping(uint256 => bytes32) public twoByteRegistry;
-    mapping(uint256 => bytes32) public fourByteRegistry;
-    mapping(uint256 => bytes4) public fnSelRegistry;
-    uint256 public oneByteRegistryLength;
-    uint256 public twoByteRegistryLength;
-    uint256 public fourByteRegistryLength;
-    uint256 public fnSelRegistryLength;
+    DataRegistry public immutable dataRegistry;
 
     /**
-     * Events
+     * Constructor
      */
-    event OneByteRegistryAdd(uint256 indexed index, bytes32 data);
-    event TwoByteRegistryAdd(uint256 indexed index, bytes32 data);
-    event FourByteRegistryAdd(uint256 indexed index, bytes32 data);
-    event FnSelRegistryAdd(uint256 indexed index, bytes4 data);
-
-    /**
-     * Adds bytes to the single byte encoding registry
-     */
-    function addOneByteItem(bytes32 data) external {
-        uint256 index = oneByteRegistryLength;
-        if (index < MAX_ONE_BYTE) {
-            oneByteRegistry[index] = data;
-            oneByteRegistryLength = index + 1;
-            emit OneByteRegistryAdd(index, data);
-        }
-    }
-
-    /**
-     * Adds bytes to the two byte encoding registry
-     */
-    function addTwoByteItem(bytes32 data) external {
-        uint256 index = twoByteRegistryLength;
-        if (index < MAX_TWO_BYTE) {
-            twoByteRegistry[index] = data;
-            twoByteRegistryLength = index + 1;
-            emit TwoByteRegistryAdd(index, data);
-        }
-    }
-
-    /**
-     * Adds bytes to the four byte encoding registry
-     */
-    function addFourByteItem(bytes32 data) external {
-        uint256 index = fourByteRegistryLength;
-        if (index < MAX_FOUR_BYTE) {
-            fourByteRegistry[index] = data;
-            fourByteRegistryLength = index + 1;
-            emit FourByteRegistryAdd(index, data);
-        }
-    }
-
-    /**
-     * Adds bytes to the function selector encoding registry
-     */
-    function addFunctionSelector(bytes4 data) external {
-        uint256 index = fnSelRegistryLength;
-        if (index < MAX_FN_SEL_BIN) {
-            fnSelRegistry[index] = data;
-            fnSelRegistryLength = index + 1;
-            emit FnSelRegistryAdd(index, data);
-        }
+    constructor(DataRegistry registry) {
+        dataRegistry = registry;
     }
 
     /*
@@ -108,7 +50,7 @@ contract StatefulEncoding {
                 if ((prefix & 0x80) == 0x00) {
                     if ((prefix & 0x40) == 0x00) {
                         //00x - 1 byte stateful common bytes [0-63]
-                        bytes32 reg = oneByteRegistry[uint256(uint8(prefix & ~PF_TYPE1_MASK))];
+                        bytes32 reg = dataRegistry.oneByte(uint256(uint8(prefix & ~PF_TYPE1_MASK)));
                         assembly {
                             mstore(add(out, outIndex), reg)
                         }
@@ -122,14 +64,15 @@ contract StatefulEncoding {
                                 prefix2 := calldataload(add(data.offset, dataIndex))
                             }
                             if (uint8(prefix & ~PF_TYPE2_MASK) < (FN_SEL_BIN_START >> 8)) {
-                                bytes32 reg = twoByteRegistry[uint256(uint16(prefix2 & ~bytes2(PF_TYPE2_MASK)))];
+                                bytes32 reg = dataRegistry.twoByte(uint256(uint16(prefix2 & ~bytes2(PF_TYPE2_MASK))));
                                 assembly {
                                     mstore(add(out, outIndex), reg)
                                 }
                                 outIndex += 32;
                             } else {
-                                bytes4 reg =
-                                    fnSelRegistry[uint256(uint16(prefix2 & ~bytes2(PF_TYPE2_MASK))) - FN_SEL_BIN_START];
+                                bytes4 reg = dataRegistry.fnSel(
+                                    uint256(uint16(prefix2 & ~bytes2(PF_TYPE2_MASK))) - FN_SEL_BIN_START
+                                );
                                 assembly {
                                     let tmp := shr(32, shl(32, mload(add(out, outIndex))))
                                     mstore(add(out, outIndex), or(reg, tmp))
@@ -143,7 +86,7 @@ contract StatefulEncoding {
                             assembly {
                                 prefix4 := calldataload(add(data.offset, dataIndex))
                             }
-                            bytes32 reg = fourByteRegistry[uint256(uint32(prefix4 & ~bytes4(PF_TYPE2_MASK)))];
+                            bytes32 reg = dataRegistry.fourByte(uint256(uint32(prefix4 & ~bytes4(PF_TYPE2_MASK))));
                             assembly {
                                 mstore(add(out, outIndex), reg)
                             }
@@ -242,7 +185,7 @@ contract StatefulEncoding {
             if ((prefix & 0x80) == 0x00) {
                 if ((prefix & 0x40) == 0x00) {
                     //00x - 1 byte stateful common bytes [0-63]
-                    return (oneByteRegistry[uint256(uint8(prefix & ~PF_TYPE1_MASK))], 1);
+                    return (dataRegistry.oneByte(uint256(uint8(prefix & ~PF_TYPE1_MASK))), 1);
                 } else {
                     if ((prefix & 0x20) == 0x00) {
                         //010 - 2 byte stateful common bytes [0-8192]
@@ -251,11 +194,13 @@ contract StatefulEncoding {
                             prefix2 := calldataload(data.offset)
                         }
                         if (uint8(prefix & ~PF_TYPE2_MASK) < (FN_SEL_BIN_START >> 8)) {
-                            return (twoByteRegistry[uint256(uint16(prefix2 & ~bytes2(PF_TYPE2_MASK)))], 2);
+                            return (dataRegistry.twoByte(uint256(uint16(prefix2 & ~bytes2(PF_TYPE2_MASK)))), 2);
                         } else {
                             return (
                                 bytes32(
-                                    fnSelRegistry[uint256(uint16(prefix2 & ~bytes2(PF_TYPE2_MASK))) - FN_SEL_BIN_START]
+                                    dataRegistry.fnSel(
+                                        uint256(uint16(prefix2 & ~bytes2(PF_TYPE2_MASK))) - FN_SEL_BIN_START
+                                    )
                                     ),
                                 2
                             );
@@ -266,7 +211,7 @@ contract StatefulEncoding {
                         assembly {
                             prefix4 := calldataload(data.offset)
                         }
-                        return (fourByteRegistry[uint256(uint32(prefix4 & ~bytes4(PF_TYPE2_MASK)))], 4);
+                        return (dataRegistry.fourByte(uint256(uint32(prefix4 & ~bytes4(PF_TYPE2_MASK)))), 4);
                     }
                 }
             } else {

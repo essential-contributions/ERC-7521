@@ -1,24 +1,16 @@
 import { ethers } from 'hardhat';
 import { Transaction } from 'ethers';
+import { ScenarioOptions, ScenarioResult, TestScenario, DEFAULT_SCENARIO_OPTIONS } from './testScenario';
 import { Environment, SmartContractAccount } from '../../scripts/scenarios/environment';
 import { buildSolution, UserIntent } from '../../scripts/library/intent';
 import { Curve, LinearCurve } from '../../scripts/library/curveCoder';
 
-// Transfer result definition
-export type TransferEthResult = {
-  gasUsed: number;
-  bytesUsed: number;
-  txFee: bigint;
-  serialized: string;
-  amount: bigint;
-  fee: bigint;
-};
-
 // The scenario object
-export class TransferEthScenario {
+export class TransferEthScenario extends TestScenario {
   private env: Environment;
 
   constructor(environment: Environment) {
+    super();
     this.env = environment;
   }
 
@@ -42,7 +34,8 @@ export class TransferEthScenario {
   }
 
   //runs the baseline EOA version for the scenario
-  public async runBaseline(to: string): Promise<TransferEthResult> {
+  public async runBaseline(to?: string): Promise<ScenarioResult> {
+    to = to || this.env.utils.randomAddresses(1)[0];
     const amount = ethers.parseEther('1');
 
     const tx = await this.env.deployer.sendTransaction({ to, value: amount });
@@ -55,8 +48,21 @@ export class TransferEthScenario {
   }
 
   //runs the scenario
-  public async run(to: string[], useRegisteredStandards: boolean = false): Promise<TransferEthResult> {
-    const batchSize = to.length;
+  public async run(count?: string[] | number, options?: ScenarioOptions): Promise<ScenarioResult> {
+    options = options || DEFAULT_SCENARIO_OPTIONS;
+    count = count || 1;
+    let to: string[];
+    let batchSize: number;
+    if (typeof count == 'number') {
+      to = this.env.utils.randomAddresses(count);
+      batchSize = count;
+    } else {
+      if (count.length == 0) count.push(this.env.utils.randomAddresses(1)[0]);
+      to = count;
+      batchSize = count.length;
+    }
+    if (options.useStatefulCompression) await this.env.utils.registerAddresses(to);
+
     if (this.env.abstractAccounts.length < batchSize) throw new Error('not enough abstract accounts to run batch');
     const timestamp = (await this.env.provider.getBlock('latest'))?.timestamp || 0;
     const amount = ethers.parseEther('1');
@@ -66,7 +72,14 @@ export class TransferEthScenario {
     for (let i = 0; i < batchSize; i++) {
       const account = this.env.abstractAccounts[i];
       const intent = new UserIntent(account.contractAddress);
-      if (useRegisteredStandards) {
+      if (options.useEmbeddedStandards) {
+        //using the embedded intent standard versions
+        intent.addSegment(this.env.standards.sequentialNonce(await this.env.utils.getNonce(account.contractAddress)));
+        intent.addSegment(
+          this.env.standards.erc20Release(this.env.test.erc20Address, this.generateLinearRelease(timestamp, fee)),
+        );
+        intent.addSegment(this.env.standards.userOp(this.generateExecuteTransferTx(account, to[i], amount), 100_000));
+      } else {
         //using the registered intent standard versions
         intent.addSegment(
           this.env.registeredStandards.sequentialNonce(await this.env.utils.getNonce(account.contractAddress)),
@@ -80,13 +93,6 @@ export class TransferEthScenario {
         intent.addSegment(
           this.env.registeredStandards.userOp(this.generateExecuteTransferTx(account, to[i], amount), 100_000),
         );
-      } else {
-        //using the embedded intent standard versions
-        intent.addSegment(this.env.standards.sequentialNonce(await this.env.utils.getNonce(account.contractAddress)));
-        intent.addSegment(
-          this.env.standards.erc20Release(this.env.test.erc20Address, this.generateLinearRelease(timestamp, fee)),
-        );
-        intent.addSegment(this.env.standards.userOp(this.generateExecuteTransferTx(account, to[i], amount), 100_000));
       }
       await intent.sign(this.env.chainId, this.env.entrypointAddress, account.signer);
       intents.push(intent);

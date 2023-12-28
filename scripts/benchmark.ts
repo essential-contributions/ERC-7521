@@ -2,6 +2,7 @@ import { TxFeeCalculator, TxResult } from './benchmark/feeCalculator';
 import { MainnetCalculator } from './benchmark/mainnet';
 import { OPStackCalculator } from './benchmark/opstack';
 import { Environment, deployTestEnvironment } from './scenarios/environment';
+import { ScenarioOptions } from './scenarios/testScenario';
 import { TokenSwapScenario } from './scenarios/tokenSwapScenario';
 import { TransferErc20Scenario } from './scenarios/transferErc20Scenario';
 import { TransferEthScenario } from './scenarios/transferEthScenario';
@@ -26,62 +27,63 @@ async function main() {
   console.log('SCENARIOS');
   const transferErc20 = new TransferErc20Scenario(env);
   await transferErc20.init();
-  await transferErc20.run(env.utils.randomAddresses(16));
-  const transferErc20Results: ScenarioCombinations = {
-    embedded: {
-      base: await transferErc20.runBaseline(env.utils.randomAddresses(1)[0]),
-      r1: await transferErc20.run(env.utils.randomAddresses(1)),
-      r2: await transferErc20.run(env.utils.randomAddresses(4)),
-      r3: await transferErc20.run(env.utils.randomAddresses(8)),
-      r4: await transferErc20.run(env.utils.randomAddresses(16)),
-    },
-    registered: {
-      base: await transferErc20.runBaseline(env.utils.randomAddresses(1)[0]),
-      r1: await transferErc20.run(env.utils.randomAddresses(1), true),
-      r2: await transferErc20.run(env.utils.randomAddresses(4), true),
-      r3: await transferErc20.run(env.utils.randomAddresses(8), true),
-      r4: await transferErc20.run(env.utils.randomAddresses(16), true),
-    },
-  };
+  await transferErc20.run(16);
+  const transferErc20Base = await transferErc20.runBaseline();
   const transferEth = new TransferEthScenario(env);
   await transferEth.init();
-  await transferEth.run(env.utils.randomAddresses(16));
-  const transferEthResults: ScenarioCombinations = {
-    embedded: {
-      base: await transferEth.runBaseline(env.utils.randomAddresses(1)[0]),
-      r1: await transferEth.run(env.utils.randomAddresses(1)),
-      r2: await transferEth.run(env.utils.randomAddresses(4)),
-      r3: await transferEth.run(env.utils.randomAddresses(8)),
-      r4: await transferEth.run(env.utils.randomAddresses(16)),
-    },
-    registered: {
-      base: await transferEth.runBaseline(env.utils.randomAddresses(1)[0]),
-      r1: await transferEth.run(env.utils.randomAddresses(1), true),
-      r2: await transferEth.run(env.utils.randomAddresses(4), true),
-      r3: await transferEth.run(env.utils.randomAddresses(8), true),
-      r4: await transferEth.run(env.utils.randomAddresses(16), true),
-    },
-  };
+  await transferEth.run(16);
+  const transferEthBase = await transferEth.runBaseline();
   const tokenSwap = new TokenSwapScenario(env);
   await tokenSwap.init();
   await tokenSwap.run(16);
-  const tokenSwapResults: ScenarioCombinations = {
-    embedded: {
-      base: await tokenSwap.runBaseline(),
-      r1: await tokenSwap.run(1),
-      r2: await tokenSwap.run(4),
-      r3: await tokenSwap.run(8),
-      r4: await tokenSwap.run(16),
-    },
-    registered: {
-      base: await tokenSwap.runBaseline(),
-      r1: await tokenSwap.run(1, true),
-      r2: await tokenSwap.run(4, true),
-      r3: await tokenSwap.run(8, true),
-      r4: await tokenSwap.run(16, true),
-    },
+  const tokenSwapBase = await tokenSwap.runBaseline();
+  async function run(options: ScenarioOptions): Promise<ScenariosResults> {
+    return {
+      tokenSwap: {
+        base: tokenSwapBase,
+        r1: await tokenSwap.run(1, options),
+        r2: await tokenSwap.run(4, options),
+        r3: await tokenSwap.run(8, options),
+        r4: await tokenSwap.run(16, options),
+      },
+      transferErc20: {
+        base: transferErc20Base,
+        r1: await transferErc20.run(1, options),
+        r2: await transferErc20.run(4, options),
+        r3: await transferErc20.run(8, options),
+        r4: await transferErc20.run(16, options),
+      },
+      transferEth: {
+        base: transferEthBase,
+        r1: await transferEth.run(1, options),
+        r2: await transferEth.run(4, options),
+        r3: await transferEth.run(8, options),
+        r4: await transferEth.run(16, options),
+      },
+    };
+  }
+
+  //registered
+  const registeredStandards: ScenarioOptions = {
+    useEmbeddedStandards: false,
+    useCompression: false,
+    useStatefulCompression: false,
   };
-  logScenarios(transferErc20Results, transferEthResults, tokenSwapResults);
+  logScenarios(await run(registeredStandards));
+
+  //embedded
+  const embeddedStandards: ScenarioOptions = {
+    useEmbeddedStandards: true,
+    useCompression: false,
+    useStatefulCompression: false,
+  };
+  logScenarios(await run(embeddedStandards));
+
+  //TODO: embedded with compression
+
+  //TODO: embedded with stateful compression
+
+  //TODO: registered with stateful compression
 }
 
 // Log parameters
@@ -111,23 +113,30 @@ function logDeployments(env: Environment) {
   }
   line('Deploy EntryPoint', env.gasUsed.entrypoint);
   line('Deploy Abstract Acct', env.gasUsed.abstractAccount);
+  line('Deploy Gen Compression', env.gasUsed.generalCompression);
   line('Register Standard', env.gasUsed.registerStandard);
   console.log('');
 }
 
 // Log scenario data
-function logScenarios(
-  transferErc20Results: ScenarioCombinations,
-  transferEthResults: ScenarioCombinations,
-  tokenSwapResults: ScenarioCombinations,
-) {
-  console.log(
-    '| Action                | Baseline Gas     | Intent Gas       | Batch(x4)        | Batch(x8)        | Batch(x16)       |',
-  );
-  console.log(
-    '|-----------------------|------------------|------------------|------------------|------------------|------------------|',
-  );
-  function line(name: string, results: ScenarioResults, results2: ScenarioResults) {
+function logScenarios(results: ScenariosResults, subHeading?: string) {
+  if (!subHeading) {
+    console.log(
+      '| Action                | Baseline Gas     | Intent Gas       | Batch(x4)        | Batch(x8)        | Batch(x16)       |',
+    );
+    console.log(
+      '|-----------------------|------------------|------------------|------------------|------------------|------------------|',
+    );
+  } else {
+    console.log(
+      '|                        ..................... Using Registered Standards .....................                        |',
+    );
+    console.log(
+      '|                       |                  |                  |                  |                  |                  |',
+    );
+  }
+
+  function line(name: string, results: ScenarioResults) {
     const n = name.padEnd(21, ' ');
     const b = results.base.gasUsed;
     const xb = b.toString().padEnd(16, ' ');
@@ -153,30 +162,21 @@ function logScenarios(
     }
     subline('mainnet', new MainnetCalculator(GAS_PRICE, ETH_PRICE), results);
     subline('opstack', new OPStackCalculator(OP_GAS_PRICE, OP_DATA_PRICE, OP_DATA_SCALER, ETH_PRICE), results);
-    //subline('opstack(cmp)', new OPStackCalculator(OP_GAS_PRICE, OP_DATA_PRICE, OP_DATA_SCALER, ETH_PRICE), results2);
 
     console.log(
       '|                       |                  |                  |                  |                  |                  |',
     );
   }
-  line('Token Swap', tokenSwapResults.embedded, tokenSwapResults.embedded);
-  line('ERC20 Transfer', transferErc20Results.embedded, transferErc20Results.embedded);
-  line('ETH Transfer', transferEthResults.embedded, transferEthResults.embedded);
-  console.log(
-    '|                        ..................... Using Registered Standards .....................                        |',
-  );
-  console.log(
-    '|                       |                  |                  |                  |                  |                  |',
-  );
-  line('Token Swap', tokenSwapResults.registered, tokenSwapResults.registered);
-  line('ERC20 Transfer', transferErc20Results.registered, transferErc20Results.registered);
-  line('ETH Transfer', transferEthResults.registered, transferEthResults.registered);
+  line('Token Swap', results.tokenSwap);
+  line('ERC20 Transfer', results.transferErc20);
+  line('ETH Transfer', results.transferEth);
 }
 
-// Scenario results
-export type ScenarioCombinations = {
-  embedded: ScenarioResults;
-  registered: ScenarioResults;
+// Scenarios results
+export type ScenariosResults = {
+  tokenSwap: ScenarioResults;
+  transferErc20: ScenarioResults;
+  transferEth: ScenarioResults;
 };
 
 // Scenario results

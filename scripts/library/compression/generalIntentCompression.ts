@@ -1,6 +1,7 @@
-import { StatefulEncoding } from './statefulEncoding';
-import { IntentSolutionStruct, UserIntentStruct } from '../../typechain/src/core/EntryPoint';
-import { ethers } from 'ethers';
+import { StatefulAbiEncoding } from './statefulAbiEncoding';
+import { IntentSolutionStruct, UserIntentStruct } from '../../../typechain/src/core/EntryPoint';
+import { DataRegistry, GeneralIntentCompression as GeneralIntentCompressionContract } from '../../../typechain';
+import { ethers, Signer } from 'ethers';
 
 // Solution template encoding
 // xxxxxxxx (timestamp) xx (num intents) [
@@ -19,11 +20,37 @@ const INTENTS_OFFSET = '00000000000000000000000000000000000000000000000000000000
 const INTENT_DATA_OFFSET = '0000000000000000000000000000000000000000000000000000000000000060';
 
 // Perform intent compression via templating
-export class IntentCompression {
-  private statefulEncoding: StatefulEncoding;
+export class GeneralIntentCompression {
+  private generalIntentCompressionContract: GeneralIntentCompressionContract;
+  private statefulEncoding: StatefulAbiEncoding;
 
-  constructor(statefulEncoding: StatefulEncoding) {
-    this.statefulEncoding = statefulEncoding;
+  // Constructor
+  constructor(generalIntentCompressionContract: GeneralIntentCompressionContract, dataRegistry: DataRegistry) {
+    this.generalIntentCompressionContract = generalIntentCompressionContract;
+    this.statefulEncoding = new StatefulAbiEncoding(dataRegistry);
+  }
+
+  // Uses compressed data to call handleIntents on the entrypoint contract
+  public async handleIntents(solution: IntentSolutionStruct, signer?: Signer) {
+    await this.sync();
+
+    //compress and call
+    const compressed = this.compressHandleIntents(solution);
+    console.log(compressed);
+    const contract = signer
+      ? this.generalIntentCompressionContract.connect(signer)
+      : this.generalIntentCompressionContract;
+    //contract.handleIntents(compressed);
+  }
+
+  // Manually sync up with the on-chain data registry
+  public async sync() {
+    await this.statefulEncoding.sync();
+  }
+
+  // Sets if encoding should utilize the stateful registry
+  public setStateful(stateful: boolean) {
+    this.statefulEncoding.setStateful(stateful);
   }
 
   // Compress the given raw handle intents data
