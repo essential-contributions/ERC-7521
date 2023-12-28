@@ -46,7 +46,12 @@ contract GeneralIntentCompression is StatefulAbiEncoding {
     /*
      * Calls the handle intents function after expanding the given compressed solution
      */
-    function handleIntents(bytes calldata data) external {
+    fallback() external {
+        bytes calldata data;
+        assembly {
+            data.offset := 0
+            data.length := calldatasize()
+        }
         bytes memory call = decompressHandleIntents(data);
         Exec.call(address(entrypoint), 0, call, gasleft());
     }

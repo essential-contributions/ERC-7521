@@ -41,10 +41,20 @@ export class GeneralIntentCompression {
 
     //compress and call
     const compressed = this.compressHandleIntents(solution);
+
     const contract = signer
       ? this.generalIntentCompressionContract.connect(signer)
       : this.generalIntentCompressionContract;
-    return contract.handleIntents(compressed);
+    if (contract.fallback) {
+      return contract.fallback({
+        data: compressed,
+      });
+    }
+
+    //fail if no fallback
+    return new Promise<ContractTransactionResponse>((resolve, reject) => {
+      reject();
+    });
   }
 
   // Manually sync up with the on-chain data registry
