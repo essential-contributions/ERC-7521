@@ -168,13 +168,13 @@ function logScenarios(results: ScenariosResults, subHeading?: string) {
       const n = name.padEnd(19, ' ');
       const b = calculator.calcTxFee(results.base);
       const xb = `($${price(b.toString())})`.padEnd(16, ' ');
-      const g1 = Math.round((calculator.calcTxFee(results.r1) * 100) / 1) / 100;
+      const g1 = Math.round((calculator.calcTxFee(results.r1) * 10000) / 1) / 10000;
       const x1 = `($${price(g1.toString())}) ${percent(b, g1)}`.padEnd(16 + 9, ' ');
-      const g4 = Math.round((calculator.calcTxFee(results.r2) * 100) / 4) / 100;
+      const g4 = Math.round((calculator.calcTxFee(results.r2) * 10000) / 4) / 10000;
       const x4 = `($${price(g4.toString())}) ${percent(b, g4)}`.padEnd(16 + 9, ' ');
-      const g8 = Math.round((calculator.calcTxFee(results.r3) * 100) / 8) / 100;
+      const g8 = Math.round((calculator.calcTxFee(results.r3) * 10000) / 8) / 10000;
       const x8 = `($${price(g8.toString())}) ${percent(b, g8)}`.padEnd(16 + 9, ' ');
-      const g16 = Math.round((calculator.calcTxFee(results.r4) * 100) / 16) / 100;
+      const g16 = Math.round((calculator.calcTxFee(results.r4) * 10000) / 16) / 10000;
       const x16 = `($${price(g16.toString())}) ${percent(b, g16)}`.padEnd(16 + 9, ' ');
       console.log(`|   ${n} | ${xb} | ${x1} | ${x4} | ${x8} | ${x16} |`);
     }
@@ -212,7 +212,9 @@ function price(p: string): string {
   if (decimal == -1) return p + '.00';
   if (decimal == 0) p = '0' + p;
   const index = p.indexOf('.');
-  return p.substring(0, index) + p.substring(index).padEnd(3, '0');
+  p = p.substring(0, index) + p.substring(index).padEnd(3, '0');
+  if (p.length > 5) p = p.substring(0, 5);
+  return p;
 }
 
 // Format percent string
