@@ -31,7 +31,7 @@ abstract contract Erc20ReleaseCore is Erc20ReleaseDelegate {
      * Validate intent segment structure (typically just formatting).
      */
     function _validateErc20Release(bytes calldata segmentData) internal pure {
-        require(segmentData.length == 58 || segmentData.length == 68, "ERC-20 Release data length invalid");
+        require(segmentData.length == 70 || segmentData.length == 80, "ERC-20 Release data length invalid");
     }
 
     /**
@@ -43,10 +43,10 @@ abstract contract Erc20ReleaseCore is Erc20ReleaseDelegate {
         address nextExecutingIntentSender,
         bytes calldata segmentData
     ) internal {
-        address token = address(uint160(uint256(getSegmentWord(segmentData, 20))));
-        bytes16 curve = segmentData.length < 68
-            ? bytes16(getSegmentWord(segmentData, 26) << (26 * 8))
-            : bytes16(getSegmentWord(segmentData, 36) << (16 * 8));
+        address token = address(uint160(uint256(getSegmentWord(segmentData, 32))));
+        bytes16 curve = segmentData.length < 80
+            ? bytes16(getSegmentWord(segmentData, 38) << (26 * 8))
+            : bytes16(getSegmentWord(segmentData, 48) << (16 * 8));
         int256 releaseAmount = evaluateCurve(curve, timestamp);
 
         //release
@@ -106,7 +106,7 @@ contract Erc20Release is Erc20ReleaseCore, IIntentStandard {
  */
 function encodeErc20ReleaseData(bytes32 standardId, address token, int256 amount) pure returns (bytes memory) {
     bytes6 data = encodeConstantCurve(amount, false);
-    return abi.encodePacked(standardId, token, data);
+    return abi.encodePacked(standardId, uint256(uint160(token)), data);
 }
 
 /**
@@ -132,5 +132,5 @@ function encodeErc20ReleaseComplexData(
     bool backwards
 ) pure returns (bytes memory) {
     bytes16 data = encodeComplexCurve(startTime, deltaTime, startAmount, deltaAmount, exponent, backwards, false);
-    return abi.encodePacked(standardId, token, data);
+    return abi.encodePacked(standardId, uint256(uint160(token)), data);
 }

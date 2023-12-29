@@ -19,7 +19,7 @@ abstract contract Erc20RecordCore {
      * Validate intent segment structure (typically just formatting).
      */
     function _validateErc20Record(bytes calldata segmentData) internal pure {
-        require(segmentData.length == 52, "ERC-20 Record data length invalid");
+        require(segmentData.length == 64, "ERC-20 Record data length invalid");
     }
 
     /**
@@ -30,7 +30,7 @@ abstract contract Erc20RecordCore {
         view
         returns (bytes memory)
     {
-        address token = address(uint160(uint256(getSegmentWord(segmentData, 20))));
+        address token = address(uint160(uint256(getSegmentWord(segmentData, 32))));
 
         //push current eth balance to the context data
         uint256 balance = IERC20(token).balanceOf(intentSender);
@@ -78,5 +78,5 @@ contract Erc20Record is Erc20RecordCore, IIntentStandard {
  * @return the fully encoded intent standard segment data
  */
 function encodeErc20RecordData(bytes32 standardId, address token) pure returns (bytes memory) {
-    return abi.encodePacked(standardId, token);
+    return abi.encodePacked(standardId, uint256(uint160(token)));
 }

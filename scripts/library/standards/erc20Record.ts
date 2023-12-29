@@ -16,6 +16,6 @@ export class Erc20RecordSegment extends IntentSegment {
 
   //gets the bytes abi encoding of the segment
   asBytes(): string {
-    return ethers.solidityPacked(['bytes32', 'address'], [this.standard, this.contract]);
+    return ethers.solidityPacked(['bytes32', 'uint256'], [this.standard, this.contract]);
   }
 }

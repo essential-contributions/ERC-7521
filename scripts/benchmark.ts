@@ -2,6 +2,7 @@ import { TxFeeCalculator, TxResult } from './benchmark/feeCalculator';
 import { MainnetCalculator } from './benchmark/mainnet';
 import { OPStackCalculator } from './benchmark/opstack';
 import { Environment, deployTestEnvironment } from './scenarios/environment';
+import { ScenarioOptions } from './scenarios/scenario';
 import { TokenSwapScenario } from './scenarios/tokenSwapScenario';
 import { TransferErc20Scenario } from './scenarios/transferErc20Scenario';
 import { TransferEthScenario } from './scenarios/transferEthScenario';
@@ -26,62 +27,81 @@ async function main() {
   console.log('SCENARIOS');
   const transferErc20 = new TransferErc20Scenario(env);
   await transferErc20.init();
-  await transferErc20.run(env.utils.randomAddresses(16));
-  const transferErc20Results: ScenarioCombinations = {
-    embedded: {
-      base: await transferErc20.runBaseline(env.utils.randomAddresses(1)[0]),
-      r1: await transferErc20.run(env.utils.randomAddresses(1)),
-      r2: await transferErc20.run(env.utils.randomAddresses(4)),
-      r3: await transferErc20.run(env.utils.randomAddresses(8)),
-      r4: await transferErc20.run(env.utils.randomAddresses(16)),
-    },
-    registered: {
-      base: await transferErc20.runBaseline(env.utils.randomAddresses(1)[0]),
-      r1: await transferErc20.run(env.utils.randomAddresses(1), true),
-      r2: await transferErc20.run(env.utils.randomAddresses(4), true),
-      r3: await transferErc20.run(env.utils.randomAddresses(8), true),
-      r4: await transferErc20.run(env.utils.randomAddresses(16), true),
-    },
-  };
+  await transferErc20.run(16);
+  const transferErc20Base = await transferErc20.runBaseline();
   const transferEth = new TransferEthScenario(env);
   await transferEth.init();
-  await transferEth.run(env.utils.randomAddresses(16));
-  const transferEthResults: ScenarioCombinations = {
-    embedded: {
-      base: await transferEth.runBaseline(env.utils.randomAddresses(1)[0]),
-      r1: await transferEth.run(env.utils.randomAddresses(1)),
-      r2: await transferEth.run(env.utils.randomAddresses(4)),
-      r3: await transferEth.run(env.utils.randomAddresses(8)),
-      r4: await transferEth.run(env.utils.randomAddresses(16)),
-    },
-    registered: {
-      base: await transferEth.runBaseline(env.utils.randomAddresses(1)[0]),
-      r1: await transferEth.run(env.utils.randomAddresses(1), true),
-      r2: await transferEth.run(env.utils.randomAddresses(4), true),
-      r3: await transferEth.run(env.utils.randomAddresses(8), true),
-      r4: await transferEth.run(env.utils.randomAddresses(16), true),
-    },
-  };
+  await transferEth.run(16);
+  const transferEthBase = await transferEth.runBaseline();
   const tokenSwap = new TokenSwapScenario(env);
   await tokenSwap.init();
   await tokenSwap.run(16);
-  const tokenSwapResults: ScenarioCombinations = {
-    embedded: {
-      base: await tokenSwap.runBaseline(),
-      r1: await tokenSwap.run(1),
-      r2: await tokenSwap.run(4),
-      r3: await tokenSwap.run(8),
-      r4: await tokenSwap.run(16),
-    },
-    registered: {
-      base: await tokenSwap.runBaseline(),
-      r1: await tokenSwap.run(1, true),
-      r2: await tokenSwap.run(4, true),
-      r3: await tokenSwap.run(8, true),
-      r4: await tokenSwap.run(16, true),
-    },
+  const tokenSwapBase = await tokenSwap.runBaseline();
+  async function run(options: ScenarioOptions): Promise<ScenariosResults> {
+    return {
+      tokenSwap: {
+        base: tokenSwapBase,
+        r1: await tokenSwap.run(1, options),
+        r2: await tokenSwap.run(4, options),
+        r3: await tokenSwap.run(8, options),
+        r4: await tokenSwap.run(16, options),
+      },
+      transferErc20: {
+        base: transferErc20Base,
+        r1: await transferErc20.run(1, options),
+        r2: await transferErc20.run(4, options),
+        r3: await transferErc20.run(8, options),
+        r4: await transferErc20.run(16, options),
+      },
+      transferEth: {
+        base: transferEthBase,
+        r1: await transferEth.run(1, options),
+        r2: await transferEth.run(4, options),
+        r3: await transferEth.run(8, options),
+        r4: await transferEth.run(16, options),
+      },
+    };
+  }
+
+  //embedded
+  const embeddedStandards: ScenarioOptions = {
+    useEmbeddedStandards: true,
+    useCompression: false,
+    useStatefulCompression: false,
   };
-  logScenarios(transferErc20Results, transferEthResults, tokenSwapResults);
+  logScenarios(await run(embeddedStandards));
+
+  //embedded with compression
+  const nonStatefulCompression: ScenarioOptions = {
+    useEmbeddedStandards: true,
+    useCompression: true,
+    useStatefulCompression: false,
+  };
+  logScenarios(await run(nonStatefulCompression), 'Non-Stateful Compression');
+
+  //embedded with stateful compression
+  const statefulCompression: ScenarioOptions = {
+    useEmbeddedStandards: true,
+    useCompression: true,
+    useStatefulCompression: true,
+  };
+  logScenarios(await run(statefulCompression), 'Stateful Compression');
+
+  //registered
+  const registeredStandards: ScenarioOptions = {
+    useEmbeddedStandards: false,
+    useCompression: false,
+    useStatefulCompression: false,
+  };
+  logScenarios(await run(registeredStandards), 'Using Registered Standards');
+
+  //registered with stateful compression
+  const registeredStatefulCompression: ScenarioOptions = {
+    useEmbeddedStandards: false,
+    useCompression: true,
+    useStatefulCompression: true,
+  };
+  logScenarios(await run(registeredStatefulCompression), 'Using Registered Standards w/ Stateful Compression');
 }
 
 // Log parameters
@@ -111,72 +131,70 @@ function logDeployments(env: Environment) {
   }
   line('Deploy EntryPoint', env.gasUsed.entrypoint);
   line('Deploy Abstract Acct', env.gasUsed.abstractAccount);
+  line('Deploy Gen Compression', env.gasUsed.generalCompression);
   line('Register Standard', env.gasUsed.registerStandard);
   console.log('');
 }
 
 // Log scenario data
-function logScenarios(
-  transferErc20Results: ScenarioCombinations,
-  transferEthResults: ScenarioCombinations,
-  tokenSwapResults: ScenarioCombinations,
-) {
-  console.log(
-    '| Action                | Baseline Gas     | Intent Gas       | Batch(x4)        | Batch(x8)        | Batch(x16)       |',
-  );
-  console.log(
-    '|-----------------------|------------------|------------------|------------------|------------------|------------------|',
-  );
-  function line(name: string, results: ScenarioResults, results2: ScenarioResults) {
+function logScenarios(results: ScenariosResults, subHeading?: string) {
+  if (!subHeading) {
+    console.log(
+      '| Action                | Baseline Gas     | Intent Gas       | Batch(x4)        | Batch(x8)        | Batch(x16)       |',
+    );
+    console.log(
+      '|-----------------------|------------------|------------------|------------------|------------------|------------------|',
+    );
+  } else {
+    subHeading = '..................... ' + subHeading + '  .....................';
+    const padding = (118 - subHeading.length) / 2;
+    console.log('|' + ''.padStart(Math.ceil(padding), ' ') + subHeading + ''.padStart(Math.floor(padding), ' ') + '|');
+    console.log(
+      '|                       |                  |                  |                  |                  |                  |',
+    );
+  }
+
+  function line(name: string, results: ScenarioResults) {
     const n = name.padEnd(21, ' ');
     const b = results.base.gasUsed;
-    const xb = b.toString().padEnd(16, ' ');
-    const x1 = `${Math.round(results.r1.gasUsed / 1)}`.padEnd(16, ' ');
-    const x4 = `${Math.round(results.r2.gasUsed / 4)}`.padEnd(16, ' ');
-    const x8 = `${Math.round(results.r3.gasUsed / 8)}`.padEnd(16, ' ');
-    const x16 = `${Math.round(results.r4.gasUsed / 16)}`.padEnd(16, ' ');
+    const xb = `${b} (${results.base.bytesUsed})`.padEnd(16, ' ');
+    const x1 = `${Math.round(results.r1.gasUsed / 1)} (${Math.round(results.r1.bytesUsed / 1)})`.padEnd(16, ' ');
+    const x4 = `${Math.round(results.r2.gasUsed / 4)} (${Math.round(results.r2.bytesUsed / 4)})`.padEnd(16, ' ');
+    const x8 = `${Math.round(results.r3.gasUsed / 8)} (${Math.round(results.r3.bytesUsed / 8)})`.padEnd(16, ' ');
+    const x16 = `${Math.round(results.r4.gasUsed / 16)} (${Math.round(results.r4.bytesUsed / 16)})`.padEnd(16, ' ');
     console.log(`| ${n} | ${xb} | ${x1} | ${x4} | ${x8} | ${x16} |`);
 
     function subline(name: string, calculator: TxFeeCalculator, results: ScenarioResults) {
       const n = name.padEnd(19, ' ');
       const b = calculator.calcTxFee(results.base);
       const xb = `($${price(b.toString())})`.padEnd(16, ' ');
-      const g1 = Math.round((calculator.calcTxFee(results.r1) * 100) / 1) / 100;
+      const g1 = Math.round((calculator.calcTxFee(results.r1) * 10000) / 1) / 10000;
       const x1 = `($${price(g1.toString())}) ${percent(b, g1)}`.padEnd(16 + 9, ' ');
-      const g4 = Math.round((calculator.calcTxFee(results.r2) * 100) / 4) / 100;
+      const g4 = Math.round((calculator.calcTxFee(results.r2) * 10000) / 4) / 10000;
       const x4 = `($${price(g4.toString())}) ${percent(b, g4)}`.padEnd(16 + 9, ' ');
-      const g8 = Math.round((calculator.calcTxFee(results.r3) * 100) / 8) / 100;
+      const g8 = Math.round((calculator.calcTxFee(results.r3) * 10000) / 8) / 10000;
       const x8 = `($${price(g8.toString())}) ${percent(b, g8)}`.padEnd(16 + 9, ' ');
-      const g16 = Math.round((calculator.calcTxFee(results.r4) * 100) / 16) / 100;
+      const g16 = Math.round((calculator.calcTxFee(results.r4) * 10000) / 16) / 10000;
       const x16 = `($${price(g16.toString())}) ${percent(b, g16)}`.padEnd(16 + 9, ' ');
       console.log(`|   ${n} | ${xb} | ${x1} | ${x4} | ${x8} | ${x16} |`);
     }
     subline('mainnet', new MainnetCalculator(GAS_PRICE, ETH_PRICE), results);
     subline('opstack', new OPStackCalculator(OP_GAS_PRICE, OP_DATA_PRICE, OP_DATA_SCALER, ETH_PRICE), results);
-    //subline('opstack(cmp)', new OPStackCalculator(OP_GAS_PRICE, OP_DATA_PRICE, OP_DATA_SCALER, ETH_PRICE), results2);
 
     console.log(
       '|                       |                  |                  |                  |                  |                  |',
     );
   }
-  line('Token Swap', tokenSwapResults.embedded, tokenSwapResults.embedded);
-  line('ERC20 Transfer', transferErc20Results.embedded, transferErc20Results.embedded);
-  line('ETH Transfer', transferEthResults.embedded, transferEthResults.embedded);
-  console.log(
-    '|                        ..................... Using Registered Standards .....................                        |',
-  );
-  console.log(
-    '|                       |                  |                  |                  |                  |                  |',
-  );
-  line('Token Swap', tokenSwapResults.registered, tokenSwapResults.registered);
-  line('ERC20 Transfer', transferErc20Results.registered, transferErc20Results.registered);
-  line('ETH Transfer', transferEthResults.registered, transferEthResults.registered);
+  line('Token Swap', results.tokenSwap);
+  line('ERC20 Transfer', results.transferErc20);
+  line('ETH Transfer', results.transferEth);
 }
 
-// Scenario results
-export type ScenarioCombinations = {
-  embedded: ScenarioResults;
-  registered: ScenarioResults;
+// Scenarios results
+export type ScenariosResults = {
+  tokenSwap: ScenarioResults;
+  transferErc20: ScenarioResults;
+  transferEth: ScenarioResults;
 };
 
 // Scenario results
@@ -194,7 +212,9 @@ function price(p: string): string {
   if (decimal == -1) return p + '.00';
   if (decimal == 0) p = '0' + p;
   const index = p.indexOf('.');
-  return p.substring(0, index) + p.substring(index).padEnd(3, '0');
+  p = p.substring(0, index) + p.substring(index).padEnd(3, '0');
+  if (p.length > 5) p = p.substring(0, 5);
+  return p;
 }
 
 // Format percent string

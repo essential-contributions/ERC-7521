@@ -2,6 +2,7 @@ import { Provider, Signer } from 'ethers';
 import { ethers } from 'hardhat';
 import {
   AbstractAccount,
+  DataRegistry,
   EntryPoint,
   SolverUtils,
   TestERC20,
@@ -18,6 +19,7 @@ import { EthRequireSegment } from '../library/standards/ethRequire';
 import { Erc20RecordSegment } from '../library/standards/erc20Record';
 import { Erc20ReleaseSegment } from '../library/standards/erc20Release';
 import { Erc20RequireSegment } from '../library/standards/erc20Require';
+import { GeneralIntentCompression } from '../library/compression/generalIntentCompression';
 
 // Environment definition
 export type Environment = {
@@ -59,12 +61,17 @@ export type Environment = {
     solverUtils: SolverUtils;
     solverUtilsAddress: string;
   };
+  compression: {
+    general: GeneralIntentCompression;
+    registerAddresses: (addresses: string[]) => Promise<void>;
+  };
   solverUtils: SolverUtils;
   abstractAccounts: SmartContractAccount[];
   gasUsed: {
     entrypoint: bigint;
     registerStandard: bigint;
     abstractAccount: bigint;
+    generalCompression: bigint;
   };
   utils: {
     getNonce: (account: string) => Promise<number>;
@@ -144,7 +151,7 @@ export async function deployTestEnvironment(
 
   //deploy smart contract wallets
   let abstractAccountGasUsed = 0n;
-  const abstractAccounts = [];
+  const abstractAccounts: SmartContractAccount[] = [];
   for (let i = 0; i < config.numAbstractAccounts; i++) {
     const signer = new ethers.Wallet(ethers.hexlify(ethers.randomBytes(32)));
     const account = await ethers.deployContract(
@@ -167,6 +174,57 @@ export async function deployTestEnvironment(
   await testERC20.mint(testUniswapAddress, ethers.parseEther('1000'));
   await testWrappedNativeToken.connect(funder).deposit({ value: ethers.parseEther('1000') });
   await testWrappedNativeToken.connect(funder).transfer(testUniswapAddress, ethers.parseEther('1000'));
+
+  //deploy stateful encoding and intent compression helpers
+  const dataRegistry = await ethers.deployContract('DataRegistry', [], deployer);
+  const dataRegistryAddress = await dataRegistry.getAddress();
+  const generalCompression = await ethers.deployContract(
+    'GeneralIntentCompression',
+    [entrypointAddress, dataRegistryAddress],
+    deployer,
+  );
+  const generalCompressionGasUsed = (await generalCompression.deploymentTransaction()?.wait())?.gasUsed || 0n;
+  const generalIntentCompression = new GeneralIntentCompression(generalCompression, dataRegistry);
+
+  //fill the data registry with high frequency items
+  (await dataRegistry.addOneByteItem(ethers.hexlify(ethers.randomBytes(32)))).wait();
+  (await dataRegistry.addOneByteItem('0x' + testERC20Address.substring(2).padStart(64, '0'))).wait();
+  (await dataRegistry.addOneByteItem('0x' + testWrappedNativeTokenAddress.substring(2).padStart(64, '0'))).wait();
+  (await dataRegistry.addOneByteItem(callStdId)).wait();
+  (await dataRegistry.addOneByteItem(erc20RecordStdId)).wait();
+  (await dataRegistry.addOneByteItem(erc20ReleaseStdId)).wait();
+  (await dataRegistry.addOneByteItem(erc20RequireStdId)).wait();
+  (await dataRegistry.addOneByteItem(ethRecordStdId)).wait();
+  (await dataRegistry.addOneByteItem(ethReleaseStdId)).wait();
+  (await dataRegistry.addOneByteItem(ethRequireStdId)).wait();
+  (await dataRegistry.addOneByteItem(sequentialNonceStdId)).wait();
+  (await dataRegistry.addOneByteItem(userOperationStdId)).wait();
+  (await dataRegistry.addOneByteItem(simpleCall.standardId)).wait();
+  (await dataRegistry.addOneByteItem(userOperation.standardId)).wait();
+  (await dataRegistry.addOneByteItem(sequentialNonce.standardId)).wait();
+  (await dataRegistry.addOneByteItem(ethRecord.standardId)).wait();
+  (await dataRegistry.addOneByteItem(ethRelease.standardId)).wait();
+  (await dataRegistry.addOneByteItem(ethRequire.standardId)).wait();
+  (await dataRegistry.addOneByteItem(erc20Record.standardId)).wait();
+  (await dataRegistry.addOneByteItem(erc20Release.standardId)).wait();
+  (await dataRegistry.addOneByteItem(erc20Require.standardId)).wait();
+
+  //fill the data registry with medium frequency items
+  (await dataRegistry.addTwoByteItem(ethers.hexlify(ethers.randomBytes(32)))).wait();
+  (await dataRegistry.addTwoByteItem('0x' + testUniswapAddress.substring(2).padStart(64, '0'))).wait();
+  (await dataRegistry.addTwoByteItem('0x' + solverUtilsAddress.substring(2).padStart(64, '0'))).wait();
+  (await dataRegistry.addFunctionSelector('0xb61d27f6')).wait();
+  (await dataRegistry.addFunctionSelector('0xa9059cbb')).wait();
+  (await dataRegistry.addFunctionSelector('0x18c6051a')).wait();
+
+  //fill the data registry with low frequency items
+  (await dataRegistry.addFourByteItem(ethers.hexlify(ethers.randomBytes(32)))).wait();
+  for (const acct of abstractAccounts) {
+    (await dataRegistry.addFourByteItem('0x' + acct.contractAddress.substring(2).padStart(64, '0'))).wait();
+  }
+
+  //sync registry
+  await generalIntentCompression.sync();
 
   return {
     chainId: network.chainId,
@@ -210,12 +268,21 @@ export async function deployTestEnvironment(
       solverUtils,
       solverUtilsAddress,
     },
+    compression: {
+      general: generalIntentCompression,
+      registerAddresses: async (addresses: string[]) => {
+        for (const addr of addresses) {
+          (await dataRegistry.addFourByteItem('0x' + addr.substring(2).padStart(64, '0'))).wait();
+        }
+      },
+    },
     solverUtils,
     abstractAccounts,
     gasUsed: {
       entrypoint: entrypointGasUsed,
       registerStandard: registerStandardGas,
       abstractAccount: abstractAccountGasUsed,
+      generalCompression: generalCompressionGasUsed,
     },
     utils: {
       getNonce: async (account: string) => {
