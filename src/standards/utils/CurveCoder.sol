@@ -3,35 +3,34 @@ pragma solidity ^0.8.22;
 
 /*
  * Encoding masks
- *   [bytes1]  flags - curve type, relative, evaluate backwards (flip), negatives [c--r fnnn]
+ *   [bytes1]  flags - evaluate backwards (flip), relative, exponent [fr-- eeee] [exponent: 0 = const, 1 = linear, >1 = exponential]
  *   [uint32]  startAmount - starting amount
- *   [uint8]   amountMult - amount multiplier (final_amount = amount * (amountMult * 10))
+ *   [uint8]   startAmountMult - amount multiplier (final_amount = amount * (amountMult * 10)) [first bit = negative]
  * --only for linear or exponential--
+ *   [uint24]  deltaAmount - amount of change after each second
+ *   [uint8]  deltaAmountMult - amount multiplier (final_amount = amount * (amountMult * 10)) [first bit = negative]
  *   [uint32]  startTime -  start time of the curve (in seconds)
  *   [uint16]  deltaTime - amount of time from start until curve caps (in seconds)
- *   [uint24]  deltaAmount - amount of change after each second
- *   [bytes1]  misc - delta amount mult, exponent [mmmm eeee]
  */
-bytes16 constant MASK_FLAGS_CURVE_TYPE = 0x80000000000000000000000000000000;
-bytes16 constant MASK_FLAGS_RELATIVE = 0x10000000000000000000000000000000;
-bytes16 constant MASK_FLAGS_FLIP = 0x08000000000000000000000000000000;
-bytes16 constant MASK_FLAGS_NEG_START_AMT = 0x04000000000000000000000000000000;
-bytes16 constant MASK_FLAGS_NEG_DELTA = 0x02000000000000000000000000000000;
-bytes16 constant MASK_FLAGS_NEG_DELTA_MULT = 0x01000000000000000000000000000000;
+
+bytes16 constant MASK_FLAGS_FLIP = 0x80000000000000000000000000000000;
+bytes16 constant MASK_FLAGS_RELATIVE = 0x40000000000000000000000000000000;
+bytes16 constant MASK_EXPONENT = 0x0f000000000000000000000000000000;
 bytes16 constant MASK_START_AMOUNT = 0x00ffffffff0000000000000000000000;
-bytes16 constant MASK_START_AMT_MULT = 0x0000000000ff00000000000000000000;
-bytes16 constant MASK_START_TIME = 0x000000000000ffffffff000000000000;
-bytes16 constant MASK_DELTA_TIME = 0x00000000000000000000ffff00000000;
-bytes16 constant MASK_DELTA_AMOUNT = 0x000000000000000000000000ffffff00;
-bytes16 constant MASK_DELTA_AMT_MULT = 0x000000000000000000000000000000f0;
-bytes16 constant MASK_EXPONENT = 0x0000000000000000000000000000000f;
+bytes16 constant MASK_START_AMT_MULT = 0x00000000007f00000000000000000000;
+bytes16 constant MASK_START_AMT_NEG = 0x00000000008000000000000000000000;
+bytes16 constant MASK_DELTA_AMOUNT = 0x000000000000ffffff00000000000000;
+bytes16 constant MASK_DELTA_AMT_MULT = 0x0000000000000000007f000000000000;
+bytes16 constant MASK_DELTA_AMT_NEG = 0x00000000000000000080000000000000;
+bytes16 constant MASK_START_TIME = 0x00000000000000000000ffffffff0000;
+bytes16 constant MASK_DELTA_TIME = 0x0000000000000000000000000000ffff;
+uint8 constant SHIFT_EXPONENT = 15 * 8;
 uint8 constant SHIFT_START_AMOUNT = 11 * 8;
 uint8 constant SHIFT_START_AMT_MULT = 10 * 8;
-uint8 constant SHIFT_START_TIME = 6 * 8;
-uint8 constant SHIFT_DELTA_TIME = 4 * 8;
-uint8 constant SHIFT_DELTA_AMOUNT = 1 * 8;
-uint8 constant SHIFT_DELTA_AMT_MULT = 4;
-uint8 constant SHIFT_EXPONENT = 0;
+uint8 constant SHIFT_DELTA_AMOUNT = 7 * 8;
+uint8 constant SHIFT_DELTA_AMT_MULT = 6 * 8;
+uint8 constant SHIFT_START_TIME = 2 * 8;
+uint8 constant SHIFT_DELTA_TIME = 0;
 
 /**
  * Encodes the parameters into a constant curve
@@ -52,15 +51,17 @@ function encodeConstantCurve(int256 amount, bool isRelative) pure returns (bytes
     }
     uint8 amountMult = 0;
     while (adjustedAmount > 0x00000000000000000000000000000000000000000000000000000000ffffffff) {
-        adjustedAmount = adjustedAmount >> 1;
+        uint256 div = adjustedAmount / 10;
+        require((div * 10) == adjustedAmount, "too many digits on constant curve amount");
+        adjustedAmount = div;
         amountMult++;
     }
 
     //encode
     bytes16 encoding = (bytes16(uint128(adjustedAmount)) << SHIFT_START_AMOUNT)
         | (bytes16(uint128(amountMult)) << SHIFT_START_AMT_MULT);
-    if (amountNegative) encoding = encoding | MASK_FLAGS_NEG_START_AMT;
-    if (isRelative) encoding = encoding | MASK_FLAGS_RELATIVE;
+    if (amountNegative) encoding |= MASK_START_AMT_NEG;
+    if (isRelative) encoding |= MASK_FLAGS_RELATIVE;
     return bytes6(encoding);
 }
 
@@ -77,7 +78,7 @@ function encodeConstantCurve(int256 amount, bool isRelative) pure returns (bytes
  */
 function encodeComplexCurve(
     uint32 startTime,
-    uint24 deltaTime,
+    uint16 deltaTime,
     int256 startAmount,
     int256 deltaAmount,
     uint8 exponent,
@@ -85,13 +86,11 @@ function encodeComplexCurve(
     bool isRelative
 ) pure returns (bytes16) {
     //start encode
-    bytes16 encoding = MASK_FLAGS_CURVE_TYPE | (bytes16(uint128(startTime)) << SHIFT_START_TIME)
-        | (bytes16(uint128(deltaTime)) << SHIFT_DELTA_TIME) | (bytes16(uint128(exponent & 0x0f)) << SHIFT_EXPONENT);
-    if (isRelative) encoding = encoding | MASK_FLAGS_RELATIVE;
-    if (backwards) encoding = encoding | MASK_FLAGS_FLIP;
+    bytes16 encoding = (bytes16(uint128(exponent & 0x0f)) << SHIFT_EXPONENT);
+    if (isRelative) encoding |= MASK_FLAGS_RELATIVE;
+    if (backwards) encoding |= MASK_FLAGS_FLIP;
 
     //encode start amount
-    uint8 startMult = 0;
     {
         uint256 adjustedStartAmount;
         bool startAmountNegative;
@@ -102,53 +101,45 @@ function encodeComplexCurve(
             startAmountNegative = false;
             adjustedStartAmount = uint256(startAmount);
         }
+        uint8 startAmountMult = 0;
         while (adjustedStartAmount > 0x00000000000000000000000000000000000000000000000000000000ffffffff) {
-            adjustedStartAmount = adjustedStartAmount >> 1;
-            startMult++;
+            uint256 div = adjustedStartAmount / 10;
+            require((div * 10) == adjustedStartAmount, "too many digits on complex curve start amount");
+            adjustedStartAmount = div;
+            startAmountMult++;
         }
         encoding |= (bytes16(uint128(adjustedStartAmount)) << SHIFT_START_AMOUNT)
-            | (bytes16(uint128(startMult)) << SHIFT_START_AMT_MULT);
-        if (startAmountNegative) encoding = encoding | MASK_FLAGS_NEG_START_AMT;
+            | (bytes16(uint128(startAmountMult)) << SHIFT_START_AMT_MULT);
+        if (startAmountNegative) encoding |= MASK_START_AMT_NEG;
     }
 
-    //encode delta amount
-    {
-        uint256 adjustedDeltaAmount;
-        bool deltaAmountNegative;
-        if (deltaAmount < 0) {
-            deltaAmountNegative = true;
-            adjustedDeltaAmount = uint256(0 - deltaAmount);
-        } else {
-            deltaAmountNegative = false;
-            adjustedDeltaAmount = uint256(deltaAmount);
+    if (exponent >= 1) {
+        //encode delta amount
+        {
+            uint256 adjustedDeltaAmount;
+            bool deltaAmountNegative;
+            if (deltaAmount < 0) {
+                deltaAmountNegative = true;
+                adjustedDeltaAmount = uint256(0 - deltaAmount);
+            } else {
+                deltaAmountNegative = false;
+                adjustedDeltaAmount = uint256(deltaAmount);
+            }
+            uint8 deltaAmountMult = 0;
+            while (adjustedDeltaAmount > 0x0000000000000000000000000000000000000000000000000000000000ffffff) {
+                uint256 div = adjustedDeltaAmount / 10;
+                require((div * 10) == adjustedDeltaAmount, "too many digits on complex curve delta amount");
+                adjustedDeltaAmount = div;
+                deltaAmountMult++;
+            }
+            encoding |= (bytes16(uint128(adjustedDeltaAmount)) << SHIFT_DELTA_AMOUNT)
+                | (bytes16(uint128(deltaAmountMult)) << SHIFT_DELTA_AMT_MULT);
+            if (deltaAmountNegative) encoding |= MASK_DELTA_AMT_NEG;
         }
-        int256 deltaMult = 0;
-        while (adjustedDeltaAmount > 0x0000000000000000000000000000000000000000000000000000000000ffffff) {
-            adjustedDeltaAmount = adjustedDeltaAmount >> 1;
-            deltaMult++;
-        }
-        if (startAmount == 0) {
-            startMult = uint8(uint256(deltaMult));
-            deltaMult = 0;
-        } else {
-            deltaMult = int256(uint256(startMult)) - deltaMult;
-            require(deltaMult > -16, "delta too small in comparison to start");
-            require(deltaMult < 16, "delta too large in comparison to start");
-        }
-        uint8 adjustedDeltaMult;
-        bool deltaMultNegative;
-        if (deltaMult < 0) {
-            deltaMultNegative = true;
-            adjustedDeltaMult = uint8(uint256(0 - deltaMult));
-        } else {
-            deltaMultNegative = false;
-            adjustedDeltaMult = uint8(uint256(deltaMult));
-        }
-        encoding |= (bytes16(uint128(adjustedDeltaAmount)) << SHIFT_DELTA_AMOUNT)
-            | (bytes16(uint128(adjustedDeltaMult & 0x0f)) << SHIFT_DELTA_AMT_MULT)
-            | (bytes16(uint128(startMult)) << SHIFT_START_AMT_MULT);
-        if (deltaMultNegative) encoding = encoding | MASK_FLAGS_NEG_DELTA_MULT;
-        if (deltaAmountNegative) encoding = encoding | MASK_FLAGS_NEG_DELTA;
+
+        //encode time data
+        encoding |=
+            (bytes16(uint128(startTime)) << SHIFT_START_TIME) | (bytes16(uint128(deltaTime)) << SHIFT_DELTA_TIME);
     }
 
     return encoding;
@@ -158,33 +149,35 @@ function encodeComplexCurve(
  * Decodes the given curve parameter encoding and evaluates it
  * @param curve the encoded parameters
  * @dev curve
- *   [bytes1]  flags - curve type, relative, evaluate backwards (flip), negatives [c--r fnnn]
+ *   [bytes1]  flags - evaluate backwards (flip), relative, exponent [fr-- eeee] [exponent: 0 = const, 1 = linear, >1 = exponential]
  *   [uint32]  startAmount - starting amount
- *   [uint8]   amountMult - amount multiplier (final_amount = amount * (amountMult * 10))
+ *   [uint8]   startAmountMult - amount multiplier (final_amount = amount * (amountMult * 10)) [first bit = negative]
  * --only for linear or exponential--
+ *   [uint24]  deltaAmount - amount of change after each second
+ *   [uint8]  deltaAmountMult - amount multiplier (final_amount = amount * (amountMult * 10)) [first bit = negative]
  *   [uint32]  startTime -  start time of the curve (in seconds)
  *   [uint16]  deltaTime - amount of time from start until curve caps (in seconds)
- *   [uint24]  deltaAmount - amount of change after each second
- *   [bytes1]  misc - delta amount mult, exponent [eeee mmmm]
  * @param solutionTimestamp the time of evaluation specified by the solution
  * @return value the evaluated value
  */
 function evaluateCurve(bytes16 curve, uint256 solutionTimestamp) pure returns (int256) {
     unchecked {
-        //constant curve evaluation
-        if (uint128(curve & MASK_FLAGS_CURVE_TYPE) == 0) {
-            uint256 amount = uint128((curve & MASK_START_AMOUNT) >> SHIFT_START_AMOUNT);
-            uint256 mult = uint128((curve & MASK_START_AMT_MULT) >> SHIFT_START_AMT_MULT);
-            amount = amount << mult;
+        uint256 exponent = uint128((curve & MASK_EXPONENT) >> SHIFT_EXPONENT);
 
-            if (uint128(curve & MASK_FLAGS_NEG_START_AMT) > 0) return (0 - int256(amount));
+        //constant curve evaluation
+        if (exponent == 0) {
+            uint256 amount = uint128((curve & MASK_START_AMOUNT) >> SHIFT_START_AMOUNT);
+            uint256 mult = tenToThePowerOf(uint8(uint128((curve & MASK_START_AMT_MULT) >> SHIFT_START_AMT_MULT)));
+            amount = amount * mult;
+
+            if (uint128(curve & MASK_START_AMT_NEG) > 0) return (0 - int256(amount));
             return int256(amount);
         }
 
         //time parameters
-        uint48 startTime = uint48(uint128((curve & MASK_START_TIME) >> SHIFT_START_TIME));
-        uint48 deltaTime = uint48(uint128((curve & MASK_DELTA_TIME) >> SHIFT_DELTA_TIME));
-        uint48 endTime = startTime + deltaTime;
+        uint256 startTime = uint128((curve & MASK_START_TIME) >> SHIFT_START_TIME);
+        uint256 deltaTime = uint128((curve & MASK_DELTA_TIME) >> SHIFT_DELTA_TIME);
+        uint256 endTime = startTime + deltaTime;
         uint256 evaluateAt = 0;
         if (solutionTimestamp > startTime) {
             if (solutionTimestamp < endTime) evaluateAt = solutionTimestamp - startTime;
@@ -198,33 +191,25 @@ function evaluateCurve(bytes16 curve, uint256 solutionTimestamp) pure returns (i
 
         //starting amount
         uint256 startAmount = uint128((curve & MASK_START_AMOUNT) >> SHIFT_START_AMOUNT);
-        uint256 startMult = uint128((curve & MASK_START_AMT_MULT) >> SHIFT_START_AMT_MULT);
-        startAmount = startAmount << startMult;
+        uint256 startMult = tenToThePowerOf(uint8(uint128((curve & MASK_START_AMT_MULT) >> SHIFT_START_AMT_MULT)));
+        startAmount = startAmount * startMult;
 
         //delta amount
         uint256 deltaAmount = uint128((curve & MASK_DELTA_AMOUNT) >> SHIFT_DELTA_AMOUNT);
-        uint256 deltaMult = uint128((curve & MASK_DELTA_AMT_MULT) >> SHIFT_DELTA_AMT_MULT);
-        if (deltaMult > 0 || startMult > 0) {
-            if (uint128(curve & MASK_FLAGS_NEG_DELTA_MULT) > 0) {
-                deltaMult = startMult - deltaMult;
-            } else {
-                deltaMult = startMult + deltaMult;
-            }
-            deltaAmount = deltaAmount << deltaMult;
-        }
+        uint256 deltaMult = tenToThePowerOf(uint8(uint128((curve & MASK_DELTA_AMT_MULT) >> SHIFT_DELTA_AMT_MULT)));
+        deltaAmount = deltaAmount * deltaMult;
 
         //evaluate curve
-        uint256 exponent = uint128((curve & MASK_EXPONENT) >> SHIFT_EXPONENT);
         if (exponent > 1) {
             //exponential curve evaluation
-            if (uint128(curve & MASK_FLAGS_NEG_START_AMT) > 0) {
-                if (uint128(curve & MASK_FLAGS_NEG_DELTA) > 0) {
+            if (uint128(curve & MASK_START_AMT_NEG) > 0) {
+                if (uint128(curve & MASK_DELTA_AMT_NEG) > 0) {
                     return (0 - int256(startAmount)) - int256((evaluateAt ** exponent) * deltaAmount);
                 } else {
                     return (0 - int256(startAmount)) + int256((evaluateAt ** exponent) * deltaAmount);
                 }
             } else {
-                if (uint128(curve & MASK_FLAGS_NEG_DELTA) > 0) {
+                if (uint128(curve & MASK_DELTA_AMT_NEG) > 0) {
                     return int256(startAmount) - int256((evaluateAt ** exponent) * deltaAmount);
                 } else {
                     return int256(startAmount) + int256((evaluateAt ** exponent) * deltaAmount);
@@ -232,14 +217,14 @@ function evaluateCurve(bytes16 curve, uint256 solutionTimestamp) pure returns (i
             }
         } else {
             //linear curve evaluation
-            if (uint128(curve & MASK_FLAGS_NEG_START_AMT) > 0) {
-                if (uint128(curve & MASK_FLAGS_NEG_DELTA) > 0) {
+            if (uint128(curve & MASK_START_AMT_NEG) > 0) {
+                if (uint128(curve & MASK_DELTA_AMT_NEG) > 0) {
                     return (0 - int256(startAmount)) - int256(evaluateAt * deltaAmount);
                 } else {
                     return (0 - int256(startAmount)) + int256(evaluateAt * deltaAmount);
                 }
             } else {
-                if (uint128(curve & MASK_FLAGS_NEG_DELTA) > 0) {
+                if (uint128(curve & MASK_DELTA_AMT_NEG) > 0) {
                     return int256(startAmount) - int256(evaluateAt * deltaAmount);
                 } else {
                     return int256(startAmount) + int256(evaluateAt * deltaAmount);
@@ -259,11 +244,40 @@ function isCurveRelative(bytes16 curve) pure returns (bool isRelative) {
 }
 
 /**
- * Gets the curve byte size given the first byte
- * @param firstByte the first byte
- * @return curve size in bytes
+ * Gets the value of 10 raised to the given power
+ * @param pow the exponent power
+ * @return the result
  */
-function curveByteSize(bytes1 firstByte) pure returns (uint8) {
-    if (firstByte & (MASK_FLAGS_CURVE_TYPE >> ((16 - 1) * 8)) == bytes1(0)) return 6;
-    return 16;
+function tenToThePowerOf(uint8 pow) pure returns (uint256) {
+    unchecked {
+        uint256 res = 1;
+        if (pow >= 64) {
+            res *= (10 ** 64);
+            pow -= 64;
+        }
+        if (pow >= 32) {
+            res *= (10 ** 32);
+            pow -= 32;
+        }
+        if (pow >= 16) {
+            res *= (10 ** 16);
+            pow -= 16;
+        }
+        if (pow >= 8) {
+            res *= (10 ** 8);
+            pow -= 8;
+        }
+        if (pow >= 4) {
+            res *= (10 ** 4);
+            pow -= 4;
+        }
+        if (pow >= 2) {
+            res *= (10 ** 2);
+            pow -= 2;
+        }
+        if (pow >= 1) {
+            res *= 10;
+        }
+        return res;
+    }
 }

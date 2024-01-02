@@ -370,7 +370,7 @@ function encodeSize(bytes1 prefix) pure returns (uint256) {
 }
 
 /*
- * Gets the decoded size of the encoded data
+ * Gets the value of 10 raised to the given power
  */
 function tenToThePowerOf(uint8 pow) pure returns (uint256) {
     unchecked {

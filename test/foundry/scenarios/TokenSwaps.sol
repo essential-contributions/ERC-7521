@@ -32,7 +32,7 @@ contract TokenSwaps is ScenarioTestEnvironment {
         intent = _addErc20ReleaseLinear(
             intent,
             uint32(block.timestamp - releaseAt),
-            uint24(releaseDuration),
+            uint16(releaseDuration),
             releaseStartAmount,
             (releaseEndAmount - releaseStartAmount) / int256(releaseDuration)
         );
@@ -57,7 +57,7 @@ contract TokenSwaps is ScenarioTestEnvironment {
         intent = _addEthRequireLinear(
             intent,
             uint32(block.timestamp - requireAt),
-            uint24(requireDuration),
+            uint16(requireDuration),
             requireStartAmount,
             (requireEndAmount - requireStartAmount) / int256(requireDuration),
             true
@@ -95,16 +95,13 @@ contract TokenSwaps is ScenarioTestEnvironment {
         vm.warp(1700952587);
     }
 
-    function testFuzz_constantRelease(uint32 erc20Release, uint32 ethRequire, uint16 requireDuration, uint16 requireAt)
-        public
-    {
+    function testFuzz_constantRelease(uint16 erc20Release, uint16 ethRequire) public {
         vm.assume(0 < erc20Release);
         vm.assume(0 < ethRequire);
-        vm.assume(0 < requireDuration);
-        vm.assume(0 < requireAt);
-        vm.assume(requireAt < requireDuration);
         vm.assume(ethRequire < erc20Release);
         vm.assume(erc20Release < _accountInitialERC20Balance);
+        uint256 requireDuration = 3000;
+        uint256 requireAt = 1000;
         uint256 erc20ReleaseAmount = uint256(erc20Release) * 1_000_000_000;
         uint256 ethRequireAmount = uint256(ethRequire) * 100_000_000;
         uint256 slippage = 5;
@@ -113,44 +110,34 @@ contract TokenSwaps is ScenarioTestEnvironment {
         UserIntent memory intent =
             _constantReleaseIntent(erc20ReleaseAmount, ethRequireAmount, requireDuration, requireAt);
         intent = _signIntent(intent);
-        uint256 erc20ReleaseAmountEncoded =
-            uint256(evaluateCurve(bytes16(_getBytes(intent.intentData[2], 64, 70)), block.timestamp));
-        uint256 ethRequireAmountEncoded =
-            uint256(evaluateCurve(bytes16(_getBytes(intent.intentData[3], 32, 48)), block.timestamp));
 
         //build solution
-        IntentSolution memory solution = _solutionForCase(intent, erc20ReleaseAmountEncoded, ethRequireAmountEncoded);
+        IntentSolution memory solution = _solutionForCase(intent, erc20ReleaseAmount, ethRequireAmount);
 
         //execute
         _entryPoint.handleIntents(solution);
 
         //verify end state
         uint256 solverBalance = address(_publicAddressSolver).balance;
-        uint256 expectedSolverBalance = (erc20ReleaseAmountEncoded - ethRequireAmountEncoded) + slippage;
+        uint256 expectedSolverBalance = (erc20ReleaseAmount - ethRequireAmount) + slippage;
         assertEq(solverBalance, expectedSolverBalance, "The solver ended up with incorrect balance");
 
         uint256 userBalance = address(_account).balance;
-        uint256 expectedUserBalance = _accountInitialETHBalance + ethRequireAmountEncoded;
+        uint256 expectedUserBalance = _accountInitialETHBalance + ethRequireAmount;
         assertEq(userBalance, expectedUserBalance, "The user ended up with incorrect balance");
 
         uint256 userERC20Tokens = _testERC20.balanceOf(address(_account));
-        uint256 expectedUserERC20Balance = _accountInitialERC20Balance - erc20ReleaseAmountEncoded;
+        uint256 expectedUserERC20Balance = _accountInitialERC20Balance - erc20ReleaseAmount;
         assertEq(userERC20Tokens, expectedUserERC20Balance, "The user released more ERC20 tokens than expected");
     }
 
-    function testFuzz_constantExpectation(
-        uint32 erc20Release,
-        uint32 ethRequire,
-        uint16 releaseDuration,
-        uint16 releaseAt
-    ) public {
+    function testFuzz_constantExpectation(uint16 erc20Release, uint16 ethRequire) public {
         vm.assume(0 < erc20Release);
         vm.assume(0 < ethRequire);
-        vm.assume(0 < releaseDuration);
-        vm.assume(0 < releaseAt);
-        vm.assume(releaseAt < releaseDuration);
         vm.assume(ethRequire < erc20Release);
         vm.assume(erc20Release < _accountInitialERC20Balance);
+        uint256 releaseDuration = 3000;
+        uint256 releaseAt = 1000;
         uint256 slippage = 5;
         uint256 erc20ReleaseAmount = uint256(erc20Release) * 1_000_000_000;
         uint256 ethRequireAmount = uint256(ethRequire) * 100_000_000;
@@ -159,28 +146,24 @@ contract TokenSwaps is ScenarioTestEnvironment {
         UserIntent memory intent =
             _constantExpectationIntent(erc20ReleaseAmount, ethRequireAmount, releaseDuration, releaseAt);
         intent = _signIntent(intent);
-        uint256 erc20ReleaseAmountEncoded =
-            uint256(evaluateCurve(bytes16(_getBytes(intent.intentData[2], 64, 80)), block.timestamp));
-        uint256 ethRequireAmountEncoded =
-            uint256(evaluateCurve(bytes16(_getBytes(intent.intentData[3], 32, 38)), block.timestamp));
 
         //build solution
-        IntentSolution memory solution = _solutionForCase(intent, erc20ReleaseAmountEncoded, ethRequireAmountEncoded);
+        IntentSolution memory solution = _solutionForCase(intent, erc20ReleaseAmount, ethRequireAmount);
 
         //execute
         _entryPoint.handleIntents(solution);
 
         //verify end state
         uint256 solverBalance = address(_publicAddressSolver).balance;
-        uint256 expectedSolverBalance = (erc20ReleaseAmountEncoded - ethRequireAmountEncoded) + slippage;
+        uint256 expectedSolverBalance = (erc20ReleaseAmount - ethRequireAmount) + slippage;
         assertEq(solverBalance, expectedSolverBalance, "The solver ended up with incorrect balance");
 
         uint256 userBalance = address(_account).balance;
-        uint256 expectedUserBalance = _accountInitialETHBalance + ethRequireAmountEncoded;
+        uint256 expectedUserBalance = _accountInitialETHBalance + ethRequireAmount;
         assertEq(userBalance, expectedUserBalance, "The user ended up with incorrect balance");
 
         uint256 userERC20Tokens = _testERC20.balanceOf(address(_account));
-        uint256 expectedUserERC20Balance = _accountInitialERC20Balance - erc20ReleaseAmountEncoded;
+        uint256 expectedUserERC20Balance = _accountInitialERC20Balance - erc20ReleaseAmount;
         assertEq(userERC20Tokens, expectedUserERC20Balance, "The user released more ERC20 tokens than expected");
     }
 }

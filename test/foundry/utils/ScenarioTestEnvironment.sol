@@ -172,13 +172,13 @@ abstract contract ScenarioTestEnvironment is Test {
     function _addErc20ReleaseLinear(
         UserIntent memory intent,
         uint32 startTime,
-        uint24 deltaTime,
+        uint16 deltaTime,
         int256 startAmount,
         int256 deltaAmount
     ) internal view returns (UserIntent memory) {
         return intent.addSegment(
             encodeErc20ReleaseComplexData(
-                ERC20_RELEASE_STD_ID, _token, startTime, deltaTime, startAmount, deltaAmount, 0, false
+                ERC20_RELEASE_STD_ID, _token, startTime, deltaTime, startAmount, deltaAmount, 1, false
             )
         );
     }
@@ -186,7 +186,7 @@ abstract contract ScenarioTestEnvironment is Test {
     function _addErc20ReleaseExponential(
         UserIntent memory intent,
         uint32 startTime,
-        uint24 deltaTime,
+        uint16 deltaTime,
         int256 startAmount,
         int256 deltaAmount,
         uint8 exponent,
@@ -210,14 +210,14 @@ abstract contract ScenarioTestEnvironment is Test {
     function _addErc20RequireLinear(
         UserIntent memory intent,
         uint32 startTime,
-        uint24 deltaTime,
+        uint16 deltaTime,
         int256 startAmount,
         int256 deltaAmount,
         bool isRelative
     ) internal view returns (UserIntent memory) {
         return intent.addSegment(
             encodeErc20RequireComplexData(
-                ERC20_REQUIRE_STD_ID, _token, startTime, deltaTime, startAmount, deltaAmount, 0, false, isRelative
+                ERC20_REQUIRE_STD_ID, _token, startTime, deltaTime, startAmount, deltaAmount, 1, false, isRelative
             )
         );
     }
@@ -225,7 +225,7 @@ abstract contract ScenarioTestEnvironment is Test {
     function _addErc20RequireExponential(
         UserIntent memory intent,
         uint32 startTime,
-        uint24 deltaTime,
+        uint16 deltaTime,
         int256 startAmount,
         int256 deltaAmount,
         uint8 exponent,
@@ -258,19 +258,19 @@ abstract contract ScenarioTestEnvironment is Test {
     function _addEthReleaseLinear(
         UserIntent memory intent,
         uint32 startTime,
-        uint24 deltaTime,
+        uint16 deltaTime,
         int256 startAmount,
         int256 deltaAmount
     ) internal pure returns (UserIntent memory) {
         return intent.addSegment(
-            encodeEthReleaseComplexData(ETH_RELEASE_STD_ID, startTime, deltaTime, startAmount, deltaAmount, 0, false)
+            encodeEthReleaseComplexData(ETH_RELEASE_STD_ID, startTime, deltaTime, startAmount, deltaAmount, 1, false)
         );
     }
 
     function _addEthReleaseExponential(
         UserIntent memory intent,
         uint32 startTime,
-        uint24 deltaTime,
+        uint16 deltaTime,
         int256 startAmount,
         int256 deltaAmount,
         uint8 exponent,
@@ -294,14 +294,14 @@ abstract contract ScenarioTestEnvironment is Test {
     function _addEthRequireLinear(
         UserIntent memory intent,
         uint32 startTime,
-        uint24 deltaTime,
+        uint16 deltaTime,
         int256 startAmount,
         int256 deltaAmount,
         bool isRelative
     ) internal pure returns (UserIntent memory) {
         return intent.addSegment(
             encodeEthRequireComplexData(
-                ETH_REQUIRE_STD_ID, startTime, deltaTime, startAmount, deltaAmount, 0, false, isRelative
+                ETH_REQUIRE_STD_ID, startTime, deltaTime, startAmount, deltaAmount, 1, false, isRelative
             )
         );
     }
@@ -309,7 +309,7 @@ abstract contract ScenarioTestEnvironment is Test {
     function _addEthRequireExponential(
         UserIntent memory intent,
         uint32 startTime,
-        uint24 deltaTime,
+        uint16 deltaTime,
         int256 startAmount,
         int256 deltaAmount,
         uint8 exponent,

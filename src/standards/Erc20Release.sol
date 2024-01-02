@@ -17,14 +17,14 @@ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
  * @dev data
  *   [bytes32] standard - the intent standard identifier
  *   [address] token - the ERC20 token contract address
- *   [bytes1]  flags - curve type, evaluate backwards (flip), negatives [c--- fnnn]
+ *   [bytes1]  flags - evaluate backwards (flip), exponent [f--- eeee] [exponent: 0 = const, 1 = linear, >1 = exponential]
  *   [uint32]  startAmount - starting amount
- *   [uint8]   amountMult - amount multiplier (final_amount = amount * (amountMult * 10))
+ *   [uint8]   startAmountMult - amount multiplier (final_amount = amount * (amountMult * 10)) [first bit = negative]
  * --only for linear or exponential--
+ *   [uint24]  deltaAmount - amount of change after each second
+ *   [uint8]  deltaAmountMult - amount multiplier (final_amount = amount * (amountMult * 10)) [first bit = negative]
  *   [uint32]  startTime -  start time of the curve (in seconds)
  *   [uint16]  deltaTime - amount of time from start until curve caps (in seconds)
- *   [uint24]  deltaAmount - amount of change after each second
- *   [bytes1]  misc - delta amount mult, exponent [mmmm eeee]
  */
 abstract contract Erc20ReleaseCore is Erc20ReleaseDelegate {
     /**
@@ -125,7 +125,7 @@ function encodeErc20ReleaseComplexData(
     bytes32 standardId,
     address token,
     uint32 startTime,
-    uint24 deltaTime,
+    uint16 deltaTime,
     int256 startAmount,
     int256 deltaAmount,
     uint8 exponent,
