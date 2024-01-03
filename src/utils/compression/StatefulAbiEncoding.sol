@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.22;
+
+/* solhint-disable private-vars-leading-underscore */
+
 //TODO: experiment with assembly ("memory-safe")
 
 import {DataRegistry} from "./DataRegistry.sol";
@@ -155,7 +158,7 @@ abstract contract StatefulAbiEncoding {
                                     mstore(add(out, outIndex), or(shl(128, num), tmp))
                                 }
                                 outIndex += 16;
-                            } else if (size == 2) {
+                            } else if (size == 1) {
                                 assembly {
                                     let tmp := shr(64, shl(64, mload(add(out, outIndex))))
                                     mstore(add(out, outIndex), or(shl(192, num), tmp))
