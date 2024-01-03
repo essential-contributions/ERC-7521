@@ -26,6 +26,7 @@ describe('Transfer ERC-20 Test', () => {
 
     //transfer
     const transferResults = await scenario.runBaseline(to);
+    await expect(transferResults.tx).to.not.be.reverted;
 
     expect(await env.test.erc20.balanceOf(env.deployerAddress)).to.equal(
       previousFromBalance - transferResults.amount,
@@ -46,6 +47,7 @@ describe('Transfer ERC-20 Test', () => {
 
     //transfer
     const transferResults = await scenario.run([to], scenarioOptions);
+    await expect(transferResults.tx).to.not.be.reverted;
 
     expect(await env.test.erc20.balanceOf(account.contractAddress)).to.equal(
       previousFromBalance - (transferResults.amount + transferResults.fee),
@@ -74,6 +76,7 @@ describe('Transfer ERC-20 Test', () => {
 
     //transfer
     const transferResults = await scenario.run(to, scenarioOptions);
+    await expect(transferResults.tx).to.not.be.reverted;
 
     expect(await env.test.erc20.balanceOf(env.deployerAddress)).to.equal(
       previousSolverBalance + transferResults.fee * BigInt(MAX_INTENTS),

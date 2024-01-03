@@ -25,6 +25,7 @@ describe('Token Swaps Test', () => {
 
     //swap
     const swapResults = await scenario.runBaseline();
+    await expect(swapResults.tx).to.not.be.reverted;
 
     expect(await env.test.erc20.balanceOf(env.deployerAddress)).to.equal(
       previousFromBalance - swapResults.amount,
@@ -44,6 +45,7 @@ describe('Token Swaps Test', () => {
 
     //swap
     const swapResults = await scenario.run(1, scenarioOptions);
+    await expect(swapResults.tx).to.not.be.reverted;
 
     expect(await env.test.erc20.balanceOf(account.contractAddress)).to.equal(
       previousFromBalance - swapResults.amount,
@@ -71,6 +73,7 @@ describe('Token Swaps Test', () => {
 
     //swap
     const swapResults = await scenario.run(MAX_INTENTS, scenarioOptions);
+    await expect(swapResults.tx).to.not.be.reverted;
 
     expect(await env.provider.getBalance(env.deployerAddress)).to.equal(
       previousSolverBalance + scenario.TOKEN_SWAP_SLIPPAGE - swapResults.txFee,

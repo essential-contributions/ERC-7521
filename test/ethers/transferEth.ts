@@ -26,6 +26,7 @@ describe('Transfer ETH Test', () => {
 
     //transfer
     const transferResults = await scenario.runBaseline(to);
+    await expect(transferResults.tx).to.not.be.reverted;
 
     expect(await env.provider.getBalance(env.deployerAddress)).to.equal(
       previousFromBalance - (transferResults.amount + transferResults.txFee),
@@ -47,6 +48,7 @@ describe('Transfer ETH Test', () => {
 
     //transfer
     const transferResults = await scenario.run([to], scenarioOptions);
+    await expect(transferResults.tx).to.not.be.reverted;
 
     expect(await env.test.erc20.balanceOf(env.deployerAddress)).to.equal(
       previousSolverBalanceErc20 + transferResults.fee,
@@ -81,6 +83,7 @@ describe('Transfer ETH Test', () => {
 
     //transfer
     const transferResults = await scenario.run(to, scenarioOptions);
+    await expect(transferResults.tx).to.not.be.reverted;
 
     expect(await env.test.erc20.balanceOf(env.deployerAddress)).to.equal(
       previousSolverBalanceErc20 + transferResults.fee * BigInt(MAX_INTENTS),
