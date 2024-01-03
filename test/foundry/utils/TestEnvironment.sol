@@ -50,7 +50,7 @@ abstract contract TestEnvironment is Test {
     function _addEthRelease(
         UserIntent memory intent,
         uint32 startTime,
-        uint24 deltaTime,
+        uint16 deltaTime,
         int256 startAmount,
         int256 deltaAmount
     ) internal pure returns (UserIntent memory) {

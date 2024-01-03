@@ -9,7 +9,7 @@ import "../../src/interfaces/IIntentStandard.sol";
 contract EntryPointTest is TestEnvironment {
     function test_getUserIntentHash() public {
         UserIntent memory intent = _intent();
-        bytes32 expectedHash = 0x0a68c1decf0a6456fa6efd677f4a91e8fdf96e4422917aaf382889ed254b88ac;
+        bytes32 expectedHash = 0xf30de949032a584cd70e334a791d8fb3e81d9bd442224edd83e9202e03d68e8c;
         bytes32 intentHash = _entryPoint.getUserIntentHash(intent);
         assertEq(intentHash, expectedHash);
     }
