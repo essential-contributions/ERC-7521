@@ -18,7 +18,7 @@ import {evaluateCurve, encodeConstantCurve, encodeComplexCurve, isCurveRelative}
  *   [uint8]   startAmountMult - amount multiplier (final_amount = amount * (amountMult * 10)) [first bit = negative]
  * --only for linear or exponential--
  *   [uint24]  deltaAmount - amount of change after each second
- *   [uint8]  deltaAmountMult - amount multiplier (final_amount = amount * (amountMult * 10)) [first bit = negative]
+ *   [uint8]   deltaAmountMult - amount multiplier (final_amount = amount * (amountMult * 10)) [first bit = negative]
  *   [uint32]  startTime -  start time of the curve (in seconds)
  *   [uint16]  deltaTime - amount of time from start until curve caps (in seconds)
  */
