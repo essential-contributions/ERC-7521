@@ -34,7 +34,8 @@ contract TransferErc20 is ScenarioTestEnvironment {
             uint32(block.timestamp - releaseAt),
             uint16(releaseDuration),
             releaseStartAmount,
-            (releaseEndAmount - releaseStartAmount) / int256(releaseDuration)
+            (releaseEndAmount - releaseStartAmount) / int256(releaseDuration),
+            false
         );
         bytes memory transferErc20 =
             abi.encodeWithSelector(_testERC20.transfer.selector, transferRecipient, transferAmount);

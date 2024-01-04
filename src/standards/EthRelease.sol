@@ -101,7 +101,7 @@ contract EthRelease is EthReleaseCore, IIntentStandard {
  * @return the fully encoded intent standard segment data
  */
 function encodeEthReleaseData(bytes32 standardId, int256 amount) pure returns (bytes memory) {
-    bytes6 data = encodeConstantCurve(amount, false);
+    bytes6 data = encodeConstantCurve(amount, false, false);
     return abi.encodePacked(standardId, data);
 }
 
@@ -125,6 +125,6 @@ function encodeEthReleaseComplexData(
     uint8 exponent,
     bool backwards
 ) pure returns (bytes memory) {
-    bytes16 data = encodeComplexCurve(startTime, deltaTime, startAmount, deltaAmount, exponent, backwards, false);
+    bytes16 data = encodeComplexCurve(startTime, deltaTime, startAmount, deltaAmount, exponent, backwards, false, false);
     return abi.encodePacked(standardId, data);
 }

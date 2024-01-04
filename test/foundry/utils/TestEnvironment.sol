@@ -12,7 +12,7 @@ import {ETH_RELEASE_STD_ID} from "../../../src/core/EntryPoint.sol";
 import {EthRequire, encodeEthRequireData} from "../../../src/standards/EthRequire.sol";
 import {ETH_REQUIRE_STD_ID} from "../../../src/core/EntryPoint.sol";
 import {SimpleCall} from "../../../src/standards/SimpleCall.sol";
-import {AbstractAccount} from "../../../src/wallet/AbstractAccount.sol";
+import {AbstractAccount} from "../../../src/samples/AbstractAccount.sol";
 import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 
 abstract contract TestEnvironment is Test {
@@ -64,7 +64,7 @@ abstract contract TestEnvironment is Test {
         pure
         returns (UserIntent memory)
     {
-        return intent.addSegment(encodeEthRequireData(ETH_REQUIRE_STD_ID, amount, isRelative));
+        return intent.addSegment(encodeEthRequireData(ETH_REQUIRE_STD_ID, amount, isRelative, false));
     }
 
     function _getPublicAddress(uint256 privateKey) internal pure returns (address) {

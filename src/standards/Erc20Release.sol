@@ -3,13 +3,20 @@ pragma solidity ^0.8.22;
 
 import {IIntentDelegate} from "../interfaces/IIntentDelegate.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
+import {IProxyAccount} from "../interfaces/IProxyAccount.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
 import {Erc20ReleaseDelegate} from "./delegates/Erc20ReleaseDelegate.sol";
 import {popFromCalldata} from "./utils/ContextData.sol";
 import {getSegmentWord} from "./utils/SegmentData.sol";
-import {evaluateCurve, encodeConstantCurve, encodeComplexCurve} from "./utils/CurveCoder.sol";
+import {
+    evaluateCurve,
+    encodeConstantCurve,
+    encodeComplexCurve,
+    isCurveRelative,
+    isCurveProxy
+} from "./utils/CurveCoder.sol";
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
 /**
@@ -17,7 +24,7 @@ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
  * @dev data
  *   [bytes32] standard - the intent standard identifier
  *   [address] token - the ERC20 token contract address
- *   [bytes1]  flags - evaluate backwards (flip), exponent [f--- eeee] [exponent: 0 = const, 1 = linear, >1 = exponential]
+ *   [bytes1]  flags - evaluate backwards (flip), as proxy, exponent [f-p- eeee] [exponent: 0 = const, 1 = linear, >1 = exponential]
  *   [uint32]  startAmount - starting amount
  *   [uint8]   startAmountMult - amount multiplier (final_amount = amount * (amountMult * 10)) [first bit = negative]
  * --only for linear or exponential--
@@ -51,8 +58,10 @@ abstract contract Erc20ReleaseCore is Erc20ReleaseDelegate {
 
         //release
         if (releaseAmount > 0) {
+            address from = address(0);
+            if (isCurveProxy(curve)) from = IProxyAccount(intentSender).proxyFor();
             bytes memory releaseEthDelegate =
-                _encodeReleaseErc20(token, nextExecutingIntentSender, uint256(releaseAmount));
+                _encodeReleaseErc20(token, from, nextExecutingIntentSender, uint256(releaseAmount));
             IIntentDelegate(address(intentSender)).generalizedIntentDelegateCall(releaseEthDelegate);
         }
     }
@@ -102,10 +111,14 @@ contract Erc20Release is Erc20ReleaseCore, IIntentStandard {
  * @param standardId the entry point identifier for this standard
  * @param token the ERC20 token contract address
  * @param amount amount required
+ * @param isProxy curve is for an account other than the original sender
  * @return the fully encoded intent standard segment data
  */
-function encodeErc20ReleaseData(bytes32 standardId, address token, int256 amount) pure returns (bytes memory) {
-    bytes6 data = encodeConstantCurve(amount, false);
+function encodeErc20ReleaseData(bytes32 standardId, address token, int256 amount, bool isProxy)
+    pure
+    returns (bytes memory)
+{
+    bytes6 data = encodeConstantCurve(amount, false, isProxy);
     return abi.encodePacked(standardId, uint256(uint160(token)), data);
 }
 
@@ -119,6 +132,7 @@ function encodeErc20ReleaseData(bytes32 standardId, address token, int256 amount
  * @param deltaAmount amount of change after each second
  * @param exponent the exponent order of the curve
  * @param backwards evaluate curve from right to left
+ * @param isProxy curve is for an account other than the original sender
  * @return the fully encoded intent standard segment data
  */
 function encodeErc20ReleaseComplexData(
@@ -129,8 +143,10 @@ function encodeErc20ReleaseComplexData(
     int256 startAmount,
     int256 deltaAmount,
     uint8 exponent,
-    bool backwards
+    bool backwards,
+    bool isProxy
 ) pure returns (bytes memory) {
-    bytes16 data = encodeComplexCurve(startTime, deltaTime, startAmount, deltaAmount, exponent, backwards, false);
+    bytes16 data =
+        encodeComplexCurve(startTime, deltaTime, startAmount, deltaAmount, exponent, backwards, false, isProxy);
     return abi.encodePacked(standardId, uint256(uint160(token)), data);
 }
