@@ -7,7 +7,7 @@ pragma solidity ^0.8.22;
 //TODO: experiment with assembly ("memory-safe")
 
 import {StatefulAbiEncoding, decodeSize, encodeSize} from "./StatefulAbiEncoding.sol";
-import {Exec} from "../Exec.sol";
+import {Exec} from "../../utils/Exec.sol";
 import {IEntryPoint} from "../../interfaces/IEntryPoint.sol";
 import {DataRegistry} from "./DataRegistry.sol";
 

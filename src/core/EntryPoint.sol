@@ -184,7 +184,9 @@ contract EntryPoint is
                         solution.timestamp, intent.sender, intent.intentData[segmentIndex], contextData
                     );
                 } else if (standardId == ETH_RECORD_STD_ID) {
-                    return _executeEthRecord(intent.sender, contextData);
+                    bytes1 flags = bytes1(0);
+                    if (intent.intentData[segmentIndex].length == 33) flags = intent.intentData[segmentIndex][32];
+                    return _executeEthRecord(intent.sender, flags, contextData);
                 } else if (standardId == ETH_RELEASE_STD_ID) {
                     _executeEthRelease(
                         solution.timestamp,

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.22;
-//TODO: add owner
+
+import {Ownable} from "openzeppelin/access/Ownable.sol";
+
 //TODO: could be simplified as a single registry map where anyone can claim any unused index
 
 /*
@@ -14,7 +16,7 @@ uint256 constant MAX_FN_SEL_BIN = 2048;
 /*
  * Contract that stores data on-chain to help with compression
  */
-contract DataRegistry {
+contract DataRegistry is Ownable {
     /**
      * Registry mappings
      */
@@ -36,9 +38,16 @@ contract DataRegistry {
     event FnSelRegistryAdd(uint256 indexed index, bytes4 data);
 
     /**
+     * Constructor
+     */
+    constructor() Ownable() {
+        //nothing to set up
+    }
+
+    /**
      * Adds bytes to the single byte encoding registry
      */
-    function addOneByteItem(bytes32 data) external {
+    function addOneByteItem(bytes32 data) external onlyOwner {
         uint256 index = oneByteRegistryLength;
         if (index < MAX_ONE_BYTE) {
             oneByteRegistry[index] = data;
@@ -50,7 +59,7 @@ contract DataRegistry {
     /**
      * Adds bytes to the two byte encoding registry
      */
-    function addTwoByteItem(bytes32 data) external {
+    function addTwoByteItem(bytes32 data) external onlyOwner {
         uint256 index = twoByteRegistryLength;
         if (index < MAX_TWO_BYTE) {
             twoByteRegistry[index] = data;
@@ -62,7 +71,7 @@ contract DataRegistry {
     /**
      * Adds bytes to the four byte encoding registry
      */
-    function addFourByteItem(bytes32 data) external {
+    function addFourByteItem(bytes32 data) external onlyOwner {
         uint256 index = fourByteRegistryLength;
         if (index < MAX_FOUR_BYTE) {
             fourByteRegistry[index] = data;
@@ -74,7 +83,7 @@ contract DataRegistry {
     /**
      * Adds bytes to the function selector encoding registry
      */
-    function addFunctionSelector(bytes4 data) external {
+    function addFunctionSelector(bytes4 data) external onlyOwner {
         uint256 index = fnSelRegistryLength;
         if (index < MAX_FN_SEL_BIN) {
             fnSelRegistry[index] = data;
