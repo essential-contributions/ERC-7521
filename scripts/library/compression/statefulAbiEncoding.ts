@@ -72,10 +72,12 @@ export class StatefulAbiEncoding {
     function encodeRecursive(index: number): string {
       if (index >= bytes.length) return '';
       if (!encodingAtIndex.has(index)) {
-        let smallestEncoding = ''.padEnd(bytes.length * 2, '0');
+        let smallestEncoding = '';
         for (let i = 64; i > 0; i -= 2) {
-          const encoding = encodeSingle(bytes.substring(index, index + i)) + encodeRecursive(index + i);
-          if (encoding.length < smallestEncoding.length) smallestEncoding = encoding;
+          if (index + i <= bytes.length) {
+            const encoding = encodeSingle(bytes.substring(index, index + i)) + encodeRecursive(index + i);
+            if (!smallestEncoding || encoding.length < smallestEncoding.length) smallestEncoding = encoding;
+          }
         }
         encodingAtIndex.set(index, smallestEncoding);
       }
@@ -84,7 +86,9 @@ export class StatefulAbiEncoding {
 
     //prefill encoding results
     for (let i = 0; i < bytes.length; i += 2) {
-      for (let j = 64; j > 0; j -= 2) encodeSingle(bytes.substring(i, i + j));
+      for (let j = 64; j > 0; j -= 2) {
+        if (i + j <= bytes.length) encodeSingle(bytes.substring(i, i + j));
+      }
     }
     for (let i = bytes.length - 2; i > 0; i -= 2) encodeRecursive(i);
 
