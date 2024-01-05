@@ -19,19 +19,21 @@ export abstract class Curve {
 }
 
 // Constant value curve
-// [bytes1]  flags - relative [-r-- ----]
+// [bytes1]  flags - relative, as proxy [-rp- ----]
 // [uint32]  startAmount - starting amount
 // [uint8]   amountMult - amount multiplier (final_amount = amount * (10 ** amountMult))
 export class ConstantCurve extends Curve {
+  private proxy: boolean;
   private relative: boolean;
   private negative: boolean;
   private amount: number;
   private mult: number;
 
-  constructor(amount: bigint, relative: boolean = false) {
+  constructor(amount: bigint, relative: boolean = false, proxy: boolean = false) {
     super();
     const encodedAmount = encodeAsUint32(amount);
 
+    this.proxy = proxy;
     this.relative = relative;
     this.negative = encodedAmount.negative;
     this.amount = encodedAmount.value;
@@ -40,8 +42,12 @@ export class ConstantCurve extends Curve {
 
   //returns the encoded curve bytes
   encode(): string {
-    const flags = (this.relative ? 0x10 : 0) + (this.negative ? 0x04 : 0);
-    return combineHex(ethers.toBeHex(flags, 1), ethers.toBeHex(this.amount, 4), ethers.toBeHex(this.mult, 1));
+    const flags = (this.relative ? 0x40 : 0) + (this.proxy ? 0x20 : 0);
+    return combineHex(
+      ethers.toBeHex(flags, 1),
+      ethers.toBeHex(this.amount, 4),
+      ethers.toBeHex(this.mult + (this.negative ? 0x80 : 0), 1),
+    );
   }
 
   //returns the curve value at the given parameters
@@ -68,7 +74,7 @@ export class ConstantCurve extends Curve {
 }
 
 // Linear value curve
-// [bytes1]  flags - relative [-r-- ----]
+// [bytes1]  flags - relative, as proxy [-rp- ----]
 // [uint32]  startAmount - starting amount
 // [uint8]   startAmountMult - amount multiplier (final_amount = amount * (10 ** amountMult)) [first bit = negative]
 // --only for linear or exponential--
@@ -77,6 +83,7 @@ export class ConstantCurve extends Curve {
 // [uint32]  startTime -  start time of the curve (in seconds)
 // [uint16]  deltaTime - amount of time from start until curve caps (in seconds)
 export class LinearCurve extends Curve {
+  private proxy: boolean;
   private relative: boolean;
   private startAmountNegative: boolean;
   private startAmount: number;
@@ -87,7 +94,14 @@ export class LinearCurve extends Curve {
   private startTime: number;
   private deltaTime: number;
 
-  constructor(startTime: number, duration: number, startAmount: bigint, endAmount: bigint, relative: boolean = false) {
+  constructor(
+    startTime: number,
+    duration: number,
+    startAmount: bigint,
+    endAmount: bigint,
+    relative: boolean = false,
+    proxy: boolean = false,
+  ) {
     super();
     if (startTime < 0) throw new Error(`startTime cannot be negative (startTime: ${startTime})`);
     if (duration < 0) throw new Error(`duration cannot be negative (duration: ${startTime})`);
@@ -105,11 +119,12 @@ export class LinearCurve extends Curve {
     this.deltaAmount = encodedDeltaAmount.value;
     this.deltaAmountMult = encodedDeltaAmount.mult;
     this.relative = relative;
+    this.proxy = proxy;
   }
 
   //returns the encoded curve bytes
   encode(): string {
-    const flags = 0x01 + (this.relative ? 0x40 : 0);
+    const flags = 0x01 + (this.relative ? 0x40 : 0) + (this.proxy ? 0x20 : 0);
     return combineHex(
       ethers.toBeHex(flags, 1),
       ethers.toBeHex(this.startAmount, 4),
@@ -158,7 +173,7 @@ export class LinearCurve extends Curve {
 }
 
 // Exponential value curve
-// [bytes1]  flags - evaluate backwards (flip), relative, exponent [fr-- eeee] [exponent: 0 = const, 1 = linear, >1 = exponential]
+// [bytes1]  flags - evaluate backwards (flip), relative, as proxy, exponent [frp- eeee] [exponent: 0 = const, 1 = linear, >1 = exponential]
 // [uint32]  startAmount - starting amount
 // [uint8]   startAmountMult - amount multiplier (final_amount = amount * (10 ** amountMult)) [first bit = negative]
 // --only for linear or exponential--
@@ -167,6 +182,7 @@ export class LinearCurve extends Curve {
 // [uint32]  startTime -  start time of the curve (in seconds)
 // [uint16]  deltaTime - amount of time from start until curve caps (in seconds)
 export class ExponentialCurve extends Curve {
+  private proxy: boolean;
   private relative: boolean;
   private evaluateBackwards: boolean;
   private exponent: number;
@@ -187,6 +203,7 @@ export class ExponentialCurve extends Curve {
     exponent: number,
     invert: boolean,
     relative: boolean = false,
+    proxy: boolean = false,
   ) {
     super();
     if (startTime < 0) throw new Error(`startTime cannot be negative (startTime: ${startTime})`);
@@ -213,11 +230,13 @@ export class ExponentialCurve extends Curve {
     this.exponent = exponent;
     this.evaluateBackwards = invert;
     this.relative = relative;
+    this.proxy = proxy;
   }
 
   //returns the encoded curve bytes
   encode(): string {
-    const flags = (this.evaluateBackwards ? 0x80 : 0) + (this.relative ? 0x40 : 0) + this.exponent;
+    const flags =
+      (this.evaluateBackwards ? 0x80 : 0) + (this.relative ? 0x40 : 0) + (this.proxy ? 0x20 : 0) + this.exponent;
     return combineHex(
       ethers.toBeHex(flags, 1),
       ethers.toBeHex(this.startAmount, 4),

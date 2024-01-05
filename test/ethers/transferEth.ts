@@ -11,12 +11,14 @@ describe('Transfer ETH Test', () => {
     useEmbeddedStandards: true,
     useCompression: false,
     useStatefulCompression: false,
+    useAccountAsEOAProxy: false,
   };
 
   before(async () => {
     env = await deployTestEnvironment({ numAccounts: MAX_INTENTS });
     scenario = new TransferEthScenario(env);
     scenario.init();
+    expect(scenarioOptions.useAccountAsEOAProxy).to.equal(false, 'Cannot test with "useAccountAsEOAProxy" option');
   });
 
   it('Should run normal', async () => {

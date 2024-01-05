@@ -1,6 +1,12 @@
 import { ethers } from 'hardhat';
 import { Transaction } from 'ethers';
-import { ScenarioOptions, ScenarioResult, Scenario, DEFAULT_SCENARIO_OPTIONS } from './scenario';
+import {
+  ScenarioOptions,
+  ScenarioResult,
+  Scenario,
+  INVALID_OPTIONS_RESULT,
+  DEFAULT_SCENARIO_OPTIONS,
+} from './scenario';
 import { Environment, SmartContractAccount } from '../../scripts/scenarios/environment';
 import { buildSolution, UserIntent } from '../../scripts/library/intent';
 import { Curve, LinearCurve } from '../../scripts/library/curveCoder';
@@ -31,6 +37,16 @@ export class TransferEthScenario extends Scenario {
         await (await this.env.deployer.sendTransaction({ to: account.contractAddress, value: needToFund })).wait();
       }
     }
+    for (const account of this.env.eoaProxyAccounts) {
+      const needToMint = ethers.parseEther('1000') - (await this.env.test.erc20.balanceOf(account.signerAddress));
+      if (needToMint > 0) {
+        await (await this.env.test.erc20.mint(account.signerAddress, needToMint)).wait();
+      }
+      const needToFund = ethers.parseEther('10') - (await this.env.provider.getBalance(account.signerAddress));
+      if (needToFund > 0) {
+        await (await this.env.deployer.sendTransaction({ to: account.signerAddress, value: needToFund })).wait();
+      }
+    }
   }
 
   //runs the baseline EOA version for the scenario
@@ -45,12 +61,13 @@ export class TransferEthScenario extends Scenario {
     const bytesUsed = serialized.length / 2 - 1;
     const gasUsed = Number((await tx.wait())?.gasUsed || 0n);
     const txFee = ((await tx.wait())?.gasUsed || 0n) * ((await tx.wait())?.gasPrice || 0n);
-    return { gasUsed, bytesUsed, txFee, serialized, amount, fee: 0n, tx: txPromise };
+    return { invalidOptions: false, gasUsed, bytesUsed, txFee, serialized, amount, fee: 0n, tx: txPromise };
   }
 
   //runs the scenario
   public async run(count?: string[] | number, options?: ScenarioOptions): Promise<ScenarioResult> {
     options = options || DEFAULT_SCENARIO_OPTIONS;
+    if (options.useAccountAsEOAProxy) return INVALID_OPTIONS_RESULT;
     count = count || 1;
     let to: string[];
     let batchSize: number;
@@ -118,7 +135,7 @@ export class TransferEthScenario extends Scenario {
     const bytesUsed = serialized.length / 2 - 1;
     const gasUsed = Number((await tx.wait())?.gasUsed || 0n);
     const txFee = ((await tx.wait())?.gasUsed || 0n) * ((await tx.wait())?.gasPrice || 0n);
-    return { gasUsed, bytesUsed, txFee, serialized, amount, fee, tx: txPromise };
+    return { invalidOptions: false, gasUsed, bytesUsed, txFee, serialized, amount, fee, tx: txPromise };
   }
 
   //////////////////////

@@ -33,10 +33,10 @@ export type Environment = {
     call: (callData: string) => SimpleCallSegment;
     userOp: (callData: string, gasLimit: number) => UserOperationSegment;
     sequentialNonce: (nonce: number) => SequentialNonceSegment;
-    ethRecord: () => EthRecordSegment;
+    ethRecord: (proxy: boolean) => EthRecordSegment;
     ethRelease: (curve: Curve) => EthReleaseSegment;
     ethRequire: (curve: Curve) => EthRequireSegment;
-    erc20Record: (contract: string) => Erc20RecordSegment;
+    erc20Record: (contract: string, proxy: boolean) => Erc20RecordSegment;
     erc20Release: (contract: string, curve: Curve) => Erc20ReleaseSegment;
     erc20Require: (contract: string, curve: Curve) => Erc20RequireSegment;
   };
@@ -44,10 +44,10 @@ export type Environment = {
     call: (callData: string) => SimpleCallSegment;
     userOp: (callData: string, gasLimit: number) => UserOperationSegment;
     sequentialNonce: (nonce: number) => SequentialNonceSegment;
-    ethRecord: () => EthRecordSegment;
+    ethRecord: (proxy: boolean) => EthRecordSegment;
     ethRelease: (curve: Curve) => EthReleaseSegment;
     ethRequire: (curve: Curve) => EthRequireSegment;
-    erc20Record: (contract: string) => Erc20RecordSegment;
+    erc20Record: (contract: string, proxy: boolean) => Erc20RecordSegment;
     erc20Release: (contract: string, curve: Curve) => Erc20ReleaseSegment;
     erc20Require: (contract: string, curve: Curve) => Erc20RequireSegment;
   };
@@ -66,6 +66,7 @@ export type Environment = {
     registerAddresses: (addresses: string[]) => Promise<void>;
   };
   simpleAccounts: SmartContractAccount[];
+  eoaProxyAccounts: SmartContractAccount[];
   gasUsed: {
     entrypoint: bigint;
     registerStandard: bigint;
@@ -169,6 +170,24 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
   }
   simpleAccountGasUsed /= BigInt(config.numAccounts);
 
+  //deploy smart contract wallets intended to serve as proxies for an EOA
+  const eoaProxyAccounts: SmartContractAccount[] = [];
+  for (let i = 0; i < config.numAccounts; i++) {
+    const signer = new ethers.Wallet(ethers.hexlify(ethers.randomBytes(32))).connect(provider);
+    const signerAddress = await signer.getAddress();
+
+    await simpleAccountFactory.createAccount(signerAddress, i);
+    const contractAddress = await simpleAccountFactory.getFunction('getAddress(address,uint256)')(signerAddress, i);
+    const contract = await ethers.getContractAt('SimpleAccount', contractAddress, deployer);
+
+    const fundAmount = ethers.parseEther('1');
+    await deployer.sendTransaction({ to: signerAddress, value: fundAmount });
+    await testERC20.connect(signer).approve(contractAddress, ethers.MaxUint256);
+    await testWrappedNativeToken.connect(signer).approve(contractAddress, ethers.MaxUint256);
+
+    eoaProxyAccounts.push({ contract, contractAddress, signer, signerAddress });
+  }
+
   //fund exchange
   const funder = signers[signers.length - 1];
   await testERC20.mint(testUniswapAddress, ethers.parseEther('1000'));
@@ -237,10 +256,10 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
       call: (callData: string) => new SimpleCallSegment(callStdId, callData),
       userOp: (callData: string, gasLimit: number) => new UserOperationSegment(userOperationStdId, callData, gasLimit),
       sequentialNonce: (nonce: number) => new SequentialNonceSegment(sequentialNonceStdId, nonce),
-      ethRecord: () => new EthRecordSegment(ethRecordStdId),
+      ethRecord: (proxy: boolean) => new EthRecordSegment(ethRecordStdId, proxy),
       ethRelease: (curve: Curve) => new EthReleaseSegment(ethReleaseStdId, curve),
       ethRequire: (curve: Curve) => new EthRequireSegment(ethRequireStdId, curve),
-      erc20Record: (contract: string) => new Erc20RecordSegment(erc20RecordStdId, contract),
+      erc20Record: (contract: string, proxy: boolean) => new Erc20RecordSegment(erc20RecordStdId, contract, proxy),
       erc20Release: (contract: string, curve: Curve) => new Erc20ReleaseSegment(erc20ReleaseStdId, contract, curve),
       erc20Require: (contract: string, curve: Curve) => new Erc20RequireSegment(erc20RequireStdId, contract, curve),
     },
@@ -249,10 +268,11 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
       userOp: (callData: string, gasLimit: number) =>
         new UserOperationSegment(userOperation.standardId, callData, gasLimit),
       sequentialNonce: (nonce: number) => new SequentialNonceSegment(sequentialNonce.standardId, nonce),
-      ethRecord: () => new EthRecordSegment(ethRecord.standardId),
+      ethRecord: (proxy: boolean) => new EthRecordSegment(ethRecord.standardId, proxy),
       ethRelease: (curve: Curve) => new EthReleaseSegment(ethRelease.standardId, curve),
       ethRequire: (curve: Curve) => new EthRequireSegment(ethRequire.standardId, curve),
-      erc20Record: (contract: string) => new Erc20RecordSegment(erc20Record.standardId, contract),
+      erc20Record: (contract: string, proxy: boolean) =>
+        new Erc20RecordSegment(erc20Record.standardId, contract, proxy),
       erc20Release: (contract: string, curve: Curve) =>
         new Erc20ReleaseSegment(erc20Release.standardId, contract, curve),
       erc20Require: (contract: string, curve: Curve) =>
@@ -277,6 +297,7 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
       },
     },
     simpleAccounts: simpleAccounts,
+    eoaProxyAccounts: eoaProxyAccounts,
     gasUsed: {
       entrypoint: entrypointGasUsed,
       registerStandard: registerStandardGasUsed,

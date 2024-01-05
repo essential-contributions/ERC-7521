@@ -2,6 +2,7 @@ import { TransactionResponse } from 'ethers';
 
 // Scenario result definition
 export type ScenarioResult = {
+  invalidOptions: boolean;
   gasUsed: number;
   bytesUsed: number;
   txFee: bigint;
@@ -11,11 +12,24 @@ export type ScenarioResult = {
   tx: Promise<TransactionResponse> | null;
 };
 
+// Default scenario options
+export const INVALID_OPTIONS_RESULT: ScenarioResult = {
+  invalidOptions: true,
+  gasUsed: 0,
+  bytesUsed: 0,
+  txFee: 0n,
+  serialized: '',
+  amount: 0n,
+  fee: 0n,
+  tx: null,
+};
+
 // Scenario options definition
 export type ScenarioOptions = {
   useEmbeddedStandards: boolean;
   useCompression: boolean;
   useStatefulCompression: boolean;
+  useAccountAsEOAProxy: boolean;
 };
 
 // Default scenario options
@@ -23,6 +37,7 @@ export const DEFAULT_SCENARIO_OPTIONS: ScenarioOptions = {
   useEmbeddedStandards: true,
   useCompression: false,
   useStatefulCompression: false,
+  useAccountAsEOAProxy: false,
 };
 
 // The scenario object

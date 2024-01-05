@@ -27,6 +27,12 @@ export class TransferErc20Scenario extends Scenario {
         await (await this.env.test.erc20.mint(account.contractAddress, needToMint)).wait();
       }
     }
+    for (const account of this.env.eoaProxyAccounts) {
+      const needToMint = ethers.parseEther('1000') - (await this.env.test.erc20.balanceOf(account.signerAddress));
+      if (needToMint > 0) {
+        await (await this.env.test.erc20.mint(account.signerAddress, needToMint)).wait();
+      }
+    }
   }
 
   //runs the baseline EOA version for the scenario
@@ -41,7 +47,7 @@ export class TransferErc20Scenario extends Scenario {
     const bytesUsed = serialized.length / 2 - 1;
     const gasUsed = Number((await tx.wait())?.gasUsed || 0n);
     const txFee = ((await tx.wait())?.gasUsed || 0n) * ((await tx.wait())?.gasPrice || 0n);
-    return { gasUsed, bytesUsed, txFee, serialized, amount, fee: 0n, tx: txPromise };
+    return { invalidOptions: false, gasUsed, bytesUsed, txFee, serialized, amount, fee: 0n, tx: txPromise };
   }
 
   //runs the scenario
@@ -59,6 +65,7 @@ export class TransferErc20Scenario extends Scenario {
       batchSize = count.length;
     }
     if (options.useStatefulCompression) await this.env.compression.registerAddresses(to);
+    const proxy = options.useAccountAsEOAProxy;
 
     if (this.env.simpleAccounts.length < batchSize) throw new Error('not enough abstract accounts to run batch');
     const timestamp = (await this.env.provider.getBlock('latest'))?.timestamp || 0;
@@ -67,15 +74,20 @@ export class TransferErc20Scenario extends Scenario {
 
     const intents = [];
     for (let i = 0; i < batchSize; i++) {
-      const account = this.env.simpleAccounts[i];
+      const account = proxy ? this.env.eoaProxyAccounts[i] : this.env.simpleAccounts[i];
       const intent = new UserIntent(account.contractAddress);
       if (options.useEmbeddedStandards) {
         //using the embedded intent standard versions
         intent.addSegment(this.env.standards.sequentialNonce(await this.env.utils.getNonce(account.contractAddress)));
         intent.addSegment(
-          this.env.standards.erc20Release(this.env.test.erc20Address, this.generateLinearRelease(timestamp, fee)),
+          this.env.standards.erc20Release(
+            this.env.test.erc20Address,
+            this.generateLinearRelease(timestamp, fee, proxy),
+          ),
         );
-        intent.addSegment(this.env.standards.userOp(this.generateExecuteTransferTx(account, to[i], amount), 100_000));
+        intent.addSegment(
+          this.env.standards.userOp(this.generateExecuteTransferTx(account, to[i], amount, proxy), 100_000),
+        );
       } else {
         //using the registered intent standard versions
         intent.addSegment(
@@ -84,11 +96,11 @@ export class TransferErc20Scenario extends Scenario {
         intent.addSegment(
           this.env.registeredStandards.erc20Release(
             this.env.test.erc20Address,
-            this.generateLinearRelease(timestamp, fee),
+            this.generateLinearRelease(timestamp, fee, proxy),
           ),
         );
         intent.addSegment(
-          this.env.registeredStandards.userOp(this.generateExecuteTransferTx(account, to[i], amount), 100_000),
+          this.env.registeredStandards.userOp(this.generateExecuteTransferTx(account, to[i], amount, proxy), 100_000),
         );
       }
       await intent.sign(this.env.chainId, this.env.entrypointAddress, account.signer);
@@ -114,7 +126,7 @@ export class TransferErc20Scenario extends Scenario {
     const bytesUsed = serialized.length / 2 - 1;
     const gasUsed = Number((await tx.wait())?.gasUsed || 0n);
     const txFee = ((await tx.wait())?.gasUsed || 0n) * ((await tx.wait())?.gasPrice || 0n);
-    return { gasUsed, bytesUsed, txFee, serialized, amount, fee, tx: txPromise };
+    return { invalidOptions: false, gasUsed, bytesUsed, txFee, serialized, amount, fee, tx: txPromise };
   }
 
   //////////////////////
@@ -122,7 +134,14 @@ export class TransferErc20Scenario extends Scenario {
   //////////////////////
 
   // helper function to generate transfer tx calldata
-  private generateExecuteTransferTx(account: SmartContractAccount, to: string, amount: bigint): string {
+  private generateExecuteTransferTx(account: SmartContractAccount, to: string, amount: bigint, proxy: boolean): string {
+    if (proxy) {
+      return account.contract.interface.encodeFunctionData('execute', [
+        this.env.test.erc20Address,
+        0,
+        this.env.test.erc20.interface.encodeFunctionData('transferFrom', [account.signerAddress, to, amount]),
+      ]);
+    }
     return account.contract.interface.encodeFunctionData('execute', [
       this.env.test.erc20Address,
       0,
@@ -131,12 +150,12 @@ export class TransferErc20Scenario extends Scenario {
   }
 
   // helper function to generate a linear release curve
-  private generateLinearRelease(timestamp: number, amount: bigint): Curve {
+  private generateLinearRelease(timestamp: number, amount: bigint, proxy: boolean): Curve {
     const evaluateAt = 1000;
     const startTime = timestamp - evaluateAt;
     const duration = 3000;
     const startAmount = 0n;
     const endAmount = amount * BigInt(duration / evaluateAt);
-    return new LinearCurve(startTime, duration, startAmount, endAmount);
+    return new LinearCurve(startTime, duration, startAmount, endAmount, false, proxy);
   }
 }
