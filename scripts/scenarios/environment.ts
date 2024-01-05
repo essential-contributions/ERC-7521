@@ -1,8 +1,7 @@
 import { Provider, Signer } from 'ethers';
 import { ethers } from 'hardhat';
 import {
-  AbstractAccount,
-  DataRegistry,
+  SimpleAccount,
   EntryPoint,
   SolverUtils,
   TestERC20,
@@ -70,7 +69,7 @@ export type Environment = {
   gasUsed: {
     entrypoint: bigint;
     registerStandard: bigint;
-    abstractAccount: bigint;
+    simpleAccount: bigint;
     generalCompression: bigint;
   };
   utils: {
@@ -79,20 +78,18 @@ export type Environment = {
   };
 };
 export type SmartContractAccount = {
-  contract: AbstractAccount;
+  contract: SimpleAccount;
   contractAddress: string;
   signer: Signer;
 };
 
 // Deploy configuration options
 export type DeployConfiguration = {
-  numAbstractAccounts: number;
+  numAccounts: number;
 };
 
 // Deploy the testing environment
-export async function deployTestEnvironment(
-  config: DeployConfiguration = { numAbstractAccounts: 4 },
-): Promise<Environment> {
+export async function deployTestEnvironment(config: DeployConfiguration = { numAccounts: 4 }): Promise<Environment> {
   const provider = ethers.provider;
   const network = await provider.getNetwork();
   const signers = await ethers.getSigners();
@@ -149,24 +146,24 @@ export async function deployTestEnvironment(
   const solverUtilsAddress = await solverUtils.getAddress();
 
   //deploy smart contract wallets
-  let abstractAccountGasUsed = 0n;
-  const abstractAccounts: SmartContractAccount[] = [];
-  for (let i = 0; i < config.numAbstractAccounts; i++) {
+  let simpleAccountGasUsed = 0n;
+  const simpleAccounts: SmartContractAccount[] = [];
+  for (let i = 0; i < config.numAccounts; i++) {
     const signer = new ethers.Wallet(ethers.hexlify(ethers.randomBytes(32)));
     const account = await ethers.deployContract(
-      'AbstractAccount',
+      'SimpleAccount',
       [entrypointAddress, await signer.getAddress()],
       deployer,
     );
-    abstractAccounts.push({
+    simpleAccounts.push({
       contract: account,
       contractAddress: await account.getAddress(),
       signer,
     });
     const gasUsed = (await account.deploymentTransaction()?.wait())?.gasUsed;
-    abstractAccountGasUsed += gasUsed ? gasUsed : 0n;
+    simpleAccountGasUsed += gasUsed ? gasUsed : 0n;
   }
-  abstractAccountGasUsed /= BigInt(config.numAbstractAccounts);
+  simpleAccountGasUsed /= BigInt(config.numAccounts);
 
   //fund exchange
   const funder = signers[signers.length - 1];
@@ -218,7 +215,7 @@ export async function deployTestEnvironment(
 
   //fill the data registry with low frequency items
   (await dataRegistry.addFourByteItem(ethers.hexlify(ethers.randomBytes(32)))).wait();
-  for (const acct of abstractAccounts) {
+  for (const acct of simpleAccounts) {
     (await dataRegistry.addFourByteItem('0x' + acct.contractAddress.substring(2).padStart(64, '0'))).wait();
   }
 
@@ -276,11 +273,11 @@ export async function deployTestEnvironment(
       },
     },
     solverUtils,
-    abstractAccounts,
+    abstractAccounts: simpleAccounts,
     gasUsed: {
       entrypoint: entrypointGasUsed,
       registerStandard: registerStandardGas,
-      abstractAccount: abstractAccountGasUsed,
+      simpleAccount: simpleAccountGasUsed,
       generalCompression: generalCompressionGasUsed,
     },
     utils: {

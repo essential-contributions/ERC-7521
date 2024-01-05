@@ -14,7 +14,7 @@ describe('Token Swaps Test', () => {
   };
 
   before(async () => {
-    env = await deployTestEnvironment({ numAbstractAccounts: MAX_INTENTS });
+    env = await deployTestEnvironment({ numAccounts: MAX_INTENTS });
     scenario = new TokenSwapScenario(env);
     scenario.init();
   });

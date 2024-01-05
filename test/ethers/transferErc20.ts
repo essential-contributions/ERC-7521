@@ -14,7 +14,7 @@ describe('Transfer ERC-20 Test', () => {
   };
 
   before(async () => {
-    env = await deployTestEnvironment({ numAbstractAccounts: MAX_INTENTS });
+    env = await deployTestEnvironment({ numAccounts: MAX_INTENTS });
     scenario = new TransferErc20Scenario(env);
     scenario.init();
   });

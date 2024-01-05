@@ -56,7 +56,8 @@ contract GeneralIntentCompression is StatefulAbiEncoding {
             data.length := calldatasize()
         }
         bytes memory call = decompressHandleIntents(data);
-        Exec.callAndRevert(address(entrypoint), call, 8096);
+        bool success = Exec.call(address(entrypoint), 0, call, gasleft());
+        if (!success) Exec.forwardRevert(Exec.REVERT_REASON_MAX_LEN);
     }
 
     /*

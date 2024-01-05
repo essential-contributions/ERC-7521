@@ -21,7 +21,7 @@ async function main() {
   logParameters();
 
   console.log('DEPLOYMENT');
-  const env = await deployTestEnvironment({ numAbstractAccounts: MAX_INTENT_BATCH });
+  const env = await deployTestEnvironment({ numAccounts: MAX_INTENT_BATCH });
   logDeployments(env);
 
   console.log('SCENARIOS');
@@ -130,7 +130,7 @@ function logDeployments(env: Environment) {
     console.log(`| ${n} | ${g} | $${c} | ${p} |`);
   }
   line('Deploy EntryPoint', env.gasUsed.entrypoint);
-  line('Deploy Abstract Acct', env.gasUsed.abstractAccount);
+  line('Deploy Abstract Acct', env.gasUsed.simpleAccount);
   line('Deploy Gen Compression', env.gasUsed.generalCompression);
   line('Register Standard', env.gasUsed.registerStandard);
   console.log('');

@@ -31,7 +31,8 @@ import {TestERC20} from "../../../src/test/TestERC20.sol";
 import {TestUniswap} from "../../../src/test/TestUniswap.sol";
 import {TestWrappedNativeToken} from "../../../src/test/TestWrappedNativeToken.sol";
 import {SolverUtils} from "../../../src/test/SolverUtils.sol";
-import {AbstractAccount} from "../../../src/samples/AbstractAccount.sol";
+import {SimpleAccountFactory} from "../../../src/samples/SimpleAccountFactory.sol";
+import {SimpleAccount} from "../../../src/samples/SimpleAccount.sol";
 import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 
 abstract contract ScenarioTestEnvironment is Test {
@@ -40,7 +41,7 @@ abstract contract ScenarioTestEnvironment is Test {
 
     //main contracts
     EntryPoint internal _entryPoint;
-    AbstractAccount internal _account;
+    SimpleAccount internal _account;
 
     //testing contracts
     TestERC20 internal _testERC20;
@@ -65,7 +66,10 @@ abstract contract ScenarioTestEnvironment is Test {
     function setUp() public virtual {
         //deploy contracts
         _entryPoint = new EntryPoint();
-        _account = new AbstractAccount(_entryPoint, _publicAddress);
+
+        //deploy accounts
+        SimpleAccountFactory accountFactory = new SimpleAccountFactory(_entryPoint);
+        _account = accountFactory.createAccount(_publicAddress, 0);
 
         //deploy test contracts
         _testERC20 = new TestERC20();
@@ -97,7 +101,7 @@ abstract contract ScenarioTestEnvironment is Test {
      */
     function _accountClaimAirdropERC20(uint256 amount) internal view returns (bytes memory) {
         bytes memory mintCall = abi.encodeWithSelector(TestERC20.mint.selector, address(_account), amount);
-        return abi.encodeWithSelector(AbstractAccount.execute.selector, _testERC20, 0, mintCall);
+        return abi.encodeWithSelector(SimpleAccount.execute.selector, _testERC20, 0, mintCall);
     }
 
     /**
