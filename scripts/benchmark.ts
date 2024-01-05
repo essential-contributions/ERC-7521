@@ -130,7 +130,8 @@ function logDeployments(env: Environment) {
     console.log(`| ${n} | ${g} | $${c} | ${p} |`);
   }
   line('Deploy EntryPoint', env.gasUsed.entrypoint);
-  line('Deploy Abstract Acct', env.gasUsed.simpleAccount);
+  line('Deploy Simple Acct Fac', env.gasUsed.simpleAccountFactory);
+  line('Deploy Simple Acct', env.gasUsed.simpleAccount);
   line('Deploy Gen Compression', env.gasUsed.generalCompression);
   line('Register Standard', env.gasUsed.registerStandard);
   console.log('');

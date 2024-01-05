@@ -39,7 +39,7 @@ describe('Transfer ETH Test', () => {
   });
 
   it('Should run single intent', async () => {
-    const account = env.abstractAccounts[0];
+    const account = env.simpleAccounts[0];
     const to = env.utils.randomAddresses(1)[0];
     const previousSolverBalanceErc20 = await env.test.erc20.balanceOf(env.deployerAddress);
     const previousFromBalanceErc20 = await env.test.erc20.balanceOf(account.contractAddress);
@@ -75,7 +75,7 @@ describe('Transfer ETH Test', () => {
     const previousFromBalancesErc20: bigint[] = [];
     const previousSolverBalanceErc20 = await env.test.erc20.balanceOf(env.deployerAddress);
     for (let i = 0; i < MAX_INTENTS; i++) {
-      const account = env.abstractAccounts[i];
+      const account = env.simpleAccounts[i];
       previousToBalances.push(await env.provider.getBalance(to[i]));
       previousFromBalances.push(await env.provider.getBalance(account.contractAddress));
       previousFromBalancesErc20.push(await env.test.erc20.balanceOf(account.contractAddress));
@@ -90,7 +90,7 @@ describe('Transfer ETH Test', () => {
       'Solvers token balance is incorrect',
     );
     for (let i = 0; i < MAX_INTENTS; i++) {
-      const account = env.abstractAccounts[i];
+      const account = env.simpleAccounts[i];
       expect(await env.test.erc20.balanceOf(account.contractAddress)).to.equal(
         previousFromBalancesErc20[i] - transferResults.fee,
         'Senders token balance is incorrect',

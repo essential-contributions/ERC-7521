@@ -1,6 +1,7 @@
 import { Provider, Signer } from 'ethers';
 import { ethers } from 'hardhat';
 import {
+  SimpleAccountFactory,
   SimpleAccount,
   EntryPoint,
   SolverUtils,
@@ -8,7 +9,7 @@ import {
   TestUniswap,
   TestWrappedNativeToken,
 } from '../../typechain';
-import { Curve, LinearCurve } from '../library/curveCoder';
+import { Curve } from '../library/curveCoder';
 import { SimpleCallSegment } from '../library/standards/simpleCall';
 import { UserOperationSegment } from '../library/standards/userOperation';
 import { SequentialNonceSegment } from '../library/standards/sequentialNonce';
@@ -64,11 +65,11 @@ export type Environment = {
     general: GeneralIntentCompression;
     registerAddresses: (addresses: string[]) => Promise<void>;
   };
-  solverUtils: SolverUtils;
-  abstractAccounts: SmartContractAccount[];
+  simpleAccounts: SmartContractAccount[];
   gasUsed: {
     entrypoint: bigint;
     registerStandard: bigint;
+    simpleAccountFactory: bigint;
     simpleAccount: bigint;
     generalCompression: bigint;
   };
@@ -76,11 +77,14 @@ export type Environment = {
     getNonce: (account: string) => Promise<number>;
     randomAddresses: (num: number) => string[];
   };
+  solverUtils: SolverUtils;
+  simpleAccountFactory: SimpleAccountFactory;
 };
 export type SmartContractAccount = {
   contract: SimpleAccount;
   contractAddress: string;
   signer: Signer;
+  signerAddress: string;
 };
 
 // Deploy configuration options
@@ -119,7 +123,7 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
   const sequentialNonce = await registerIntentStandard('SequentialNonce', entrypoint, deployer);
   const simpleCall = await registerIntentStandard('SimpleCall', entrypoint, deployer);
   const userOperation = await registerIntentStandard('UserOperation', entrypoint, deployer);
-  const registerStandardGas =
+  const registerStandardGasUsed =
     (erc20Record.gasUsed +
       erc20Release.gasUsed +
       erc20Require.gasUsed +
@@ -145,23 +149,23 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
   );
   const solverUtilsAddress = await solverUtils.getAddress();
 
+  //deploy smart contract wallet factories
+  const simpleAccountFactory = await ethers.deployContract('SimpleAccountFactory', [entrypointAddress], deployer);
+  const simpleAccountFactoryGasUsed = (await simpleAccountFactory.deploymentTransaction()?.wait())?.gasUsed || 0n;
+
   //deploy smart contract wallets
   let simpleAccountGasUsed = 0n;
   const simpleAccounts: SmartContractAccount[] = [];
   for (let i = 0; i < config.numAccounts; i++) {
     const signer = new ethers.Wallet(ethers.hexlify(ethers.randomBytes(32)));
-    const account = await ethers.deployContract(
-      'SimpleAccount',
-      [entrypointAddress, await signer.getAddress()],
-      deployer,
-    );
-    simpleAccounts.push({
-      contract: account,
-      contractAddress: await account.getAddress(),
-      signer,
-    });
-    const gasUsed = (await account.deploymentTransaction()?.wait())?.gasUsed;
-    simpleAccountGasUsed += gasUsed ? gasUsed : 0n;
+    const signerAddress = await signer.getAddress();
+
+    const createAccountReceipt = await (await simpleAccountFactory.createAccount(signerAddress, i)).wait();
+    const contractAddress = await simpleAccountFactory.getFunction('getAddress(address,uint256)')(signerAddress, i);
+    const contract = await ethers.getContractAt('SimpleAccount', contractAddress, deployer);
+
+    simpleAccounts.push({ contract, contractAddress, signer, signerAddress });
+    simpleAccountGasUsed += createAccountReceipt?.gasUsed || 0n;
   }
   simpleAccountGasUsed /= BigInt(config.numAccounts);
 
@@ -272,11 +276,11 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
         }
       },
     },
-    solverUtils,
-    abstractAccounts: simpleAccounts,
+    simpleAccounts: simpleAccounts,
     gasUsed: {
       entrypoint: entrypointGasUsed,
-      registerStandard: registerStandardGas,
+      registerStandard: registerStandardGasUsed,
+      simpleAccountFactory: simpleAccountFactoryGasUsed,
       simpleAccount: simpleAccountGasUsed,
       generalCompression: generalCompressionGasUsed,
     },
@@ -290,6 +294,8 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
         return addresses;
       },
     },
+    solverUtils,
+    simpleAccountFactory,
   };
 }
 

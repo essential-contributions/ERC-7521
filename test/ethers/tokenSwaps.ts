@@ -38,7 +38,7 @@ describe('Token Swaps Test', () => {
   });
 
   it('Should run single intent', async () => {
-    const account = env.abstractAccounts[0];
+    const account = env.simpleAccounts[0];
     const previousFromBalance = await env.test.erc20.balanceOf(account.contractAddress);
     const previousToBalance = await env.provider.getBalance(account.contractAddress);
     const previousSolverBalance = await env.provider.getBalance(env.deployerAddress);
@@ -66,7 +66,7 @@ describe('Token Swaps Test', () => {
     const previousToBalances: bigint[] = [];
     const previousSolverBalance = await env.provider.getBalance(env.deployerAddress);
     for (let i = 0; i < MAX_INTENTS; i++) {
-      const account = env.abstractAccounts[i];
+      const account = env.simpleAccounts[i];
       previousFromBalances.push(await env.test.erc20.balanceOf(account.contractAddress));
       previousToBalances.push(await env.provider.getBalance(account.contractAddress));
     }
@@ -80,7 +80,7 @@ describe('Token Swaps Test', () => {
       'Solvers balance is incorrect',
     );
     for (let i = 0; i < MAX_INTENTS; i++) {
-      const account = env.abstractAccounts[i];
+      const account = env.simpleAccounts[i];
       expect(await env.test.erc20.balanceOf(account.contractAddress)).to.equal(
         previousFromBalances[i] - swapResults.amount,
         'Senders token balance is incorrect',

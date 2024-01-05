@@ -21,7 +21,7 @@ export class TransferErc20Scenario extends Scenario {
     if (needToMint > 0) {
       await (await this.env.test.erc20.mint(this.env.deployerAddress, needToMint)).wait();
     }
-    for (const account of this.env.abstractAccounts) {
+    for (const account of this.env.simpleAccounts) {
       const needToMint = ethers.parseEther('1000') - (await this.env.test.erc20.balanceOf(account.contractAddress));
       if (needToMint > 0) {
         await (await this.env.test.erc20.mint(account.contractAddress, needToMint)).wait();
@@ -60,14 +60,14 @@ export class TransferErc20Scenario extends Scenario {
     }
     if (options.useStatefulCompression) await this.env.compression.registerAddresses(to);
 
-    if (this.env.abstractAccounts.length < batchSize) throw new Error('not enough abstract accounts to run batch');
+    if (this.env.simpleAccounts.length < batchSize) throw new Error('not enough abstract accounts to run batch');
     const timestamp = (await this.env.provider.getBlock('latest'))?.timestamp || 0;
     const amount = ethers.parseEther('10');
     const fee = ethers.parseEther('1');
 
     const intents = [];
     for (let i = 0; i < batchSize; i++) {
-      const account = this.env.abstractAccounts[i];
+      const account = this.env.simpleAccounts[i];
       const intent = new UserIntent(account.contractAddress);
       if (options.useEmbeddedStandards) {
         //using the embedded intent standard versions

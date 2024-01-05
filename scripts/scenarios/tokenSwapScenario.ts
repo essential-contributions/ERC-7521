@@ -23,7 +23,7 @@ export class TokenSwapScenario extends Scenario {
     if (needToMint > 0) {
       await (await this.env.test.erc20.mint(this.env.deployerAddress, needToMint)).wait();
     }
-    for (const account of this.env.abstractAccounts) {
+    for (const account of this.env.simpleAccounts) {
       const needToMint = ethers.parseEther('1000') - (await this.env.test.erc20.balanceOf(account.contractAddress));
       if (needToMint > 0) {
         await (await this.env.test.erc20.mint(account.contractAddress, needToMint)).wait();
@@ -69,7 +69,7 @@ export class TokenSwapScenario extends Scenario {
     count = count || 1;
     const batchSize: number = typeof count == 'number' ? count : count.length || 1;
 
-    if (this.env.abstractAccounts.length < batchSize) throw new Error('not enough abstract accounts to run batch');
+    if (this.env.simpleAccounts.length < batchSize) throw new Error('not enough abstract accounts to run batch');
     const timestamp = (await this.env.provider.getBlock('latest'))?.timestamp || 0;
     const amount = ethers.parseEther('1');
     if (batchSize <= 1) return this.runSingle(timestamp, amount, options);
@@ -78,7 +78,7 @@ export class TokenSwapScenario extends Scenario {
     const tos: string[] = [];
     const amounts: bigint[] = [];
     for (let i = 0; i < batchSize; i++) {
-      const account = this.env.abstractAccounts[i];
+      const account = this.env.simpleAccounts[i];
       const intent = new UserIntent(account.contractAddress);
       if (options.useEmbeddedStandards) {
         //using the embedded intent standard versions
@@ -146,7 +146,7 @@ export class TokenSwapScenario extends Scenario {
 
   // helper function to execute a single intent in the scenario
   private async runSingle(timestamp: number, amount: bigint, options: ScenarioOptions): Promise<ScenarioResult> {
-    const account = this.env.abstractAccounts[0];
+    const account = this.env.simpleAccounts[0];
 
     const intent = new UserIntent(account.contractAddress);
     if (options.useEmbeddedStandards) {
