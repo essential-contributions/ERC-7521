@@ -241,6 +241,10 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
   for (const acct of simpleAccounts) {
     (await dataRegistry.addFourByteItem('0x' + acct.contractAddress.substring(2).padStart(64, '0'))).wait();
   }
+  for (const acct of eoaProxyAccounts) {
+    (await dataRegistry.addFourByteItem('0x' + acct.contractAddress.substring(2).padStart(64, '0'))).wait();
+    (await dataRegistry.addFourByteItem('0x' + acct.signerAddress.substring(2).padStart(64, '0'))).wait();
+  }
 
   //sync registry
   await generalIntentCompression.sync();
