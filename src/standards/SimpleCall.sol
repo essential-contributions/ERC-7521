@@ -14,8 +14,6 @@ import {getSegmentBytes} from "./utils/SegmentData.sol";
  *   [bytes]   callData - the calldata to call on the intent sender
  */
 abstract contract SimpleCallCore {
-    uint256 private constant _REVERT_REASON_MAX_LEN = 2048;
-
     /**
      * Validate intent segment structure (typically just formatting).
      */
@@ -30,7 +28,8 @@ abstract contract SimpleCallCore {
         if (segmentData.length > 32) {
             unchecked {
                 bytes memory callData = getSegmentBytes(segmentData, 32, segmentData.length - 32);
-                Exec.callAndRevert(intentSender, callData, _REVERT_REASON_MAX_LEN);
+                bool success = Exec.call(intentSender, 0, callData, gasleft());
+                if (!success) Exec.forwardRevert(Exec.REVERT_REASON_MAX_LEN);
             }
         }
     }

@@ -60,7 +60,6 @@ contract EntryPoint is
     using RevertReason for bytes;
 
     // data limits
-    uint256 private constant REVERT_REASON_MAX_LEN = 2048;
     uint256 private constant CONTEXT_DATA_MAX_LEN = 2048;
 
     // flag for applications to check current context of execution
@@ -184,7 +183,9 @@ contract EntryPoint is
                         solution.timestamp, intent.sender, intent.intentData[segmentIndex], contextData
                     );
                 } else if (standardId == ETH_RECORD_STD_ID) {
-                    return _executeEthRecord(intent.sender, contextData);
+                    bytes1 flags = bytes1(0);
+                    if (intent.intentData[segmentIndex].length == 33) flags = intent.intentData[segmentIndex][32];
+                    return _executeEthRecord(intent.sender, flags, contextData);
                 } else if (standardId == ETH_RELEASE_STD_ID) {
                     _executeEthRelease(
                         solution.timestamp,
@@ -226,9 +227,10 @@ contract EntryPoint is
                     if (Exec.getReturnDataSize() > CONTEXT_DATA_MAX_LEN) {
                         revert FailedIntent(intentIndex, segmentIndex, "AA60 invalid execution context");
                     }
-                    return Exec.getReturnDataMax(0x40, CONTEXT_DATA_MAX_LEN);
+                    return Exec.getReturnData(0x40, CONTEXT_DATA_MAX_LEN);
                 } else {
-                    bytes memory reason = Exec.getRevertReasonMax(REVERT_REASON_MAX_LEN);
+                    bytes memory reason =
+                        Exec.getReturnData(Exec.REVERT_REASON_START_OFFSET, Exec.REVERT_REASON_MAX_LEN);
                     if (reason.length > 0) {
                         revert FailedIntent(
                             intentIndex,

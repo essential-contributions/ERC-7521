@@ -33,9 +33,10 @@ contract TransferEth is ScenarioTestEnvironment {
         intent = _addErc20ReleaseLinear(
             intent,
             uint32(block.timestamp - releaseAt),
-            uint24(releaseDuration),
+            uint16(releaseDuration),
             releaseStartAmount,
-            (releaseEndAmount - releaseStartAmount) / int256(releaseDuration)
+            (releaseEndAmount - releaseStartAmount) / int256(releaseDuration),
+            false
         );
         bytes memory executeTransferETH = abi.encodeWithSelector(_account.execute.selector, ethRecipient, ethAmount, "");
         intent = _addUserOp(intent, callGasLimit, executeTransferETH);
@@ -76,8 +77,6 @@ contract TransferEth is ScenarioTestEnvironment {
         //build intent
         UserIntent memory intent = _intentForCase(erc20ReleaseAmount, ethRecipient, ethAmount);
         intent = _signIntent(intent);
-        uint256 erc20ReleaseAmountEncoded =
-            uint256(evaluateCurve(bytes16(_getBytes(intent.intentData[1], 52, 68)), block.timestamp));
 
         //build solution
         IntentSolution memory solution = _solutionForCase(intent, erc20Recipient);
@@ -87,10 +86,10 @@ contract TransferEth is ScenarioTestEnvironment {
 
         //verify end state
         uint256 solverTokenBalance = _testERC20.balanceOf(_publicAddressSolver);
-        assertEq(solverTokenBalance, erc20ReleaseAmountEncoded, "The solver ended up with incorrect token balance");
+        assertEq(solverTokenBalance, erc20ReleaseAmount, "The solver ended up with incorrect token balance");
 
         uint256 userTokenBalance = _testERC20.balanceOf(address(_account));
-        uint256 expectedUserTokenBalance = _accountInitialERC20Balance - erc20ReleaseAmountEncoded;
+        uint256 expectedUserTokenBalance = _accountInitialERC20Balance - erc20ReleaseAmount;
         assertEq(userTokenBalance, expectedUserTokenBalance, "The user ended up with incorrect token balance");
 
         uint256 recipientBalance = address(_publicAddress).balance;

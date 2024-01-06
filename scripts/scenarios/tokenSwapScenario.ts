@@ -1,25 +1,18 @@
 import { ethers } from 'hardhat';
 import { Transaction } from 'ethers';
+import { ScenarioOptions, ScenarioResult, Scenario, DEFAULT_SCENARIO_OPTIONS } from './scenario';
 import { Environment } from '../../scripts/scenarios/environment';
 import { buildSolution, UserIntent } from '../../scripts/library/intent';
 import { ConstantCurve, Curve, LinearCurve } from '../../scripts/library/curveCoder';
 import { ExactInputSingleParamsStruct } from '../../typechain/src/test/TestUniswap';
 
-// Swap result definition
-export type TokenSwapResult = {
-  gasUsed: number;
-  bytesUsed: number;
-  txFee: bigint;
-  serialized: string;
-  amount: bigint;
-};
-
 // The scenario object
-export class TokenSwapScenario {
+export class TokenSwapScenario extends Scenario {
   private env: Environment;
   public TOKEN_SWAP_SLIPPAGE = 5n;
 
   constructor(environment: Environment) {
+    super();
     this.env = environment;
   }
 
@@ -30,7 +23,7 @@ export class TokenSwapScenario {
     if (needToMint > 0) {
       await (await this.env.test.erc20.mint(this.env.deployerAddress, needToMint)).wait();
     }
-    for (const account of this.env.abstractAccounts) {
+    for (const account of this.env.simpleAccounts) {
       const needToMint = ethers.parseEther('1000') - (await this.env.test.erc20.balanceOf(account.contractAddress));
       if (needToMint > 0) {
         await (await this.env.test.erc20.mint(account.contractAddress, needToMint)).wait();
@@ -40,13 +33,23 @@ export class TokenSwapScenario {
         await (await this.env.deployer.sendTransaction({ to: account.contractAddress, value: needToFund })).wait();
       }
     }
+    for (const account of this.env.eoaProxyAccounts) {
+      const needToMint = ethers.parseEther('1000') - (await this.env.test.erc20.balanceOf(account.signerAddress));
+      if (needToMint > 0) {
+        await (await this.env.test.erc20.mint(account.signerAddress, needToMint)).wait();
+      }
+      const needToFund = ethers.parseEther('10') - (await this.env.provider.getBalance(account.signerAddress));
+      if (needToFund > 0) {
+        await (await this.env.deployer.sendTransaction({ to: account.signerAddress, value: needToFund })).wait();
+      }
+    }
 
     //approve deployer swapping erc20
     await (await this.env.test.erc20.approve(this.env.test.uniswapAddress, ethers.parseEther('1000'))).wait();
   }
 
   //runs the baseline EOA version for the scenario
-  public async runBaseline(): Promise<TokenSwapResult> {
+  public async runBaseline(to?: string): Promise<ScenarioResult> {
     const amount = ethers.parseEther('1');
 
     const swapParams = this.getSwapParams(
@@ -55,7 +58,8 @@ export class TokenSwapScenario {
       amount,
       this.env.deployerAddress,
     );
-    const tx = await this.env.test.uniswap.exactInputSingle(swapParams);
+    const txPromise = this.env.test.uniswap.exactInputSingle(swapParams);
+    const tx = await txPromise;
     const unwrap = await this.env.test.wrappedNativeToken.withdraw(
       await this.env.test.wrappedNativeToken.balanceOf(this.env.deployerAddress),
     );
@@ -66,47 +70,55 @@ export class TokenSwapScenario {
     const txFee =
       ((await tx.wait())?.gasUsed || 0n) * ((await tx.wait())?.gasPrice || 0n) +
       ((await unwrap.wait())?.gasUsed || 0n) * ((await unwrap.wait())?.gasPrice || 0n);
-    return { gasUsed, bytesUsed, txFee, serialized, amount };
+    return { invalidOptions: false, gasUsed, bytesUsed, txFee, serialized, amount, fee: 0n, tx: txPromise };
   }
 
   //runs the scenario
-  public async run(batchSize: number, useRegisteredStandards: boolean = false): Promise<TokenSwapResult> {
-    if (this.env.abstractAccounts.length < batchSize) throw new Error('not enough abstract accounts to run batch');
+  public async run(count?: string[] | number, options?: ScenarioOptions): Promise<ScenarioResult> {
+    options = options || DEFAULT_SCENARIO_OPTIONS;
+    count = count || 1;
+    const batchSize: number = typeof count == 'number' ? count : count.length || 1;
+    const proxy = options.useAccountAsEOAProxy;
+
+    if (this.env.simpleAccounts.length < batchSize) throw new Error('not enough abstract accounts to run batch');
     const timestamp = (await this.env.provider.getBlock('latest'))?.timestamp || 0;
-    const amount = this.env.utils.roundForEncoding(ethers.parseEther('1'));
-    if (batchSize <= 1) return this.runSingle(timestamp, amount, useRegisteredStandards);
+    const amount = ethers.parseEther('1');
+    if (batchSize <= 1) return this.runSingle(timestamp, amount, options);
 
     const intents: UserIntent[] = [];
     const tos: string[] = [];
     const amounts: bigint[] = [];
     for (let i = 0; i < batchSize; i++) {
-      const account = this.env.abstractAccounts[i];
+      const account = proxy ? this.env.eoaProxyAccounts[i] : this.env.simpleAccounts[i];
       const intent = new UserIntent(account.contractAddress);
-      if (useRegisteredStandards) {
+      if (options.useEmbeddedStandards) {
+        //using the embedded intent standard versions
+        intent.addSegment(this.env.standards.sequentialNonce(await this.env.utils.getNonce(account.contractAddress)));
+        intent.addSegment(this.env.standards.ethRecord(proxy));
+        intent.addSegment(
+          this.env.standards.erc20Release(
+            this.env.test.erc20Address,
+            this.generateLinearRelease(timestamp, amount, proxy),
+          ),
+        );
+        intent.addSegment(this.env.standards.ethRequire(new ConstantCurve(amount, true, proxy)));
+      } else {
         //using the registered intent standard versions
         intent.addSegment(
           this.env.registeredStandards.sequentialNonce(await this.env.utils.getNonce(account.contractAddress)),
         );
-        intent.addSegment(this.env.registeredStandards.ethRecord());
+        intent.addSegment(this.env.registeredStandards.ethRecord(proxy));
         intent.addSegment(
           this.env.registeredStandards.erc20Release(
             this.env.test.erc20Address,
-            this.generateLinearRelease(timestamp, amount),
+            this.generateLinearRelease(timestamp, amount, proxy),
           ),
         );
-        intent.addSegment(this.env.registeredStandards.ethRequire(new ConstantCurve(amount, true)));
-      } else {
-        //using the embedded intent standard versions
-        intent.addSegment(this.env.standards.sequentialNonce(await this.env.utils.getNonce(account.contractAddress)));
-        intent.addSegment(this.env.standards.ethRecord());
-        intent.addSegment(
-          this.env.standards.erc20Release(this.env.test.erc20Address, this.generateLinearRelease(timestamp, amount)),
-        );
-        intent.addSegment(this.env.standards.ethRequire(new ConstantCurve(amount, true)));
+        intent.addSegment(this.env.registeredStandards.ethRequire(new ConstantCurve(amount, true, proxy)));
       }
       await intent.sign(this.env.chainId, this.env.entrypointAddress, account.signer);
       intents.push(intent);
-      tos.push(account.contractAddress);
+      tos.push(proxy ? account.signerAddress : account.contractAddress);
       amounts.push(amount);
     }
 
@@ -129,13 +141,17 @@ export class TokenSwapScenario {
     for (let i = 0; i < batchSize; i++) {
       order.push(i);
     }
-    const tx = await this.env.entrypoint.handleIntents(buildSolution(timestamp, intents, order));
+    const solution = buildSolution(timestamp, intents, order);
+    const txPromise = options.useCompression
+      ? this.env.compression.general.handleIntents(solution, options.useStatefulCompression)
+      : this.env.entrypoint.handleIntents(solution);
+    const tx = await txPromise;
 
     const serialized = Transaction.from(tx).serialized;
     const bytesUsed = serialized.length / 2 - 1;
     const gasUsed = Number((await tx.wait())?.gasUsed || 0n);
     const txFee = ((await tx.wait())?.gasUsed || 0n) * ((await tx.wait())?.gasPrice || 0n);
-    return { gasUsed, bytesUsed, txFee, serialized, amount };
+    return { invalidOptions: false, gasUsed, bytesUsed, txFee, serialized, amount, fee: 0n, tx: txPromise };
   }
 
   //////////////////////
@@ -143,50 +159,52 @@ export class TokenSwapScenario {
   //////////////////////
 
   // helper function to execute a single intent in the scenario
-  private async runSingle(
-    timestamp: number,
-    amount: bigint,
-    useRegisteredStandards: boolean,
-  ): Promise<TokenSwapResult> {
-    const account = this.env.abstractAccounts[0];
+  private async runSingle(timestamp: number, amount: bigint, options: ScenarioOptions): Promise<ScenarioResult> {
+    const proxy = options.useAccountAsEOAProxy;
+    const account = proxy ? this.env.eoaProxyAccounts[0] : this.env.simpleAccounts[0];
+    const to = proxy ? account.signerAddress : account.contractAddress;
 
     const intent = new UserIntent(account.contractAddress);
-    if (useRegisteredStandards) {
+    if (options.useEmbeddedStandards) {
+      //using the embedded intent standard versions
+      intent.addSegment(this.env.standards.sequentialNonce(await this.env.utils.getNonce(account.contractAddress)));
+      intent.addSegment(this.env.standards.ethRecord(proxy));
+      intent.addSegment(
+        this.env.standards.erc20Release(
+          this.env.test.erc20Address,
+          this.generateLinearRelease(timestamp, amount, proxy),
+        ),
+      );
+      intent.addSegment(this.env.standards.ethRequire(new ConstantCurve(amount, true, proxy)));
+    } else {
       //using the registered intent standard versions
       intent.addSegment(
         this.env.registeredStandards.sequentialNonce(await this.env.utils.getNonce(account.contractAddress)),
       );
-      intent.addSegment(this.env.registeredStandards.ethRecord());
+      intent.addSegment(this.env.registeredStandards.ethRecord(proxy));
       intent.addSegment(
         this.env.registeredStandards.erc20Release(
           this.env.test.erc20Address,
-          this.generateLinearRelease(timestamp, amount),
+          this.generateLinearRelease(timestamp, amount, proxy),
         ),
       );
-      intent.addSegment(this.env.registeredStandards.ethRequire(new ConstantCurve(amount, true)));
-    } else {
-      //using the embedded intent standard versions
-      intent.addSegment(this.env.standards.sequentialNonce(await this.env.utils.getNonce(account.contractAddress)));
-      intent.addSegment(this.env.standards.ethRecord());
-      intent.addSegment(
-        this.env.standards.erc20Release(this.env.test.erc20Address, this.generateLinearRelease(timestamp, amount)),
-      );
-      intent.addSegment(this.env.standards.ethRequire(new ConstantCurve(amount, true)));
+      intent.addSegment(this.env.registeredStandards.ethRequire(new ConstantCurve(amount, true, proxy)));
     }
     await intent.sign(this.env.chainId, this.env.entrypointAddress, account.signer);
 
     const solverIntent = new UserIntent(this.env.test.solverUtilsAddress);
-    solverIntent.addSegment(
-      this.env.standards.call(this.generateSolverSwapTx(this.env.deployerAddress, account.contractAddress, amount)),
-    );
-    const order = [0, 0, 0, 1, 0];
-    const tx = await this.env.entrypoint.handleIntents(buildSolution(timestamp, [intent, solverIntent], order));
+    solverIntent.addSegment(this.env.standards.call(this.generateSolverSwapTx(this.env.deployerAddress, to, amount)));
+    const solution = buildSolution(timestamp, [intent, solverIntent], [0, 0, 0, 1, 0]);
+    const txPromise = options.useCompression
+      ? this.env.compression.general.handleIntents(solution, options.useStatefulCompression)
+      : this.env.entrypoint.handleIntents(solution);
+    const tx = await txPromise;
 
     const serialized = Transaction.from(tx).serialized;
     const bytesUsed = serialized.length / 2 - 1;
     const gasUsed = Number((await tx.wait())?.gasUsed || 0n);
     const txFee = ((await tx.wait())?.gasUsed || 0n) * ((await tx.wait())?.gasPrice || 0n);
-    return { gasUsed, bytesUsed, txFee, serialized, amount };
+    return { invalidOptions: false, gasUsed, bytesUsed, txFee, serialized, amount, fee: 0n, tx: txPromise };
   }
 
   // helper function to generate transfer tx calldata
@@ -218,13 +236,13 @@ export class TokenSwapScenario {
   }
 
   // helper function to generate a linear release curve
-  private generateLinearRelease(timestamp: number, amount: bigint): Curve {
+  private generateLinearRelease(timestamp: number, amount: bigint, proxy: boolean): Curve {
     const evaluateAt = 1000;
     const startTime = timestamp - evaluateAt;
     const duration = 3000;
     const startAmount = 0n;
     const endAmount = amount * BigInt(duration / evaluateAt);
-    return new LinearCurve(startTime, duration, startAmount, endAmount);
+    return new LinearCurve(startTime, duration, startAmount, endAmount, false, proxy);
   }
 
   // helper function to get token swap params

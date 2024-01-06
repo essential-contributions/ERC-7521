@@ -8,7 +8,6 @@ interface IIntentDelegate {
      * @dev Must validate entrypoint is currently executing and intent for the owner
      * and caller is the intent standard that the entry point is currently executing for.
      * @param data calldata.
-     * @return bool delegate call result.
      */
-    function generalizedIntentDelegateCall(bytes memory data) external returns (bool);
+    function generalizedIntentDelegateCall(bytes memory data) external;
 }
