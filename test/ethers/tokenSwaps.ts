@@ -12,6 +12,7 @@ describe('Token Swaps Test', () => {
     useCompression: false,
     useStatefulCompression: false,
     useAccountAsEOAProxy: false,
+    useBLSSignatureAggregation: true,
   };
 
   before(async () => {
@@ -40,9 +41,10 @@ describe('Token Swaps Test', () => {
 
   it('Should run single intent', async () => {
     const solverAddress = env.deployerAddress;
-    const accountAddress = scenarioOptions.useAccountAsEOAProxy
-      ? env.eoaProxyAccounts[0].signerAddress
-      : env.simpleAccounts[0].contractAddress;
+    let accountAddress: string = env.simpleAccounts[0].contractAddress;
+    if (scenarioOptions.useAccountAsEOAProxy) accountAddress = env.eoaProxyAccounts[0].signerAddress;
+    else if (scenarioOptions.useBLSSignatureAggregation) accountAddress = env.blsAccounts[0].contractAddress;
+
     const previousFromBalance = await env.test.erc20.balanceOf(accountAddress);
     const previousToBalance = await env.provider.getBalance(accountAddress);
     const previousSolverBalance = await env.provider.getBalance(solverAddress);
@@ -72,9 +74,10 @@ describe('Token Swaps Test', () => {
     const previousToBalances: bigint[] = [];
     const previousSolverBalance = await env.provider.getBalance(solverAddress);
     for (let i = 0; i < MAX_INTENTS; i++) {
-      const accountAddress = scenarioOptions.useAccountAsEOAProxy
-        ? env.eoaProxyAccounts[0].signerAddress
-        : env.simpleAccounts[0].contractAddress;
+      let accountAddress: string = env.simpleAccounts[i].contractAddress;
+      if (scenarioOptions.useAccountAsEOAProxy) accountAddress = env.eoaProxyAccounts[i].signerAddress;
+      else if (scenarioOptions.useBLSSignatureAggregation) accountAddress = env.blsAccounts[i].contractAddress;
+
       accountAddresses.push(accountAddress);
       previousFromBalances.push(await env.test.erc20.balanceOf(accountAddress));
       previousToBalances.push(await env.provider.getBalance(accountAddress));

@@ -81,7 +81,7 @@ export class BlsVerifier {
 }
 
 // BLS signer with additional verification functionality
-class BlsSigner extends BlsVerifier implements BlsSignerInterface {
+export class BlsSigner extends BlsVerifier implements BlsSignerInterface {
   private key: G2;
 
   constructor(

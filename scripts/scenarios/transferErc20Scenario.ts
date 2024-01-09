@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
-import { Transaction } from 'ethers';
+import { Transaction, ContractTransactionResponse } from 'ethers';
 import { ScenarioOptions, ScenarioResult, Scenario, DEFAULT_SCENARIO_OPTIONS } from './scenario';
-import { Environment, SmartContractAccount } from '../../scripts/scenarios/environment';
+import { BLSSmartContractAccount, Environment, SmartContractAccount } from '../../scripts/scenarios/environment';
 import { buildSolution, UserIntent } from '../../scripts/library/intent';
 import { Curve, LinearCurve } from '../../scripts/library/curveCoder';
 
@@ -22,6 +22,12 @@ export class TransferErc20Scenario extends Scenario {
       await (await this.env.test.erc20.mint(this.env.deployerAddress, needToMint)).wait();
     }
     for (const account of this.env.simpleAccounts) {
+      const needToMint = ethers.parseEther('1000') - (await this.env.test.erc20.balanceOf(account.contractAddress));
+      if (needToMint > 0) {
+        await (await this.env.test.erc20.mint(account.contractAddress, needToMint)).wait();
+      }
+    }
+    for (const account of this.env.blsAccounts) {
       const needToMint = ethers.parseEther('1000') - (await this.env.test.erc20.balanceOf(account.contractAddress));
       if (needToMint > 0) {
         await (await this.env.test.erc20.mint(account.contractAddress, needToMint)).wait();
@@ -66,15 +72,21 @@ export class TransferErc20Scenario extends Scenario {
     }
     if (options.useStatefulCompression) await this.env.compression.registerAddresses(to);
     const proxy = options.useAccountAsEOAProxy;
+    const bls = options.useBLSSignatureAggregation;
 
     if (this.env.simpleAccounts.length < batchSize) throw new Error('not enough abstract accounts to run batch');
     const timestamp = (await this.env.provider.getBlock('latest'))?.timestamp || 0;
     const amount = ethers.parseEther('10');
     const fee = ethers.parseEther('1');
 
+    //create intents
     const intents = [];
+    const signatures: string[] = [];
     for (let i = 0; i < batchSize; i++) {
-      const account = proxy ? this.env.eoaProxyAccounts[i] : this.env.simpleAccounts[i];
+      let account: SmartContractAccount | BLSSmartContractAccount = this.env.simpleAccounts[i];
+      if (proxy) account = this.env.eoaProxyAccounts[i];
+      else if (bls) account = this.env.blsAccounts[i];
+
       const intent = new UserIntent(account.contractAddress);
       if (options.useEmbeddedStandards) {
         //using the embedded intent standard versions
@@ -103,12 +115,30 @@ export class TransferErc20Scenario extends Scenario {
           this.env.registeredStandards.userOp(this.generateExecuteTransferTx(account, to[i], amount, proxy), 100_000),
         );
       }
-      await intent.sign(this.env.chainId, this.env.entrypointAddress, account.signer);
+
+      //sign
+      if (bls) {
+        const hash = intent.hash(this.env.chainId, this.env.entrypointAddress);
+        const blsSignature = (account as BLSSmartContractAccount).signer.sign(hash);
+        if (batchSize == 1) intent.setSignature(blsSignature);
+        else signatures.push(blsSignature);
+      } else {
+        await intent.sign(this.env.chainId, this.env.entrypointAddress, (account as SmartContractAccount).signer);
+      }
       intents.push(intent);
     }
+
+    //aggregate signatures
+    const aggregatedSignature = signatures.length > 0 ? this.env.blsVerifier.aggregate(signatures) : '';
+    let bitfield = 0n;
+    for (let i = 0; i < signatures.length; i++) bitfield = (bitfield << 1n) + 1n;
+    const toAggregate = `0x${bitfield.toString(16).padStart(64, '0')}`;
+
+    //solver intent
     const solverIntent = new UserIntent(this.env.deployerAddress);
     intents.push(solverIntent);
 
+    //solution
     const order = [];
     for (let i = 0; i < batchSize; i++) {
       order.push(i);
@@ -117,9 +147,23 @@ export class TransferErc20Scenario extends Scenario {
       order.push(i);
     }
     const solution = buildSolution(timestamp, intents, order);
-    const txPromise = options.useCompression
-      ? this.env.compression.general.handleIntents(solution, options.useStatefulCompression)
-      : this.env.entrypoint.handleIntents(solution);
+
+    //handle intents
+    let txPromise: Promise<ContractTransactionResponse>;
+    if (options.useCompression) {
+      txPromise = this.env.compression.general.handleIntents(solution, options.useStatefulCompression);
+    } else {
+      if (aggregatedSignature) {
+        txPromise = this.env.entrypoint.handleIntentsAggregated(
+          [solution],
+          this.env.blsSignatureAggregatorAddress,
+          toAggregate,
+          aggregatedSignature,
+        );
+      } else {
+        txPromise = this.env.entrypoint.handleIntents(solution);
+      }
+    }
     const tx = await txPromise;
 
     const serialized = Transaction.from(tx).serialized;
@@ -134,8 +178,14 @@ export class TransferErc20Scenario extends Scenario {
   //////////////////////
 
   // helper function to generate transfer tx calldata
-  private generateExecuteTransferTx(account: SmartContractAccount, to: string, amount: bigint, proxy: boolean): string {
+  private generateExecuteTransferTx(
+    account: SmartContractAccount | BLSSmartContractAccount,
+    to: string,
+    amount: bigint,
+    proxy: boolean,
+  ): string {
     if (proxy) {
+      account = account as SmartContractAccount;
       return account.contract.interface.encodeFunctionData('execute', [
         this.env.test.erc20Address,
         0,

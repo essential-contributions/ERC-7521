@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
-import { Transaction } from 'ethers';
+import { Transaction, ContractTransactionResponse } from 'ethers';
 import { ScenarioOptions, ScenarioResult, Scenario, DEFAULT_SCENARIO_OPTIONS } from './scenario';
-import { Environment } from '../../scripts/scenarios/environment';
+import { BLSSmartContractAccount, Environment, SmartContractAccount } from '../../scripts/scenarios/environment';
 import { buildSolution, UserIntent } from '../../scripts/library/intent';
 import { ConstantCurve, Curve, LinearCurve } from '../../scripts/library/curveCoder';
 import { ExactInputSingleParamsStruct } from '../../typechain/src/test/TestUniswap';
@@ -24,6 +24,16 @@ export class TokenSwapScenario extends Scenario {
       await (await this.env.test.erc20.mint(this.env.deployerAddress, needToMint)).wait();
     }
     for (const account of this.env.simpleAccounts) {
+      const needToMint = ethers.parseEther('1000') - (await this.env.test.erc20.balanceOf(account.contractAddress));
+      if (needToMint > 0) {
+        await (await this.env.test.erc20.mint(account.contractAddress, needToMint)).wait();
+      }
+      const needToFund = ethers.parseEther('10') - (await this.env.provider.getBalance(account.contractAddress));
+      if (needToFund > 0) {
+        await (await this.env.deployer.sendTransaction({ to: account.contractAddress, value: needToFund })).wait();
+      }
+    }
+    for (const account of this.env.blsAccounts) {
       const needToMint = ethers.parseEther('1000') - (await this.env.test.erc20.balanceOf(account.contractAddress));
       if (needToMint > 0) {
         await (await this.env.test.erc20.mint(account.contractAddress, needToMint)).wait();
@@ -79,17 +89,23 @@ export class TokenSwapScenario extends Scenario {
     count = count || 1;
     const batchSize: number = typeof count == 'number' ? count : count.length || 1;
     const proxy = options.useAccountAsEOAProxy;
+    const bls = options.useBLSSignatureAggregation;
 
     if (this.env.simpleAccounts.length < batchSize) throw new Error('not enough abstract accounts to run batch');
     const timestamp = (await this.env.provider.getBlock('latest'))?.timestamp || 0;
     const amount = ethers.parseEther('1');
     if (batchSize <= 1) return this.runSingle(timestamp, amount, options);
 
+    //create intents
     const intents: UserIntent[] = [];
+    const signatures: string[] = [];
     const tos: string[] = [];
     const amounts: bigint[] = [];
     for (let i = 0; i < batchSize; i++) {
-      const account = proxy ? this.env.eoaProxyAccounts[i] : this.env.simpleAccounts[i];
+      let account: SmartContractAccount | BLSSmartContractAccount = this.env.simpleAccounts[i];
+      if (proxy) account = this.env.eoaProxyAccounts[i];
+      else if (bls) account = this.env.blsAccounts[i];
+
       const intent = new UserIntent(account.contractAddress);
       if (options.useEmbeddedStandards) {
         //using the embedded intent standard versions
@@ -116,12 +132,28 @@ export class TokenSwapScenario extends Scenario {
         );
         intent.addSegment(this.env.registeredStandards.ethRequire(new ConstantCurve(amount, true, proxy)));
       }
-      await intent.sign(this.env.chainId, this.env.entrypointAddress, account.signer);
+
+      //sign
+      if (bls) {
+        const hash = intent.hash(this.env.chainId, this.env.entrypointAddress);
+        const blsSignature = (account as BLSSmartContractAccount).signer.sign(hash);
+        signatures.push(blsSignature);
+      } else {
+        await intent.sign(this.env.chainId, this.env.entrypointAddress, (account as SmartContractAccount).signer);
+      }
+
       intents.push(intent);
-      tos.push(proxy ? account.signerAddress : account.contractAddress);
+      tos.push(proxy ? (account as SmartContractAccount).signerAddress : account.contractAddress);
       amounts.push(amount);
     }
 
+    //aggregate signatures
+    const aggregatedSignature = signatures.length > 0 ? this.env.blsVerifier.aggregate(signatures) : '';
+    let bitfield = 0n;
+    for (let i = 0; i < signatures.length; i++) bitfield = (bitfield << 1n) + 1n;
+    const toAggregate = `0x${bitfield.toString(16).padStart(64, '0')}`;
+
+    //solver intents
     const solverIntent1 = new UserIntent(this.env.test.solverUtilsAddress);
     const solverIntent2 = new UserIntent(this.env.test.solverUtilsAddress);
     solverIntent2.addSegment(
@@ -130,6 +162,7 @@ export class TokenSwapScenario extends Scenario {
     intents.push(solverIntent1);
     intents.push(solverIntent2);
 
+    //solution
     const order = [];
     for (let i = 0; i < batchSize; i++) {
       order.push(i);
@@ -142,9 +175,23 @@ export class TokenSwapScenario extends Scenario {
       order.push(i);
     }
     const solution = buildSolution(timestamp, intents, order);
-    const txPromise = options.useCompression
-      ? this.env.compression.general.handleIntents(solution, options.useStatefulCompression)
-      : this.env.entrypoint.handleIntents(solution);
+
+    //handle intents
+    let txPromise: Promise<ContractTransactionResponse>;
+    if (options.useCompression) {
+      txPromise = this.env.compression.general.handleIntents(solution, options.useStatefulCompression);
+    } else {
+      if (aggregatedSignature) {
+        txPromise = this.env.entrypoint.handleIntentsAggregated(
+          [solution],
+          this.env.blsSignatureAggregatorAddress,
+          toAggregate,
+          aggregatedSignature,
+        );
+      } else {
+        txPromise = this.env.entrypoint.handleIntents(solution);
+      }
+    }
     const tx = await txPromise;
 
     const serialized = Transaction.from(tx).serialized;
@@ -161,9 +208,13 @@ export class TokenSwapScenario extends Scenario {
   // helper function to execute a single intent in the scenario
   private async runSingle(timestamp: number, amount: bigint, options: ScenarioOptions): Promise<ScenarioResult> {
     const proxy = options.useAccountAsEOAProxy;
-    const account = proxy ? this.env.eoaProxyAccounts[0] : this.env.simpleAccounts[0];
-    const to = proxy ? account.signerAddress : account.contractAddress;
+    const bls = options.useBLSSignatureAggregation;
+    let account: SmartContractAccount | BLSSmartContractAccount = this.env.simpleAccounts[0];
+    if (proxy) account = this.env.eoaProxyAccounts[0];
+    else if (bls) account = this.env.blsAccounts[0];
+    const to = proxy ? (account as SmartContractAccount).signerAddress : account.contractAddress;
 
+    //create intent
     const intent = new UserIntent(account.contractAddress);
     if (options.useEmbeddedStandards) {
       //using the embedded intent standard versions
@@ -190,11 +241,24 @@ export class TokenSwapScenario extends Scenario {
       );
       intent.addSegment(this.env.registeredStandards.ethRequire(new ConstantCurve(amount, true, proxy)));
     }
-    await intent.sign(this.env.chainId, this.env.entrypointAddress, account.signer);
 
+    //sign
+    if (bls) {
+      const hash = intent.hash(this.env.chainId, this.env.entrypointAddress);
+      const blsSignature = (account as BLSSmartContractAccount).signer.sign(hash);
+      intent.setSignature(blsSignature);
+    } else {
+      await intent.sign(this.env.chainId, this.env.entrypointAddress, (account as SmartContractAccount).signer);
+    }
+
+    //solver intent
     const solverIntent = new UserIntent(this.env.test.solverUtilsAddress);
     solverIntent.addSegment(this.env.standards.call(this.generateSolverSwapTx(this.env.deployerAddress, to, amount)));
+
+    //solution
     const solution = buildSolution(timestamp, [intent, solverIntent], [0, 0, 0, 1, 0]);
+
+    //handle intents
     const txPromise = options.useCompression
       ? this.env.compression.general.handleIntents(solution, options.useStatefulCompression)
       : this.env.entrypoint.handleIntents(solution);
