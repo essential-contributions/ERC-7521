@@ -42,6 +42,11 @@ export class UserIntent {
     return this.signature;
   }
 
+  //manually sets the signature field if account using signature scheme other than ECDSA
+  public async setSignature(signature: string) {
+    this.signature = signature;
+  }
+
   //gets the hash of the intent
   public hash(chainId: bigint, entrypoint: string): string {
     const abi = new ethers.AbiCoder();
