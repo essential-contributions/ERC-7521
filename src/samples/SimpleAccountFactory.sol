@@ -22,13 +22,13 @@ contract SimpleAccountFactory {
      * @param owner the account owner
      * @param salt for uniqueness
      */
-    function createAccount(address owner, uint256 salt) public returns (SimpleAccount ret) {
+    function createAccount(address owner, uint256 salt) public returns (SimpleAccount) {
         address addr = getAddress(owner, salt);
         uint256 codeSize = addr.code.length;
         if (codeSize > 0) {
             return SimpleAccount(payable(addr));
         }
-        ret = SimpleAccount(
+        return SimpleAccount(
             payable(
                 new ERC1967Proxy{salt: bytes32(salt)}(
                     address(accountImplementation), abi.encodeCall(SimpleAccount.initialize, (owner))

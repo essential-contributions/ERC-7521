@@ -16,20 +16,6 @@ import {Exec} from "../utils/Exec.sol";
  */
 abstract contract BaseAccount is IAccount, IIntentDelegate {
     /**
-     * Validate user's intent (typically a signature)
-     * @dev returning 0 indicates signature validated successfully.
-     *
-     * @param intent validate the intent.signature field
-     * @param intentHash the hash of the intent, to check the signature against
-     * @return aggregator (optional) trusted signature aggregator to return if signature fails
-     */
-    function validateUserIntent(UserIntent calldata intent, bytes32 intentHash)
-        external
-        view
-        virtual
-        returns (IAggregator aggregator);
-
-    /**
      * Return the entryPoint used by this account.
      * Subclass should return the current entryPoint used by this account.
      */

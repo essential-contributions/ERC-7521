@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.22;
 
-import "./UserIntent.sol";
+import {UserIntent} from "./UserIntent.sol";
 
 /**
  * Aggregated Signatures validator.

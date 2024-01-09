@@ -1,32 +1,39 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.22;
 
-import {BaseAccount} from "../core/BaseAccount.sol";
-import {IAggregator} from "../interfaces/IAggregator.sol";
-import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
-import {IProxyAccount} from "../interfaces/IProxyAccount.sol";
-import {IIntentDelegate} from "../interfaces/IIntentDelegate.sol";
-import {UserIntent} from "../interfaces/UserIntent.sol";
-import {Exec} from "../utils/Exec.sol";
+import {IBLSAccount} from "./IBLSAccount.sol";
+import {BaseAccount} from "../../core/BaseAccount.sol";
+import {IAggregator} from "../../interfaces/IAggregator.sol";
+import {IEntryPoint} from "../../interfaces/IEntryPoint.sol";
+import {IProxyAccount} from "../../interfaces/IProxyAccount.sol";
+import {IIntentDelegate} from "../../interfaces/IIntentDelegate.sol";
+import {UserIntent} from "../../interfaces/UserIntent.sol";
+import {Exec} from "../../utils/Exec.sol";
 import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 import {Initializable} from "openzeppelin/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "openzeppelin/proxy/utils/UUPSUpgradeable.sol";
 
 /**
- * A minimal account.
- *  this is sample minimal account.
- *  has a single signer that can send requests through the entryPoint.
+ * Minimal BLS-based account that uses an aggregated signature.
+ * The account must maintain its own BLS public key, and expose its trusted signature aggregator.
  */
-contract SimpleAccount is BaseAccount, UUPSUpgradeable, Initializable, IProxyAccount {
+contract BLSAccount is BaseAccount, UUPSUpgradeable, Initializable, IProxyAccount, IBLSAccount {
     using ECDSA for bytes32;
 
     IEntryPoint private immutable _entryPoint;
+    IAggregator private immutable _aggregator;
+    uint256[4] private _publicKey;
     address private _owner;
 
-    event SimpleAccountInitialized(IEntryPoint indexed entryPoint, address indexed owner);
+    event BLSAccountInitialized(
+        IEntryPoint indexed entryPoint, IAggregator indexed aggregator, uint256[4] indexed publicKey
+    );
 
-    constructor(IEntryPoint anEntryPoint) {
+    // The constructor is used only for the "implementation" and only sets immutable values.
+    // Mutable value slots for proxy accounts are set by the 'initialize' function.
+    constructor(IEntryPoint anEntryPoint, IAggregator anAggregator) {
         _entryPoint = anEntryPoint;
+        _aggregator = anAggregator;
         _disableInitializers();
     }
 
@@ -35,9 +42,15 @@ contract SimpleAccount is BaseAccount, UUPSUpgradeable, Initializable, IProxyAcc
      * a new implementation of SimpleAccount must be deployed with the new EntryPoint address, then upgrading
      * the implementation by calling `upgradeTo()`
      */
-    function initialize(address anOwner) public virtual initializer {
+    function initialize(uint256[4] calldata aPublicKey, address anOwner) public virtual initializer {
         _owner = anOwner;
-        emit SimpleAccountInitialized(_entryPoint, _owner);
+        _publicKey = aPublicKey;
+        emit BLSAccountInitialized(_entryPoint, _aggregator, _publicKey);
+    }
+
+    /// @inheritdoc IBLSAccount
+    function getBlsPublicKey() public view override returns (uint256[4] memory) {
+        return _publicKey;
     }
 
     /// @inheritdoc BaseAccount
@@ -63,9 +76,11 @@ contract SimpleAccount is BaseAccount, UUPSUpgradeable, Initializable, IProxyAcc
         override
         returns (IAggregator)
     {
-        bytes32 hash = intentHash.toEthSignedMessageHash();
-        require(_owner == hash.recover(intent.signature), "invalid signature");
-        return IAggregator(address(0));
+        if (intent.signature.length > 0) {
+            bytes32 hash = intentHash.toEthSignedMessageHash();
+            if (_owner == hash.recover(intent.signature)) return IAggregator(address(0));
+        }
+        return _aggregator;
     }
 
     /**
