@@ -7,9 +7,9 @@ import {IAggregator} from "../../interfaces/IAggregator.sol";
 import {IEntryPoint} from "../../interfaces/IEntryPoint.sol";
 import {IProxyAccount} from "../../interfaces/IProxyAccount.sol";
 import {IIntentDelegate} from "../../interfaces/IIntentDelegate.sol";
-import {UserIntent} from "../../interfaces/UserIntent.sol";
+import {UserIntent, UserIntentLib} from "../../interfaces/UserIntent.sol";
 import {Exec} from "../../utils/Exec.sol";
-import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
+import {BLS} from "./lib/BLS.sol";
 import {Initializable} from "openzeppelin/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "openzeppelin/proxy/utils/UUPSUpgradeable.sol";
 
@@ -18,12 +18,14 @@ import {UUPSUpgradeable} from "openzeppelin/proxy/utils/UUPSUpgradeable.sol";
  * The account must maintain its own BLS public key, and expose its trusted signature aggregator.
  */
 contract BLSAccount is BaseAccount, UUPSUpgradeable, Initializable, IProxyAccount, IBLSAccount {
-    using ECDSA for bytes32;
+    using UserIntentLib for UserIntent;
 
     IEntryPoint private immutable _entryPoint;
     IAggregator private immutable _aggregator;
     uint256[4] private _publicKey;
     address private _owner;
+
+    bytes32 public constant BLS_DOMAIN = keccak256("erc7521.bls.domain");
 
     event BLSAccountInitialized(
         IEntryPoint indexed entryPoint, IAggregator indexed aggregator, uint256[4] indexed publicKey
@@ -77,8 +79,11 @@ contract BLSAccount is BaseAccount, UUPSUpgradeable, Initializable, IProxyAccoun
         returns (IAggregator)
     {
         if (intent.signature.length > 0) {
-            bytes32 hash = intentHash.toEthSignedMessageHash();
-            if (_owner == hash.recover(intent.signature)) return IAggregator(address(0));
+            uint256[2] memory signature = abi.decode(intent.signature, (uint256[2]));
+            uint256[2] memory message = BLS.hashToPoint(BLS_DOMAIN, abi.encodePacked(intentHash));
+            BLS.verifySingle(signature, _publicKey, message);
+
+            return IAggregator(address(0));
         }
         return _aggregator;
     }
