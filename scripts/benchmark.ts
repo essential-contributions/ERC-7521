@@ -69,6 +69,7 @@ async function main() {
     useCompression: false,
     useStatefulCompression: false,
     useAccountAsEOAProxy: false,
+    useBLSSignatureAggregation: false,
   };
   logScenarios(await run(embeddedStandards));
 
@@ -78,6 +79,7 @@ async function main() {
     useCompression: true,
     useStatefulCompression: false,
     useAccountAsEOAProxy: false,
+    useBLSSignatureAggregation: false,
   };
   logScenarios(await run(nonStatefulCompression), 'Non-Stateful Compression');
 
@@ -87,8 +89,19 @@ async function main() {
     useCompression: true,
     useStatefulCompression: true,
     useAccountAsEOAProxy: false,
+    useBLSSignatureAggregation: false,
   };
   logScenarios(await run(statefulCompression), 'Stateful Compression');
+
+  //embedded with bls signatures
+  const blsSignatureAggregation: ScenarioOptions = {
+    useEmbeddedStandards: true,
+    useCompression: false,
+    useStatefulCompression: false,
+    useAccountAsEOAProxy: false,
+    useBLSSignatureAggregation: true,
+  };
+  logScenarios(await run(blsSignatureAggregation), 'BLS Signature Aggregation');
 
   //embedded for EOA
   const embeddedStandardsEOA: ScenarioOptions = {
@@ -96,6 +109,7 @@ async function main() {
     useCompression: false,
     useStatefulCompression: false,
     useAccountAsEOAProxy: true,
+    useBLSSignatureAggregation: false,
   };
   logScenarios(await run(embeddedStandardsEOA), 'Proxy Contracts for EOAs');
 
@@ -105,6 +119,7 @@ async function main() {
     useCompression: true,
     useStatefulCompression: true,
     useAccountAsEOAProxy: true,
+    useBLSSignatureAggregation: false,
   };
   logScenarios(await run(nonStatefulCompressionEOA), 'Stateful Compression Proxy for EOAs');
 
@@ -114,6 +129,7 @@ async function main() {
     useCompression: false,
     useStatefulCompression: false,
     useAccountAsEOAProxy: false,
+    useBLSSignatureAggregation: false,
   };
   logScenarios(await run(registeredStandards), 'Using Registered Standards');
 
@@ -123,6 +139,7 @@ async function main() {
     useCompression: true,
     useStatefulCompression: true,
     useAccountAsEOAProxy: false,
+    useBLSSignatureAggregation: false,
   };
   logScenarios(await run(registeredStatefulCompression), 'Using Registered Standards w/ Stateful Compression');
 }
@@ -153,6 +170,7 @@ function logDeployments(env: Environment) {
     console.log(`| ${n} | ${g} | $${c} | ${p} |`);
   }
   line('Deploy EntryPoint', env.gasUsed.entrypoint);
+  line('Deploy BLS Aggregator', env.gasUsed.blsSignatureAggregator);
   line('Deploy Simple Acct Fac', env.gasUsed.simpleAccountFactory);
   line('Deploy Simple Acct', env.gasUsed.simpleAccount);
   line('Deploy Gen Compression', env.gasUsed.generalCompression);
