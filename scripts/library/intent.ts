@@ -53,7 +53,8 @@ export class UserIntent {
     const intentData: BytesLike[] = this.segments.map((segment) => segment.asBytes());
     const intentDataHash = ethers.keccak256(abi.encode(['bytes[]'], [intentData]));
     const intentHash = ethers.keccak256(abi.encode(['address', 'bytes32'], [this.sender, intentDataHash]));
-    return ethers.keccak256(abi.encode(['bytes32', 'address', 'uint256'], [intentHash, entrypoint, chainId]));
+    const hash = ethers.keccak256(abi.encode(['bytes32', 'address', 'uint256'], [intentHash, entrypoint, chainId]));
+    return ethers.zeroPadValue(hash, 32);
   }
 
   //gets the intent object with segment data encoded

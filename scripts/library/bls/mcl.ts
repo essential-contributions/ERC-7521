@@ -27,7 +27,7 @@ export function validateDomain(domain: Domain) {
 export function hashToPoint(msg: string, domain: Domain): G1 {
   if (!ethers.isHexString(msg)) throw new Error(`BadMessage: Expect hex string but got ${msg}`);
 
-  const _msg = ethers.toBeArray(msg);
+  const _msg = toBeArray(msg);
   const [e0, e1] = hashToField(domain, _msg, 2);
   const p0 = mapToPoint(e0);
   const p1 = mapToPoint(e1);
@@ -48,7 +48,7 @@ export function hashToField(domain: Uint8Array, msg: Uint8Array, count: number):
 }
 
 export function expandMsg(domain: Uint8Array, msg: Uint8Array, outLen: number): Uint8Array {
-  if (domain.length > 32) throw new Error(`BadDomain: Expect 32 bytes but got ${domain.length}`);
+  validateDomain(domain);
 
   const out: Uint8Array = new Uint8Array(outLen);
 
@@ -75,7 +75,7 @@ export function expandMsg(domain: Uint8Array, msg: Uint8Array, outLen: number): 
   const len1 = 32 + 1 + domain.length + 1;
   const in1: Uint8Array = new Uint8Array(len1);
   // b0
-  in1.set(ethers.toBeArray(b0), 0);
+  in1.set(toBeArray(b0, 32), 0);
   off = 32;
   // I2OSP(1, 1)
   in1.set([1], off);
@@ -93,8 +93,8 @@ export function expandMsg(domain: Uint8Array, msg: Uint8Array, outLen: number): 
 
   for (let i = 1; i < ell; i++) {
     const ini: Uint8Array = new Uint8Array(32 + 1 + domain.length + 1);
-    const nb0 = ethers.toBeArray(ethers.zeroPadValue(b0, 32));
-    const nbi = ethers.toBeArray(ethers.zeroPadValue(bi, 32));
+    const nb0 = toBeArray(b0, 32);
+    const nbi = toBeArray(bi, 32);
     const tmp = new Uint8Array(32);
     for (let i = 0; i < 32; i++) {
       tmp[i] = nb0[i] ^ nbi[i];
@@ -108,11 +108,11 @@ export function expandMsg(domain: Uint8Array, msg: Uint8Array, outLen: number): 
     off += domain.length;
     ini.set([domain.length], off);
 
-    out.set(ethers.toBeArray(bi), 32 * (i - 1));
+    out.set(toBeArray(bi, 32), 32 * (i - 1));
     bi = ethers.sha256(ini);
   }
 
-  out.set(ethers.toBeArray(bi), 32 * (ell - 1));
+  out.set(toBeArray(bi, 32), 32 * (ell - 1));
   return out;
 }
 
@@ -236,4 +236,19 @@ export function loadFr(hex: string): Fr {
   const fr = new Fr();
   fr.deserializeHexStr(hex.slice(2));
   return fr;
+}
+
+//Helper function to convert hex string to 32 byte long Uint8Array
+function toBeArray(hex: string, len: number = 0): Uint8Array {
+  if (hex.indexOf('0x') == 0) hex = hex.substring(2);
+  if (hex.length % 2) hex = '0' + hex;
+  if (len === 0) len = hex.length / 2;
+
+  const result = new Uint8Array(len);
+  const offset = len - hex.length / 2;
+  for (let i = hex.length - 2; i >= 0; i -= 2) {
+    const index = offset + i / 2;
+    if (index < len && index >= 0) result[index] = parseInt(hex.substring(i, i + 2), 16);
+  }
+  return result;
 }
