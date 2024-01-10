@@ -27,8 +27,8 @@ export class OPStackCalculator extends TxFeeCalculator {
     const gasForData = BigInt(zeroBytes * 4 + nonzeroBytes * 16);
     const gasPrice = BigInt(this.gasPriceGwei * 1_000_000_000);
     const dataPrice = BigInt(this.dataPriceGwei * 1_000_000_000);
-    const l1Fee = (gasForData * dataPrice * BigInt(this.ethPrice)) / 10_000_000_000_000_000n;
-    const l2Fee = (BigInt(tx.gasUsed) * gasPrice * BigInt(this.ethPrice)) / 10_000_000_000_000_000n;
-    return Math.round(Number(l1Fee + l2Fee) * this.dataScaler) / 100;
+    const l1Fee = (gasForData * dataPrice * BigInt(this.ethPrice)) / 10_000_000_000_000n;
+    const l2Fee = (BigInt(tx.gasUsed) * gasPrice * BigInt(this.ethPrice)) / 10_000_000_000_000n;
+    return Math.round(Number(l1Fee + l2Fee) * this.dataScaler) / 100_000;
   }
 }

@@ -114,7 +114,7 @@ contract TokenSwaps is ScenarioTestEnvironment {
             _constantReleaseIntent(erc20ReleaseAmount, ethRequireAmount, requireDuration, requireAt);
         intent = _signIntent(intent);
         uint256 erc20ReleaseAmountEncoded =
-            uint256(evaluateCurve(bytes16(_getBytes(intent.intentData[2], 52, 58)), block.timestamp));
+            uint256(evaluateCurve(bytes16(_getBytes(intent.intentData[2], 64, 70)), block.timestamp));
         uint256 ethRequireAmountEncoded =
             uint256(evaluateCurve(bytes16(_getBytes(intent.intentData[3], 32, 48)), block.timestamp));
 
@@ -160,7 +160,7 @@ contract TokenSwaps is ScenarioTestEnvironment {
             _constantExpectationIntent(erc20ReleaseAmount, ethRequireAmount, releaseDuration, releaseAt);
         intent = _signIntent(intent);
         uint256 erc20ReleaseAmountEncoded =
-            uint256(evaluateCurve(bytes16(_getBytes(intent.intentData[2], 52, 68)), block.timestamp));
+            uint256(evaluateCurve(bytes16(_getBytes(intent.intentData[2], 64, 80)), block.timestamp));
         uint256 ethRequireAmountEncoded =
             uint256(evaluateCurve(bytes16(_getBytes(intent.intentData[3], 32, 38)), block.timestamp));
 

@@ -77,7 +77,7 @@ contract TransferEth is ScenarioTestEnvironment {
         UserIntent memory intent = _intentForCase(erc20ReleaseAmount, ethRecipient, ethAmount);
         intent = _signIntent(intent);
         uint256 erc20ReleaseAmountEncoded =
-            uint256(evaluateCurve(bytes16(_getBytes(intent.intentData[1], 52, 68)), block.timestamp));
+            uint256(evaluateCurve(bytes16(_getBytes(intent.intentData[1], 64, 80)), block.timestamp));
 
         //build solution
         IntentSolution memory solution = _solutionForCase(intent, erc20Recipient);

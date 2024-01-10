@@ -1,25 +1,18 @@
 import { ethers } from 'hardhat';
 import { Transaction } from 'ethers';
+import { ScenarioOptions, ScenarioResult, Scenario, DEFAULT_SCENARIO_OPTIONS } from './scenario';
 import { Environment } from '../../scripts/scenarios/environment';
 import { buildSolution, UserIntent } from '../../scripts/library/intent';
 import { ConstantCurve, Curve, LinearCurve } from '../../scripts/library/curveCoder';
 import { ExactInputSingleParamsStruct } from '../../typechain/src/test/TestUniswap';
 
-// Swap result definition
-export type TokenSwapResult = {
-  gasUsed: number;
-  bytesUsed: number;
-  txFee: bigint;
-  serialized: string;
-  amount: bigint;
-};
-
 // The scenario object
-export class TokenSwapScenario {
+export class TokenSwapScenario extends Scenario {
   private env: Environment;
   public TOKEN_SWAP_SLIPPAGE = 5n;
 
   constructor(environment: Environment) {
+    super();
     this.env = environment;
   }
 
@@ -46,7 +39,7 @@ export class TokenSwapScenario {
   }
 
   //runs the baseline EOA version for the scenario
-  public async runBaseline(): Promise<TokenSwapResult> {
+  public async runBaseline(to?: string): Promise<ScenarioResult> {
     const amount = ethers.parseEther('1');
 
     const swapParams = this.getSwapParams(
@@ -66,15 +59,19 @@ export class TokenSwapScenario {
     const txFee =
       ((await tx.wait())?.gasUsed || 0n) * ((await tx.wait())?.gasPrice || 0n) +
       ((await unwrap.wait())?.gasUsed || 0n) * ((await unwrap.wait())?.gasPrice || 0n);
-    return { gasUsed, bytesUsed, txFee, serialized, amount };
+    return { gasUsed, bytesUsed, txFee, serialized, amount, fee: 0n };
   }
 
   //runs the scenario
-  public async run(batchSize: number, useRegisteredStandards: boolean = false): Promise<TokenSwapResult> {
+  public async run(count?: string[] | number, options?: ScenarioOptions): Promise<ScenarioResult> {
+    options = options || DEFAULT_SCENARIO_OPTIONS;
+    count = count || 1;
+    const batchSize: number = typeof count == 'number' ? count : count.length || 1;
+
     if (this.env.abstractAccounts.length < batchSize) throw new Error('not enough abstract accounts to run batch');
     const timestamp = (await this.env.provider.getBlock('latest'))?.timestamp || 0;
     const amount = this.env.utils.roundForEncoding(ethers.parseEther('1'));
-    if (batchSize <= 1) return this.runSingle(timestamp, amount, useRegisteredStandards);
+    if (batchSize <= 1) return this.runSingle(timestamp, amount, options);
 
     const intents: UserIntent[] = [];
     const tos: string[] = [];
@@ -82,7 +79,15 @@ export class TokenSwapScenario {
     for (let i = 0; i < batchSize; i++) {
       const account = this.env.abstractAccounts[i];
       const intent = new UserIntent(account.contractAddress);
-      if (useRegisteredStandards) {
+      if (options.useEmbeddedStandards) {
+        //using the embedded intent standard versions
+        intent.addSegment(this.env.standards.sequentialNonce(await this.env.utils.getNonce(account.contractAddress)));
+        intent.addSegment(this.env.standards.ethRecord());
+        intent.addSegment(
+          this.env.standards.erc20Release(this.env.test.erc20Address, this.generateLinearRelease(timestamp, amount)),
+        );
+        intent.addSegment(this.env.standards.ethRequire(new ConstantCurve(amount, true)));
+      } else {
         //using the registered intent standard versions
         intent.addSegment(
           this.env.registeredStandards.sequentialNonce(await this.env.utils.getNonce(account.contractAddress)),
@@ -95,14 +100,6 @@ export class TokenSwapScenario {
           ),
         );
         intent.addSegment(this.env.registeredStandards.ethRequire(new ConstantCurve(amount, true)));
-      } else {
-        //using the embedded intent standard versions
-        intent.addSegment(this.env.standards.sequentialNonce(await this.env.utils.getNonce(account.contractAddress)));
-        intent.addSegment(this.env.standards.ethRecord());
-        intent.addSegment(
-          this.env.standards.erc20Release(this.env.test.erc20Address, this.generateLinearRelease(timestamp, amount)),
-        );
-        intent.addSegment(this.env.standards.ethRequire(new ConstantCurve(amount, true)));
       }
       await intent.sign(this.env.chainId, this.env.entrypointAddress, account.signer);
       intents.push(intent);
@@ -129,13 +126,16 @@ export class TokenSwapScenario {
     for (let i = 0; i < batchSize; i++) {
       order.push(i);
     }
-    const tx = await this.env.entrypoint.handleIntents(buildSolution(timestamp, intents, order));
+    const solution = buildSolution(timestamp, intents, order);
+    const tx = options.useCompression
+      ? await this.env.compression.general.handleIntents(solution, options.useStatefulCompression)
+      : await this.env.entrypoint.handleIntents(solution);
 
     const serialized = Transaction.from(tx).serialized;
     const bytesUsed = serialized.length / 2 - 1;
     const gasUsed = Number((await tx.wait())?.gasUsed || 0n);
     const txFee = ((await tx.wait())?.gasUsed || 0n) * ((await tx.wait())?.gasPrice || 0n);
-    return { gasUsed, bytesUsed, txFee, serialized, amount };
+    return { gasUsed, bytesUsed, txFee, serialized, amount, fee: 0n };
   }
 
   //////////////////////
@@ -143,15 +143,19 @@ export class TokenSwapScenario {
   //////////////////////
 
   // helper function to execute a single intent in the scenario
-  private async runSingle(
-    timestamp: number,
-    amount: bigint,
-    useRegisteredStandards: boolean,
-  ): Promise<TokenSwapResult> {
+  private async runSingle(timestamp: number, amount: bigint, options: ScenarioOptions): Promise<ScenarioResult> {
     const account = this.env.abstractAccounts[0];
 
     const intent = new UserIntent(account.contractAddress);
-    if (useRegisteredStandards) {
+    if (options.useEmbeddedStandards) {
+      //using the embedded intent standard versions
+      intent.addSegment(this.env.standards.sequentialNonce(await this.env.utils.getNonce(account.contractAddress)));
+      intent.addSegment(this.env.standards.ethRecord());
+      intent.addSegment(
+        this.env.standards.erc20Release(this.env.test.erc20Address, this.generateLinearRelease(timestamp, amount)),
+      );
+      intent.addSegment(this.env.standards.ethRequire(new ConstantCurve(amount, true)));
+    } else {
       //using the registered intent standard versions
       intent.addSegment(
         this.env.registeredStandards.sequentialNonce(await this.env.utils.getNonce(account.contractAddress)),
@@ -164,14 +168,6 @@ export class TokenSwapScenario {
         ),
       );
       intent.addSegment(this.env.registeredStandards.ethRequire(new ConstantCurve(amount, true)));
-    } else {
-      //using the embedded intent standard versions
-      intent.addSegment(this.env.standards.sequentialNonce(await this.env.utils.getNonce(account.contractAddress)));
-      intent.addSegment(this.env.standards.ethRecord());
-      intent.addSegment(
-        this.env.standards.erc20Release(this.env.test.erc20Address, this.generateLinearRelease(timestamp, amount)),
-      );
-      intent.addSegment(this.env.standards.ethRequire(new ConstantCurve(amount, true)));
     }
     await intent.sign(this.env.chainId, this.env.entrypointAddress, account.signer);
 
@@ -179,14 +175,16 @@ export class TokenSwapScenario {
     solverIntent.addSegment(
       this.env.standards.call(this.generateSolverSwapTx(this.env.deployerAddress, account.contractAddress, amount)),
     );
-    const order = [0, 0, 0, 1, 0];
-    const tx = await this.env.entrypoint.handleIntents(buildSolution(timestamp, [intent, solverIntent], order));
+    const solution = buildSolution(timestamp, [intent, solverIntent], [0, 0, 0, 1, 0]);
+    const tx = options.useCompression
+      ? await this.env.compression.general.handleIntents(solution, options.useStatefulCompression)
+      : await this.env.entrypoint.handleIntents(solution);
 
     const serialized = Transaction.from(tx).serialized;
     const bytesUsed = serialized.length / 2 - 1;
     const gasUsed = Number((await tx.wait())?.gasUsed || 0n);
     const txFee = ((await tx.wait())?.gasUsed || 0n) * ((await tx.wait())?.gasPrice || 0n);
-    return { gasUsed, bytesUsed, txFee, serialized, amount };
+    return { gasUsed, bytesUsed, txFee, serialized, amount, fee: 0n };
   }
 
   // helper function to generate transfer tx calldata

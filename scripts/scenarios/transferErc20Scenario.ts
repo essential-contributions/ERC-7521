@@ -1,24 +1,16 @@
 import { ethers } from 'hardhat';
 import { Transaction } from 'ethers';
+import { ScenarioOptions, ScenarioResult, Scenario, DEFAULT_SCENARIO_OPTIONS } from './scenario';
 import { Environment, SmartContractAccount } from '../../scripts/scenarios/environment';
 import { buildSolution, UserIntent } from '../../scripts/library/intent';
 import { Curve, LinearCurve } from '../../scripts/library/curveCoder';
 
-// Transfer result definition
-export type TransferErc20Result = {
-  gasUsed: number;
-  bytesUsed: number;
-  txFee: bigint;
-  serialized: string;
-  amount: bigint;
-  fee: bigint;
-};
-
 // The scenario object
-export class TransferErc20Scenario {
+export class TransferErc20Scenario extends Scenario {
   private env: Environment;
 
   constructor(environment: Environment) {
+    super();
     this.env = environment;
   }
 
@@ -38,7 +30,8 @@ export class TransferErc20Scenario {
   }
 
   //runs the baseline EOA version for the scenario
-  public async runBaseline(to: string): Promise<TransferErc20Result> {
+  public async runBaseline(to?: string): Promise<ScenarioResult> {
+    to = to || this.env.utils.randomAddresses(1)[0];
     const amount = ethers.parseEther('10');
 
     const tx = await this.env.test.erc20.transfer(to, amount);
@@ -51,8 +44,21 @@ export class TransferErc20Scenario {
   }
 
   //runs the scenario
-  public async run(to: string[], useRegisteredStandards: boolean = false): Promise<TransferErc20Result> {
-    const batchSize = to.length;
+  public async run(count?: string[] | number, options?: ScenarioOptions): Promise<ScenarioResult> {
+    options = options || DEFAULT_SCENARIO_OPTIONS;
+    count = count || 1;
+    let to: string[];
+    let batchSize: number;
+    if (typeof count == 'number') {
+      to = this.env.utils.randomAddresses(count);
+      batchSize = count;
+    } else {
+      if (count.length == 0) count.push(this.env.utils.randomAddresses(1)[0]);
+      to = count;
+      batchSize = count.length;
+    }
+    if (options.useStatefulCompression) await this.env.compression.registerAddresses(to);
+
     if (this.env.abstractAccounts.length < batchSize) throw new Error('not enough abstract accounts to run batch');
     const timestamp = (await this.env.provider.getBlock('latest'))?.timestamp || 0;
     const amount = ethers.parseEther('10');
@@ -62,7 +68,14 @@ export class TransferErc20Scenario {
     for (let i = 0; i < batchSize; i++) {
       const account = this.env.abstractAccounts[i];
       const intent = new UserIntent(account.contractAddress);
-      if (useRegisteredStandards) {
+      if (options.useEmbeddedStandards) {
+        //using the embedded intent standard versions
+        intent.addSegment(this.env.standards.sequentialNonce(await this.env.utils.getNonce(account.contractAddress)));
+        intent.addSegment(
+          this.env.standards.erc20Release(this.env.test.erc20Address, this.generateLinearRelease(timestamp, fee)),
+        );
+        intent.addSegment(this.env.standards.userOp(this.generateExecuteTransferTx(account, to[i], amount), 100_000));
+      } else {
         //using the registered intent standard versions
         intent.addSegment(
           this.env.registeredStandards.sequentialNonce(await this.env.utils.getNonce(account.contractAddress)),
@@ -76,13 +89,6 @@ export class TransferErc20Scenario {
         intent.addSegment(
           this.env.registeredStandards.userOp(this.generateExecuteTransferTx(account, to[i], amount), 100_000),
         );
-      } else {
-        //using the embedded intent standard versions
-        intent.addSegment(this.env.standards.sequentialNonce(await this.env.utils.getNonce(account.contractAddress)));
-        intent.addSegment(
-          this.env.standards.erc20Release(this.env.test.erc20Address, this.generateLinearRelease(timestamp, fee)),
-        );
-        intent.addSegment(this.env.standards.userOp(this.generateExecuteTransferTx(account, to[i], amount), 100_000));
       }
       await intent.sign(this.env.chainId, this.env.entrypointAddress, account.signer);
       intents.push(intent);
@@ -97,7 +103,10 @@ export class TransferErc20Scenario {
       order.push(batchSize);
       order.push(i);
     }
-    const tx = await this.env.entrypoint.handleIntents(buildSolution(timestamp, intents, order));
+    const solution = buildSolution(timestamp, intents, order);
+    const tx = options.useCompression
+      ? await this.env.compression.general.handleIntents(solution, options.useStatefulCompression)
+      : await this.env.entrypoint.handleIntents(solution);
 
     const serialized = Transaction.from(tx).serialized;
     const bytesUsed = serialized.length / 2 - 1;
