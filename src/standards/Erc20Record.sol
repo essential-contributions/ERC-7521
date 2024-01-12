@@ -2,7 +2,7 @@
 pragma solidity ^0.8.22;
 
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
-import {IProxyAccount} from "../interfaces/IProxyAccount.sol";
+import {IAccountProxy} from "../interfaces/IAccountProxy.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
 import {push} from "./utils/ContextData.sol";
@@ -35,7 +35,7 @@ abstract contract Erc20RecordCore {
         address token = address(uint160(uint256(getSegmentWord(segmentData, 32))));
         address account = intentSender;
         if (segmentData.length == 65 && uint8(segmentData[64]) > 0) {
-            account = IProxyAccount(intentSender).proxyFor();
+            account = IAccountProxy(intentSender).proxyFor();
         }
 
         //push current eth balance to the context data

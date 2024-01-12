@@ -3,7 +3,7 @@ pragma solidity ^0.8.22;
 
 import {IIntentDelegate} from "../interfaces/IIntentDelegate.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
-import {IProxyAccount} from "../interfaces/IProxyAccount.sol";
+import {IAccountProxy} from "../interfaces/IAccountProxy.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
@@ -59,7 +59,7 @@ abstract contract Erc20ReleaseCore is Erc20ReleaseDelegate {
         //release
         if (releaseAmount > 0) {
             address from = address(0);
-            if (isCurveProxy(curve)) from = IProxyAccount(intentSender).proxyFor();
+            if (isCurveProxy(curve)) from = IAccountProxy(intentSender).proxyFor();
             bytes memory releaseEthDelegate =
                 _encodeReleaseErc20(token, from, nextExecutingIntentSender, uint256(releaseAmount));
             IIntentDelegate(address(intentSender)).generalizedIntentDelegateCall(releaseEthDelegate);

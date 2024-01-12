@@ -2,7 +2,7 @@
 pragma solidity ^0.8.22;
 
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
-import {IProxyAccount} from "../interfaces/IProxyAccount.sol";
+import {IAccountProxy} from "../interfaces/IAccountProxy.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
 import {push} from "./utils/ContextData.sol";
@@ -30,7 +30,7 @@ abstract contract EthRecordCore {
         returns (bytes memory)
     {
         address account = intentSender;
-        if (flags > 0) account = IProxyAccount(intentSender).proxyFor();
+        if (flags > 0) account = IAccountProxy(intentSender).proxyFor();
 
         //push current eth balance to the context data
         return push(context, bytes32(account.balance));

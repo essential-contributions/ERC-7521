@@ -4,7 +4,7 @@ pragma solidity ^0.8.22;
 import {BaseAccount} from "../core/BaseAccount.sol";
 import {IAggregator} from "../interfaces/IAggregator.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
-import {IProxyAccount} from "../interfaces/IProxyAccount.sol";
+import {IAccountProxy} from "../interfaces/IAccountProxy.sol";
 import {IIntentDelegate} from "../interfaces/IIntentDelegate.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {Exec} from "../utils/Exec.sol";
@@ -17,7 +17,7 @@ import {UUPSUpgradeable} from "openzeppelin/proxy/utils/UUPSUpgradeable.sol";
  *  this is sample minimal account.
  *  has a single signer that can send requests through the entryPoint.
  */
-contract SimpleAccount is BaseAccount, UUPSUpgradeable, Initializable, IProxyAccount {
+contract SimpleAccount is BaseAccount, UUPSUpgradeable, Initializable, IAccountProxy {
     using ECDSA for bytes32;
 
     IEntryPoint private immutable _entryPoint;

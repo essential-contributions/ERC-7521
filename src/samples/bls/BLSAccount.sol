@@ -5,7 +5,7 @@ import {IBLSAccount} from "./IBLSAccount.sol";
 import {BaseAccount} from "../../core/BaseAccount.sol";
 import {IAggregator} from "../../interfaces/IAggregator.sol";
 import {IEntryPoint} from "../../interfaces/IEntryPoint.sol";
-import {IProxyAccount} from "../../interfaces/IProxyAccount.sol";
+import {IAccountProxy} from "../../interfaces/IAccountProxy.sol";
 import {IIntentDelegate} from "../../interfaces/IIntentDelegate.sol";
 import {UserIntent, UserIntentLib} from "../../interfaces/UserIntent.sol";
 import {Exec} from "../../utils/Exec.sol";
@@ -17,7 +17,7 @@ import {UUPSUpgradeable} from "openzeppelin/proxy/utils/UUPSUpgradeable.sol";
  * Minimal BLS-based account that uses an aggregated signature.
  * The account must maintain its own BLS public key, and expose its trusted signature aggregator.
  */
-contract BLSAccount is BaseAccount, UUPSUpgradeable, Initializable, IProxyAccount, IBLSAccount {
+contract BLSAccount is BaseAccount, UUPSUpgradeable, Initializable, IAccountProxy, IBLSAccount {
     using UserIntentLib for UserIntent;
 
     IEntryPoint private immutable _entryPoint;
