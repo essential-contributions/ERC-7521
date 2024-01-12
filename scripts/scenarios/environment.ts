@@ -159,7 +159,7 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
   const solverUtils = await ethers.deployContract(
     'SolverUtils',
     [testUniswapAddress, testERC20Address, testWrappedNativeTokenAddress],
-    deployer,
+    deployer
   );
   const solverUtilsAddress = await solverUtils.getAddress();
 
@@ -174,7 +174,7 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
   const blsAccountFactory = await ethers.deployContract(
     'BLSAccountFactory',
     [entrypointAddress, blsSignatureAggregatorAddress],
-    deployer,
+    deployer
   );
 
   //deploy smart contract wallets
@@ -227,7 +227,7 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
     const contractAddress = await blsAccountFactory.getFunction('getAddress(uint256[4],address,uint256)')(
       signer.pubkey,
       ownerAddress,
-      i,
+      i
     );
     const contract = await ethers.getContractAt('BLSAccount', contractAddress, deployer);
 
@@ -248,7 +248,7 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
   const generalCompression = await ethers.deployContract(
     'GeneralIntentCompression',
     [entrypointAddress, dataRegistryAddress],
-    deployer,
+    deployer
   );
   const generalCompressionGasUsed = (await generalCompression.deploymentTransaction()?.wait())?.gasUsed || 0n;
   const generalIntentCompression = new GeneralIntentCompression(generalCompression, dataRegistry);
@@ -280,6 +280,7 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
   (await dataRegistry.addTwoByteItem(ethers.hexlify(ethers.randomBytes(32)))).wait();
   (await dataRegistry.addTwoByteItem('0x' + testUniswapAddress.substring(2).padStart(64, '0'))).wait();
   (await dataRegistry.addTwoByteItem('0x' + solverUtilsAddress.substring(2).padStart(64, '0'))).wait();
+  (await dataRegistry.addTwoByteItem('0x' + blsSignatureAggregatorAddress.substring(2).padStart(64, '0'))).wait();
   (await dataRegistry.addFunctionSelector('0xb61d27f6')).wait();
   (await dataRegistry.addFunctionSelector('0xa9059cbb')).wait();
   (await dataRegistry.addFunctionSelector('0x18c6051a')).wait();
@@ -382,7 +383,7 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
 async function registerIntentStandard(
   contractName: string,
   entrypoint: EntryPoint,
-  deployer: Signer,
+  deployer: Signer
 ): Promise<{ standardId: string; gasUsed: bigint }> {
   const contract = await ethers.deployContract(contractName, [], deployer);
   const address = await contract.getAddress();
