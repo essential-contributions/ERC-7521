@@ -330,6 +330,13 @@ library ModexpInverse {
             t0 := mulmod(t0, t1, n)
         }
     }
+
+    /**
+     * Add a test to exclude this contract from coverage report
+     * note: there is currently an open ticket to resolve this more gracefully
+     * https://github.com/foundry-rs/foundry/issues/2988
+     */
+    function test_test() public {}
 }
 
 /**
@@ -650,4 +657,11 @@ library ModexpSqrt {
             t0 := mulmod(t0, t0, n)
         }
     }
+
+    /**
+     * Add a test to exclude this contract from coverage report
+     * note: there is currently an open ticket to resolve this more gracefully
+     * https://github.com/foundry-rs/foundry/issues/2988
+     */
+    function test_test() public {}
 }
