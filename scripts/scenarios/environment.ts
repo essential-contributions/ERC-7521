@@ -75,7 +75,6 @@ export type Environment = {
   };
   utils: {
     getNonce: (account: string) => Promise<number>;
-    roundForEncoding: (amount: bigint) => bigint;
     randomAddresses: (num: number) => string[];
   };
 };
@@ -287,16 +286,6 @@ export async function deployTestEnvironment(
     utils: {
       getNonce: async (account: string) => {
         return Number((await entrypoint.getNonce(account, '0x000000000000000000000000000000000000000000000000')) + 1n);
-      },
-      roundForEncoding: (amount: bigint) => {
-        const timestamp = Math.round(new Date().getTime() / 1000);
-        const evaluateAt = 1000;
-        const startTime = timestamp - evaluateAt;
-        const duration = 3000;
-        const startAmount = 0n;
-        const endAmount = amount * BigInt(duration / evaluateAt);
-        const curve = new LinearCurve(startTime, duration, startAmount, endAmount);
-        return curve.evaluate(timestamp);
       },
       randomAddresses: (num: number) => {
         const addresses: string[] = [];

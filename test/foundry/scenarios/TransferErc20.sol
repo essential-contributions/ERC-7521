@@ -32,7 +32,7 @@ contract TransferErc20 is ScenarioTestEnvironment {
         intent = _addErc20ReleaseLinear(
             intent,
             uint32(block.timestamp - releaseAt),
-            uint24(releaseDuration),
+            uint16(releaseDuration),
             releaseStartAmount,
             (releaseEndAmount - releaseStartAmount) / int256(releaseDuration)
         );
@@ -77,8 +77,6 @@ contract TransferErc20 is ScenarioTestEnvironment {
         //build intent
         UserIntent memory intent = _intentForCase(erc20ReleaseAmount, transferRecipient, transferAmount);
         intent = _signIntent(intent);
-        uint256 erc20ReleaseAmountEncoded =
-            uint256(evaluateCurve(bytes16(_getBytes(intent.intentData[1], 64, 80)), block.timestamp));
 
         //build solution
         IntentSolution memory solution = _solutionForCase(intent, erc20Recipient);
@@ -88,10 +86,10 @@ contract TransferErc20 is ScenarioTestEnvironment {
 
         //verify end state
         uint256 solverBalance = _testERC20.balanceOf(_publicAddressSolver);
-        assertEq(solverBalance, erc20ReleaseAmountEncoded, "The solver ended up with incorrect token balance");
+        assertEq(solverBalance, erc20ReleaseAmount, "The solver ended up with incorrect token balance");
 
         uint256 userBalance = _testERC20.balanceOf(address(_account));
-        uint256 expectedUserBalance = _accountInitialERC20Balance - (erc20ReleaseAmountEncoded + transferAmount);
+        uint256 expectedUserBalance = _accountInitialERC20Balance - (erc20ReleaseAmount + transferAmount);
         assertEq(userBalance, expectedUserBalance, "The user ended up with incorrect token balance");
 
         uint256 recipientBalance = _testERC20.balanceOf(address(_publicAddress));

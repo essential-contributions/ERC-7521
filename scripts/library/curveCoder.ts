@@ -19,9 +19,9 @@ export abstract class Curve {
 }
 
 // Constant value curve
-// [bytes1]  flags - curve type, relative, evaluate backwards (flip), negative [c--r fn--]
+// [bytes1]  flags - relative [-r-- ----]
 // [uint32]  startAmount - starting amount
-// [uint8]   amountMult - amount multiplier (final_amount = amount * (amountMult * 10))
+// [uint8]   amountMult - amount multiplier (final_amount = amount * (10 ** amountMult))
 export class ConstantCurve extends Curve {
   private relative: boolean;
   private negative: boolean;
@@ -46,7 +46,7 @@ export class ConstantCurve extends Curve {
 
   //returns the curve value at the given parameters
   evaluate(timestamp: number, previousValue?: bigint): bigint {
-    const amount = (BigInt(this.amount) << BigInt(this.mult)) * (this.negative ? -1n : 1n);
+    const amount = BigInt(this.amount) * 10n ** BigInt(this.mult) * (this.negative ? -1n : 1n);
     if (previousValue && this.relative) return previousValue + amount;
     return amount;
   }
@@ -68,25 +68,24 @@ export class ConstantCurve extends Curve {
 }
 
 // Linear value curve
-// [bytes1]  flags - curve type, relative, negatives [c--r -nnn]
+// [bytes1]  flags - relative [-r-- ----]
 // [uint32]  startAmount - starting amount
-// [uint8]   amountMult - amount multiplier (final_amount = amount * (amountMult * 10))
+// [uint8]   startAmountMult - amount multiplier (final_amount = amount * (10 ** amountMult)) [first bit = negative]
 // --only for linear or exponential--
+// [uint24]  deltaAmount - amount of change after each second
+// [uint8]   deltaAmountMult - amount multiplier (final_amount = amount * (10 ** amountMult)) [first bit = negative]
 // [uint32]  startTime -  start time of the curve (in seconds)
 // [uint16]  deltaTime - amount of time from start until curve caps (in seconds)
-// [uint24]  deltaAmount - amount of change after each second
-// [bytes1]  misc - delta amount mult [mmmm ----]
 export class LinearCurve extends Curve {
   private relative: boolean;
-  private negativeStartAmount: boolean;
-  private negativeDeltaAmount: boolean;
-  private negativeDeltaAmountMult: boolean;
-  private startTime: number;
-  private deltaTime: number;
+  private startAmountNegative: boolean;
   private startAmount: number;
   private startAmountMult: number;
+  private deltaAmountNegative: boolean;
   private deltaAmount: number;
   private deltaAmountMult: number;
+  private startTime: number;
+  private deltaTime: number;
 
   constructor(startTime: number, duration: number, startAmount: bigint, endAmount: bigint, relative: boolean = false) {
     super();
@@ -96,53 +95,38 @@ export class LinearCurve extends Curve {
     if (duration > 0xffff) throw new Error(`duration too large (duration: ${duration} [seconds])`);
     const encodedStartAmount = encodeAsUint32(startAmount);
     const encodedDeltaAmount = encodeAsUint24((endAmount - startAmount) / BigInt(duration));
-    if (startAmount == 0n) {
-      encodedStartAmount.mult = encodedDeltaAmount.mult;
-      encodedDeltaAmount.mult = 0;
-    } else {
-      encodedDeltaAmount.mult = encodedStartAmount.mult - encodedDeltaAmount.mult;
-      if (encodedDeltaAmount.mult < -15) throw new Error('delta too small in comparison to start');
-      if (encodedDeltaAmount.mult > 15) throw new Error('delta too large in comparison to start');
-    }
 
     this.startTime = startTime;
     this.deltaTime = duration;
+    this.startAmountNegative = encodedStartAmount.negative;
     this.startAmount = encodedStartAmount.value;
     this.startAmountMult = encodedStartAmount.mult;
+    this.deltaAmountNegative = encodedDeltaAmount.negative;
     this.deltaAmount = encodedDeltaAmount.value;
-    this.deltaAmountMult = Math.abs(encodedDeltaAmount.mult);
-    this.negativeStartAmount = encodedStartAmount.negative;
-    this.negativeDeltaAmount = encodedDeltaAmount.negative;
-    this.negativeDeltaAmountMult = encodedDeltaAmount.mult < 0;
+    this.deltaAmountMult = encodedDeltaAmount.mult;
     this.relative = relative;
   }
 
   //returns the encoded curve bytes
   encode(): string {
-    const flags =
-      0x80 +
-      (this.relative ? 0x10 : 0) +
-      (this.negativeStartAmount ? 0x04 : 0) +
-      (this.negativeDeltaAmount ? 0x02 : 0) +
-      (this.negativeDeltaAmountMult ? 0x01 : 0);
-    const misc = this.deltaAmountMult << 4;
+    const flags = 0x01 + (this.relative ? 0x40 : 0);
     return combineHex(
       ethers.toBeHex(flags, 1),
       ethers.toBeHex(this.startAmount, 4),
-      ethers.toBeHex(this.startAmountMult, 1),
+      ethers.toBeHex(this.startAmountMult + (this.startAmountNegative ? 0x80 : 0), 1),
+      ethers.toBeHex(this.deltaAmount, 3),
+      ethers.toBeHex(this.deltaAmountMult + (this.deltaAmountNegative ? 0x80 : 0), 1),
       ethers.toBeHex(this.startTime, 4),
       ethers.toBeHex(this.deltaTime, 2),
-      ethers.toBeHex(this.deltaAmount, 3),
-      ethers.toBeHex(misc, 1),
     );
   }
 
   //returns the curve value at the given parameters
   evaluate(timestamp: number, previousValue?: bigint): bigint {
-    const deltaMult = this.startAmountMult + this.deltaAmountMult * (this.negativeDeltaAmountMult ? -1 : 1);
     const startAmount =
-      (BigInt(this.startAmount) << BigInt(this.startAmountMult)) * (this.negativeStartAmount ? -1n : 1n);
-    const deltaAmount = (BigInt(this.deltaAmount) << BigInt(deltaMult)) * (this.negativeDeltaAmount ? -1n : 1n);
+      BigInt(this.startAmount) * 10n ** BigInt(this.startAmountMult) * (this.startAmountNegative ? -1n : 1n);
+    const deltaAmount =
+      BigInt(this.deltaAmount) * 10n ** BigInt(this.deltaAmountMult) * (this.deltaAmountNegative ? -1n : 1n);
 
     //determine where to evaluate the curve
     let evaluateAt = 0;
@@ -174,27 +158,26 @@ export class LinearCurve extends Curve {
 }
 
 // Exponential value curve
-// [bytes1]  flags - curve type, relative, evaluate backwards (flip), negatives [c--r fnnn]
+// [bytes1]  flags - evaluate backwards (flip), relative, exponent [fr-- eeee] [exponent: 0 = const, 1 = linear, >1 = exponential]
 // [uint32]  startAmount - starting amount
-// [uint8]   amountMult - amount multiplier (final_amount = amount * (amountMult * 10))
+// [uint8]   startAmountMult - amount multiplier (final_amount = amount * (10 ** amountMult)) [first bit = negative]
 // --only for linear or exponential--
+// [uint24]  deltaAmount - amount of change after each second
+// [uint8]   deltaAmountMult - amount multiplier (final_amount = amount * (10 ** amountMult)) [first bit = negative]
 // [uint32]  startTime -  start time of the curve (in seconds)
 // [uint16]  deltaTime - amount of time from start until curve caps (in seconds)
-// [uint24]  deltaAmount - amount of change after each second
-// [bytes1]  misc - delta amount mult, exponent [mmmm eeee]
 export class ExponentialCurve extends Curve {
   private relative: boolean;
   private evaluateBackwards: boolean;
-  private negativeStartAmount: boolean;
-  private negativeDeltaAmount: boolean;
-  private negativeDeltaAmountMult: boolean;
-  private startTime: number;
-  private deltaTime: number;
+  private exponent: number;
+  private startAmountNegative: boolean;
   private startAmount: number;
   private startAmountMult: number;
+  private deltaAmountNegative: boolean;
   private deltaAmount: number;
   private deltaAmountMult: number;
-  private exponent: number;
+  private startTime: number;
+  private deltaTime: number;
 
   constructor(
     startTime: number,
@@ -218,56 +201,40 @@ export class ExponentialCurve extends Curve {
     }
     const encodedStartAmount = encodeAsUint32(startAmount);
     const encodedDeltaAmount = encodeAsUint24((endAmount - startAmount) / BigInt(Math.pow(duration, exponent)));
-    if (startAmount == 0n) {
-      encodedStartAmount.mult = encodedDeltaAmount.mult;
-      encodedDeltaAmount.mult = 0;
-    } else {
-      encodedDeltaAmount.mult = encodedStartAmount.mult - encodedDeltaAmount.mult;
-      if (encodedDeltaAmount.mult < -15) throw new Error('delta too small in comparison to start');
-      if (encodedDeltaAmount.mult > 15) throw new Error('delta too large in comparison to start');
-    }
 
     this.startTime = startTime;
     this.deltaTime = duration;
+    this.startAmountNegative = encodedStartAmount.negative;
     this.startAmount = encodedStartAmount.value;
     this.startAmountMult = encodedStartAmount.mult;
+    this.deltaAmountNegative = encodedDeltaAmount.negative;
     this.deltaAmount = encodedDeltaAmount.value;
     this.deltaAmountMult = Math.abs(encodedDeltaAmount.mult);
     this.exponent = exponent;
     this.evaluateBackwards = invert;
-    this.negativeStartAmount = encodedStartAmount.negative;
-    this.negativeDeltaAmount = encodedDeltaAmount.negative;
-    this.negativeDeltaAmountMult = encodedDeltaAmount.mult < 0;
     this.relative = relative;
   }
 
   //returns the encoded curve bytes
   encode(): string {
-    const flags =
-      0x80 +
-      (this.relative ? 0x10 : 0) +
-      (this.evaluateBackwards ? 0x08 : 0) +
-      (this.negativeStartAmount ? 0x04 : 0) +
-      (this.negativeDeltaAmount ? 0x02 : 0) +
-      (this.negativeDeltaAmountMult ? 0x01 : 0);
-    const misc = (this.deltaAmountMult << 4) + this.exponent;
+    const flags = (this.evaluateBackwards ? 0x80 : 0) + (this.relative ? 0x40 : 0) + this.exponent;
     return combineHex(
       ethers.toBeHex(flags, 1),
       ethers.toBeHex(this.startAmount, 4),
-      ethers.toBeHex(this.startAmountMult, 1),
+      ethers.toBeHex(this.startAmountMult + (this.startAmountNegative ? 0x80 : 0), 1),
+      ethers.toBeHex(this.deltaAmount, 3),
+      ethers.toBeHex(this.deltaAmountMult + (this.deltaAmountNegative ? 0x80 : 0), 1),
       ethers.toBeHex(this.startTime, 4),
       ethers.toBeHex(this.deltaTime, 2),
-      ethers.toBeHex(this.deltaAmount, 3),
-      ethers.toBeHex(misc, 1),
     );
   }
 
   //returns the curve value at the given parameters
   evaluate(timestamp: number, previousValue?: bigint): bigint {
-    const deltaMult = this.startAmountMult + this.deltaAmountMult * (this.negativeDeltaAmountMult ? -1 : 1);
     const startAmount =
-      (BigInt(this.startAmount) << BigInt(this.startAmountMult)) * (this.negativeStartAmount ? -1n : 1n);
-    const deltaAmount = (BigInt(this.deltaAmount) << BigInt(deltaMult)) * (this.negativeDeltaAmount ? -1n : 1n);
+      BigInt(this.startAmount) * 10n ** BigInt(this.startAmountMult) * (this.startAmountNegative ? -1n : 1n);
+    const deltaAmount =
+      BigInt(this.deltaAmount) * 10n ** BigInt(this.deltaAmountMult) * (this.deltaAmountNegative ? -1n : 1n);
 
     //determine where to evaluate the curve
     let evaluateAt = 0;
@@ -312,7 +279,9 @@ function encodeAsUint32(amount: bigint): EncodedAmount {
   if (negative) amount = -amount;
   let mult = 0;
   while (amount > ethers.toBigInt('0xffffffff')) {
-    amount = amount >> 1n;
+    const div = amount / 10n;
+    if (div * 10n != amount) throw new Error(`too many decimals to encode in 4 bytes (startTime: ${amount})`);
+    amount = div;
     mult++;
   }
   return {
@@ -328,7 +297,9 @@ function encodeAsUint24(amount: bigint): EncodedAmount {
   if (negative) amount = -amount;
   let mult = 0;
   while (amount > ethers.toBigInt('0xffffff')) {
-    amount = amount >> 1n;
+    const div = amount / 10n;
+    if (div * 10n != amount) throw new Error(`too many decimals to encode in 3 bytes (startTime: ${amount})`);
+    amount = div;
     mult++;
   }
   return {

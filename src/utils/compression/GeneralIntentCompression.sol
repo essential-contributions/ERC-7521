@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.22;
-//TODO: implement custom abi
+
+/* solhint-disable private-vars-leading-underscore */
+/* solhint-disable func-name-mixedcase */
+
 //TODO: experiment with assembly ("memory-safe")
 
 import {StatefulAbiEncoding, decodeSize, encodeSize} from "./StatefulAbiEncoding.sol";
@@ -53,7 +56,7 @@ contract GeneralIntentCompression is StatefulAbiEncoding {
             data.length := calldatasize()
         }
         bytes memory call = decompressHandleIntents(data);
-        Exec.call(address(entrypoint), 0, call, gasleft());
+        Exec.callAndRevert(address(entrypoint), call, 8096);
     }
 
     /*

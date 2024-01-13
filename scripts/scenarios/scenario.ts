@@ -1,3 +1,5 @@
+import { TransactionResponse } from 'ethers';
+
 // Scenario result definition
 export type ScenarioResult = {
   gasUsed: number;
@@ -6,6 +8,7 @@ export type ScenarioResult = {
   serialized: string;
   amount: bigint;
   fee: bigint;
+  tx: Promise<TransactionResponse> | null;
 };
 
 // Scenario options definition

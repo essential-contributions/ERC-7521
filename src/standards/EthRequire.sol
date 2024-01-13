@@ -13,13 +13,14 @@ import {evaluateCurve, encodeConstantCurve, encodeComplexCurve, isCurveRelative}
  * Eth Require Intent Standard core logic
  * @dev data
  *   [bytes32] standard - the intent standard identifier
- *   [uint40]  startTime - start time of the curve (in seconds)
- *   [uint32]  deltaTime - amount of time from start until curve caps (in seconds)
- *   [uint96]  startAmount - starting amount
- *   [uint8]   startAmountMult - starting amount multiplier (final_amount = amount * (amountMult * 10))
- *   [uint64]  deltaAmount - amount of change after each second
- *   [uint8]   deltaAmountMult - delta amount multiplier (final_amount = amount * (amountMult * 10))
- *   [bytes1]  flags/exponent - evaluate backwards, negatives, relative or absolute, exponent [bnnr eeee]
+ *   [bytes1]  flags - evaluate backwards (flip), relative, exponent [fr-- eeee] [exponent: 0 = const, 1 = linear, >1 = exponential]
+ *   [uint32]  startAmount - starting amount
+ *   [uint8]   startAmountMult - amount multiplier (final_amount = amount * (amountMult * 10)) [first bit = negative]
+ * --only for linear or exponential--
+ *   [uint24]  deltaAmount - amount of change after each second
+ *   [uint8]   deltaAmountMult - amount multiplier (final_amount = amount * (amountMult * 10)) [first bit = negative]
+ *   [uint32]  startTime -  start time of the curve (in seconds)
+ *   [uint16]  deltaTime - amount of time from start until curve caps (in seconds)
  */
 abstract contract EthRequireCore {
     /**
@@ -130,7 +131,7 @@ function encodeEthRequireData(bytes32 standardId, int256 amount, bool isRelative
 function encodeEthRequireComplexData(
     bytes32 standardId,
     uint32 startTime,
-    uint24 deltaTime,
+    uint16 deltaTime,
     int256 startAmount,
     int256 deltaAmount,
     uint8 exponent,

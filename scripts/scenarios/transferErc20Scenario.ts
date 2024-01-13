@@ -34,13 +34,14 @@ export class TransferErc20Scenario extends Scenario {
     to = to || this.env.utils.randomAddresses(1)[0];
     const amount = ethers.parseEther('10');
 
-    const tx = await this.env.test.erc20.transfer(to, amount);
+    const txPromise = this.env.test.erc20.transfer(to, amount);
+    const tx = await txPromise;
 
     const serialized = Transaction.from(tx).serialized;
     const bytesUsed = serialized.length / 2 - 1;
     const gasUsed = Number((await tx.wait())?.gasUsed || 0n);
     const txFee = ((await tx.wait())?.gasUsed || 0n) * ((await tx.wait())?.gasPrice || 0n);
-    return { gasUsed, bytesUsed, txFee, serialized, amount, fee: 0n };
+    return { gasUsed, bytesUsed, txFee, serialized, amount, fee: 0n, tx: txPromise };
   }
 
   //runs the scenario
@@ -62,7 +63,7 @@ export class TransferErc20Scenario extends Scenario {
     if (this.env.abstractAccounts.length < batchSize) throw new Error('not enough abstract accounts to run batch');
     const timestamp = (await this.env.provider.getBlock('latest'))?.timestamp || 0;
     const amount = ethers.parseEther('10');
-    const fee = this.env.utils.roundForEncoding(ethers.parseEther('1'));
+    const fee = ethers.parseEther('1');
 
     const intents = [];
     for (let i = 0; i < batchSize; i++) {
@@ -104,15 +105,16 @@ export class TransferErc20Scenario extends Scenario {
       order.push(i);
     }
     const solution = buildSolution(timestamp, intents, order);
-    const tx = options.useCompression
-      ? await this.env.compression.general.handleIntents(solution, options.useStatefulCompression)
-      : await this.env.entrypoint.handleIntents(solution);
+    const txPromise = options.useCompression
+      ? this.env.compression.general.handleIntents(solution, options.useStatefulCompression)
+      : this.env.entrypoint.handleIntents(solution);
+    const tx = await txPromise;
 
     const serialized = Transaction.from(tx).serialized;
     const bytesUsed = serialized.length / 2 - 1;
     const gasUsed = Number((await tx.wait())?.gasUsed || 0n);
     const txFee = ((await tx.wait())?.gasUsed || 0n) * ((await tx.wait())?.gasPrice || 0n);
-    return { gasUsed, bytesUsed, txFee, serialized, amount, fee };
+    return { gasUsed, bytesUsed, txFee, serialized, amount, fee, tx: txPromise };
   }
 
   //////////////////////

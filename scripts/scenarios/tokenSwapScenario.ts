@@ -48,7 +48,8 @@ export class TokenSwapScenario extends Scenario {
       amount,
       this.env.deployerAddress,
     );
-    const tx = await this.env.test.uniswap.exactInputSingle(swapParams);
+    const txPromise = this.env.test.uniswap.exactInputSingle(swapParams);
+    const tx = await txPromise;
     const unwrap = await this.env.test.wrappedNativeToken.withdraw(
       await this.env.test.wrappedNativeToken.balanceOf(this.env.deployerAddress),
     );
@@ -59,7 +60,7 @@ export class TokenSwapScenario extends Scenario {
     const txFee =
       ((await tx.wait())?.gasUsed || 0n) * ((await tx.wait())?.gasPrice || 0n) +
       ((await unwrap.wait())?.gasUsed || 0n) * ((await unwrap.wait())?.gasPrice || 0n);
-    return { gasUsed, bytesUsed, txFee, serialized, amount, fee: 0n };
+    return { gasUsed, bytesUsed, txFee, serialized, amount, fee: 0n, tx: txPromise };
   }
 
   //runs the scenario
@@ -70,7 +71,7 @@ export class TokenSwapScenario extends Scenario {
 
     if (this.env.abstractAccounts.length < batchSize) throw new Error('not enough abstract accounts to run batch');
     const timestamp = (await this.env.provider.getBlock('latest'))?.timestamp || 0;
-    const amount = this.env.utils.roundForEncoding(ethers.parseEther('1'));
+    const amount = ethers.parseEther('1');
     if (batchSize <= 1) return this.runSingle(timestamp, amount, options);
 
     const intents: UserIntent[] = [];
@@ -127,15 +128,16 @@ export class TokenSwapScenario extends Scenario {
       order.push(i);
     }
     const solution = buildSolution(timestamp, intents, order);
-    const tx = options.useCompression
-      ? await this.env.compression.general.handleIntents(solution, options.useStatefulCompression)
-      : await this.env.entrypoint.handleIntents(solution);
+    const txPromise = options.useCompression
+      ? this.env.compression.general.handleIntents(solution, options.useStatefulCompression)
+      : this.env.entrypoint.handleIntents(solution);
+    const tx = await txPromise;
 
     const serialized = Transaction.from(tx).serialized;
     const bytesUsed = serialized.length / 2 - 1;
     const gasUsed = Number((await tx.wait())?.gasUsed || 0n);
     const txFee = ((await tx.wait())?.gasUsed || 0n) * ((await tx.wait())?.gasPrice || 0n);
-    return { gasUsed, bytesUsed, txFee, serialized, amount, fee: 0n };
+    return { gasUsed, bytesUsed, txFee, serialized, amount, fee: 0n, tx: txPromise };
   }
 
   //////////////////////
@@ -176,15 +178,16 @@ export class TokenSwapScenario extends Scenario {
       this.env.standards.call(this.generateSolverSwapTx(this.env.deployerAddress, account.contractAddress, amount)),
     );
     const solution = buildSolution(timestamp, [intent, solverIntent], [0, 0, 0, 1, 0]);
-    const tx = options.useCompression
-      ? await this.env.compression.general.handleIntents(solution, options.useStatefulCompression)
-      : await this.env.entrypoint.handleIntents(solution);
+    const txPromise = options.useCompression
+      ? this.env.compression.general.handleIntents(solution, options.useStatefulCompression)
+      : this.env.entrypoint.handleIntents(solution);
+    const tx = await txPromise;
 
     const serialized = Transaction.from(tx).serialized;
     const bytesUsed = serialized.length / 2 - 1;
     const gasUsed = Number((await tx.wait())?.gasUsed || 0n);
     const txFee = ((await tx.wait())?.gasUsed || 0n) * ((await tx.wait())?.gasPrice || 0n);
-    return { gasUsed, bytesUsed, txFee, serialized, amount, fee: 0n };
+    return { gasUsed, bytesUsed, txFee, serialized, amount, fee: 0n, tx: txPromise };
   }
 
   // helper function to generate transfer tx calldata
