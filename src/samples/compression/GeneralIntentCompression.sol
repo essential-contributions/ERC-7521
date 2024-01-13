@@ -271,8 +271,8 @@ contract GeneralIntentCompression is StatefulAbiEncoding {
             }
 
             //set order
+            uint256 dIdx = dataIndex;
             for (uint256 i = 0; i < numExecutionOrder;) {
-                uint256 dIdx = dataIndex;
                 bytes32 orders;
                 assembly {
                     orders := calldataload(add(data.offset, dIdx))

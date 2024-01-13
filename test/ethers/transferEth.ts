@@ -12,7 +12,7 @@ describe('Transfer ETH Test', () => {
     useCompression: false,
     useStatefulCompression: false,
     useAccountAsEOAProxy: false,
-    useBLSSignatureAggregation: true,
+    useBLSSignatureAggregation: false,
   };
 
   before(async () => {

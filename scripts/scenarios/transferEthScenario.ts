@@ -164,7 +164,17 @@ export class TransferEthScenario extends Scenario {
     //handle intents
     let txPromise: Promise<ContractTransactionResponse>;
     if (options.useCompression) {
-      txPromise = this.env.compression.general.handleIntents(solution, options.useStatefulCompression);
+      if (aggregatedSignature) {
+        txPromise = this.env.compression.general.handleIntentsAggregated(
+          [solution],
+          this.env.blsSignatureAggregatorAddress,
+          toAggregate,
+          aggregatedSignature,
+          options.useStatefulCompression,
+        );
+      } else {
+        txPromise = this.env.compression.general.handleIntents(solution, options.useStatefulCompression);
+      }
     } else {
       if (aggregatedSignature) {
         txPromise = this.env.entrypoint.handleIntentsAggregated(

@@ -159,7 +159,7 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
   const solverUtils = await ethers.deployContract(
     'SolverUtils',
     [testUniswapAddress, testERC20Address, testWrappedNativeTokenAddress],
-    deployer
+    deployer,
   );
   const solverUtilsAddress = await solverUtils.getAddress();
 
@@ -174,7 +174,7 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
   const blsAccountFactory = await ethers.deployContract(
     'BLSAccountFactory',
     [entrypointAddress, blsSignatureAggregatorAddress],
-    deployer
+    deployer,
   );
 
   //deploy smart contract wallets
@@ -227,7 +227,7 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
     const contractAddress = await blsAccountFactory.getFunction('getAddress(uint256[4],address,uint256)')(
       signer.pubkey,
       ownerAddress,
-      i
+      i,
     );
     const contract = await ethers.getContractAt('BLSAccount', contractAddress, deployer);
 
@@ -248,7 +248,7 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
   const generalCompression = await ethers.deployContract(
     'GeneralIntentCompression',
     [entrypointAddress, dataRegistryAddress],
-    deployer
+    deployer,
   );
   const generalCompressionGasUsed = (await generalCompression.deploymentTransaction()?.wait())?.gasUsed || 0n;
   const generalIntentCompression = new GeneralIntentCompression(generalCompression, dataRegistry);
@@ -383,7 +383,7 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
 async function registerIntentStandard(
   contractName: string,
   entrypoint: EntryPoint,
-  deployer: Signer
+  deployer: Signer,
 ): Promise<{ standardId: string; gasUsed: bigint }> {
   const contract = await ethers.deployContract(contractName, [], deployer);
   const address = await contract.getAddress();

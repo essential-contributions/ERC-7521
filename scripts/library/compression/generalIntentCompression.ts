@@ -348,20 +348,22 @@ export class GeneralIntentCompression {
     //execution steps
     if (solution.order.length > 256) throw new Error('Execution order too large');
     encoded += toHex(solution.order.length, 1);
-    for (let i = 0; i < solution.order.length; ) {
-      let steps = 0n;
-      for (let j = 0; j < 51; j++) {
-        steps = steps << 5n;
-        if (i < solution.order.length) {
-          steps += BigInt(solution.order[i]);
-          i++;
+    if (solution.order.length > 0) {
+      for (let i = 0; i < solution.order.length; ) {
+        let steps = 0n;
+        for (let j = 0; j < 51; j++) {
+          steps = steps << 5n;
+          if (i < solution.order.length) {
+            steps += BigInt(solution.order[i]);
+            i++;
+          }
         }
-      }
-      steps = steps << 1n;
-      let byteLen = Math.ceil((i * 5) / 8);
-      steps = steps >> ((32n - BigInt(byteLen)) * 8n);
+        steps = steps << 1n;
+        let byteLen = i % 51 == 0 ? 32 : Math.ceil(((i % 51) * 5) / 8);
+        steps = steps >> ((32n - BigInt(byteLen)) * 8n);
 
-      encoded += toHex(steps, byteLen);
+        encoded += toHex(steps, byteLen);
+      }
     }
 
     return encoded;

@@ -12,7 +12,7 @@ describe('Token Swaps Test', () => {
     useCompression: false,
     useStatefulCompression: false,
     useAccountAsEOAProxy: false,
-    useBLSSignatureAggregation: true,
+    useBLSSignatureAggregation: false,
   };
 
   before(async () => {

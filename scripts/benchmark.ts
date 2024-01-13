@@ -103,6 +103,26 @@ async function main() {
   };
   logScenarios(await run(blsSignatureAggregation), 'BLS Signature Aggregation');
 
+  //embedded with bls signatures and compression
+  const blsCompression: ScenarioOptions = {
+    useEmbeddedStandards: true,
+    useCompression: true,
+    useStatefulCompression: false,
+    useAccountAsEOAProxy: false,
+    useBLSSignatureAggregation: true,
+  };
+  logScenarios(await run(blsCompression), 'BLS Signature Aggregation w/ Compression');
+
+  //embedded with bls signatures and stateful compression
+  const blsStatefulCompression: ScenarioOptions = {
+    useEmbeddedStandards: true,
+    useCompression: true,
+    useStatefulCompression: true,
+    useAccountAsEOAProxy: false,
+    useBLSSignatureAggregation: true,
+  };
+  logScenarios(await run(blsStatefulCompression), 'BLS Signature Aggregation w/ Stateful Compression');
+
   //embedded for EOA
   const embeddedStandardsEOA: ScenarioOptions = {
     useEmbeddedStandards: true,
