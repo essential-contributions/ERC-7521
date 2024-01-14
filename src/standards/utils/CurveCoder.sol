@@ -3,7 +3,7 @@ pragma solidity ^0.8.22;
 
 /*
  * Encoding masks
- *   [bytes1]  flags - evaluate backwards (flip), relative, exponent [fr-- eeee] [exponent: 0 = const, 1 = linear, >1 = exponential]
+ *   [bytes1]  flags - evaluate backwards (flip), relative, as proxy, exponent [frp- eeee] [exponent: 0 = const, 1 = linear, >1 = exponential]
  *   [uint32]  startAmount - starting amount
  *   [uint8]   startAmountMult - amount multiplier (final_amount = amount * (10 ** amountMult)) [first bit = negative]
  * --only for linear or exponential--
@@ -15,6 +15,7 @@ pragma solidity ^0.8.22;
 
 bytes16 constant MASK_FLAGS_FLIP = 0x80000000000000000000000000000000;
 bytes16 constant MASK_FLAGS_RELATIVE = 0x40000000000000000000000000000000;
+bytes16 constant MASK_FLAGS_PROXY = 0x20000000000000000000000000000000;
 bytes16 constant MASK_EXPONENT = 0x0f000000000000000000000000000000;
 bytes16 constant MASK_START_AMOUNT = 0x00ffffffff0000000000000000000000;
 bytes16 constant MASK_START_AMT_MULT = 0x00000000007f00000000000000000000;
@@ -36,9 +37,10 @@ uint8 constant SHIFT_DELTA_TIME = 0;
  * Encodes the parameters into a constant curve
  * @param amount the amount to encode
  * @param isRelative indicate the curve is to be evaluated relatively
+ * @param isProxy indicate the curve is for an account other than the original sender
  * @return encoding the parameter encoding
  */
-function encodeConstantCurve(int256 amount, bool isRelative) pure returns (bytes6) {
+function encodeConstantCurve(int256 amount, bool isRelative, bool isProxy) pure returns (bytes6) {
     //convert params
     uint256 adjustedAmount;
     bool amountNegative;
@@ -62,6 +64,7 @@ function encodeConstantCurve(int256 amount, bool isRelative) pure returns (bytes
         | (bytes16(uint128(amountMult)) << SHIFT_START_AMT_MULT);
     if (amountNegative) encoding |= MASK_START_AMT_NEG;
     if (isRelative) encoding |= MASK_FLAGS_RELATIVE;
+    if (isProxy) encoding |= MASK_FLAGS_PROXY;
     return bytes6(encoding);
 }
 
@@ -74,6 +77,7 @@ function encodeConstantCurve(int256 amount, bool isRelative) pure returns (bytes
  * @param exponent the exponent order of the curve
  * @param backwards evaluate curve from right to left
  * @param isRelative indicate the curve is to be evaluated relatively
+ * @param isProxy indicate the curve is for an account other than the original sender
  * @return the fully encoded intent standard segment data
  */
 function encodeComplexCurve(
@@ -83,12 +87,14 @@ function encodeComplexCurve(
     int256 deltaAmount,
     uint8 exponent,
     bool backwards,
-    bool isRelative
+    bool isRelative,
+    bool isProxy
 ) pure returns (bytes16) {
     //start encode
     bytes16 encoding = (bytes16(uint128(exponent & 0x0f)) << SHIFT_EXPONENT);
-    if (isRelative) encoding |= MASK_FLAGS_RELATIVE;
     if (backwards) encoding |= MASK_FLAGS_FLIP;
+    if (isRelative) encoding |= MASK_FLAGS_RELATIVE;
+    if (isProxy) encoding |= MASK_FLAGS_PROXY;
 
     //encode start amount
     {
@@ -149,7 +155,7 @@ function encodeComplexCurve(
  * Decodes the given curve parameter encoding and evaluates it
  * @param curve the encoded parameters
  * @dev curve
- *   [bytes1]  flags - evaluate backwards (flip), relative, exponent [fr-- eeee] [exponent: 0 = const, 1 = linear, >1 = exponential]
+ *   [bytes1]  flags - evaluate backwards (flip), relative, as proxy, exponent [frp- eeee] [exponent: 0 = const, 1 = linear, >1 = exponential]
  *   [uint32]  startAmount - starting amount
  *   [uint8]   startAmountMult - amount multiplier (final_amount = amount * (10 ** amountMult)) [first bit = negative]
  * --only for linear or exponential--
@@ -235,12 +241,21 @@ function evaluateCurve(bytes16 curve, uint256 solutionTimestamp) pure returns (i
 }
 
 /**
- * Gets if the constant curve is flagged as relative from the given parameter encoding
+ * Gets if the curve is flagged as relative from the given parameter encoding
  * @param curve the curve data
  * @return isRelative true if curve is meant to be evaluated relatively
  */
 function isCurveRelative(bytes16 curve) pure returns (bool isRelative) {
     return uint128(curve & MASK_FLAGS_RELATIVE) > 0;
+}
+
+/**
+ * Gets if the curve is flagged as being for an account other than the original sender
+ * @param curve the curve data
+ * @return isProxy true if curve is meant to be evaluated relatively
+ */
+function isCurveProxy(bytes16 curve) pure returns (bool isProxy) {
+    return uint128(curve & MASK_FLAGS_PROXY) > 0;
 }
 
 /**

@@ -31,7 +31,8 @@ import {TestERC20} from "../../../src/test/TestERC20.sol";
 import {TestUniswap} from "../../../src/test/TestUniswap.sol";
 import {TestWrappedNativeToken} from "../../../src/test/TestWrappedNativeToken.sol";
 import {SolverUtils} from "../../../src/test/SolverUtils.sol";
-import {AbstractAccount} from "../../../src/wallet/AbstractAccount.sol";
+import {SimpleAccountFactory} from "../../../src/samples/SimpleAccountFactory.sol";
+import {SimpleAccount} from "../../../src/samples/SimpleAccount.sol";
 import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 
 abstract contract ScenarioTestEnvironment is Test {
@@ -40,7 +41,7 @@ abstract contract ScenarioTestEnvironment is Test {
 
     //main contracts
     EntryPoint internal _entryPoint;
-    AbstractAccount internal _account;
+    SimpleAccount internal _account;
 
     //testing contracts
     TestERC20 internal _testERC20;
@@ -65,7 +66,10 @@ abstract contract ScenarioTestEnvironment is Test {
     function setUp() public virtual {
         //deploy contracts
         _entryPoint = new EntryPoint();
-        _account = new AbstractAccount(_entryPoint, _publicAddress);
+
+        //deploy accounts
+        SimpleAccountFactory accountFactory = new SimpleAccountFactory(_entryPoint);
+        _account = accountFactory.createAccount(_publicAddress, 0);
 
         //deploy test contracts
         _testERC20 = new TestERC20();
@@ -97,7 +101,7 @@ abstract contract ScenarioTestEnvironment is Test {
      */
     function _accountClaimAirdropERC20(uint256 amount) internal view returns (bytes memory) {
         bytes memory mintCall = abi.encodeWithSelector(TestERC20.mint.selector, address(_account), amount);
-        return abi.encodeWithSelector(AbstractAccount.execute.selector, _testERC20, 0, mintCall);
+        return abi.encodeWithSelector(SimpleAccount.execute.selector, _testERC20, 0, mintCall);
     }
 
     /**
@@ -161,12 +165,16 @@ abstract contract ScenarioTestEnvironment is Test {
         return IntentBuilder.create(address(_account));
     }
 
-    function _addErc20Record(UserIntent memory intent) internal view returns (UserIntent memory) {
-        return intent.addSegment(encodeErc20RecordData(ERC20_RECORD_STD_ID, _token));
+    function _addErc20Record(UserIntent memory intent, bool isProxy) internal view returns (UserIntent memory) {
+        return intent.addSegment(encodeErc20RecordData(ERC20_RECORD_STD_ID, _token, isProxy));
     }
 
-    function _addErc20Release(UserIntent memory intent, int256 amount) internal view returns (UserIntent memory) {
-        return intent.addSegment(encodeErc20ReleaseData(ERC20_RELEASE_STD_ID, _token, amount));
+    function _addErc20Release(UserIntent memory intent, int256 amount, bool isProxy)
+        internal
+        view
+        returns (UserIntent memory)
+    {
+        return intent.addSegment(encodeErc20ReleaseData(ERC20_RELEASE_STD_ID, _token, amount, isProxy));
     }
 
     function _addErc20ReleaseLinear(
@@ -174,11 +182,12 @@ abstract contract ScenarioTestEnvironment is Test {
         uint32 startTime,
         uint16 deltaTime,
         int256 startAmount,
-        int256 deltaAmount
+        int256 deltaAmount,
+        bool isProxy
     ) internal view returns (UserIntent memory) {
         return intent.addSegment(
             encodeErc20ReleaseComplexData(
-                ERC20_RELEASE_STD_ID, _token, startTime, deltaTime, startAmount, deltaAmount, 1, false
+                ERC20_RELEASE_STD_ID, _token, startTime, deltaTime, startAmount, deltaAmount, 1, false, isProxy
             )
         );
     }
@@ -190,21 +199,30 @@ abstract contract ScenarioTestEnvironment is Test {
         int256 startAmount,
         int256 deltaAmount,
         uint8 exponent,
-        bool backwards
+        bool backwards,
+        bool isProxy
     ) internal view returns (UserIntent memory) {
         return intent.addSegment(
             encodeErc20ReleaseComplexData(
-                ERC20_RELEASE_STD_ID, _token, startTime, deltaTime, startAmount, deltaAmount, exponent, backwards
+                ERC20_RELEASE_STD_ID,
+                _token,
+                startTime,
+                deltaTime,
+                startAmount,
+                deltaAmount,
+                exponent,
+                backwards,
+                isProxy
             )
         );
     }
 
-    function _addErc20Require(UserIntent memory intent, int256 amount, bool isRelative)
+    function _addErc20Require(UserIntent memory intent, int256 amount, bool isRelative, bool isProxy)
         internal
         view
         returns (UserIntent memory)
     {
-        return intent.addSegment(encodeErc20RequireData(ERC20_REQUIRE_STD_ID, _token, amount, isRelative));
+        return intent.addSegment(encodeErc20RequireData(ERC20_REQUIRE_STD_ID, _token, amount, isRelative, isProxy));
     }
 
     function _addErc20RequireLinear(
@@ -213,11 +231,21 @@ abstract contract ScenarioTestEnvironment is Test {
         uint16 deltaTime,
         int256 startAmount,
         int256 deltaAmount,
-        bool isRelative
+        bool isRelative,
+        bool isProxy
     ) internal view returns (UserIntent memory) {
         return intent.addSegment(
             encodeErc20RequireComplexData(
-                ERC20_REQUIRE_STD_ID, _token, startTime, deltaTime, startAmount, deltaAmount, 1, false, isRelative
+                ERC20_REQUIRE_STD_ID,
+                _token,
+                startTime,
+                deltaTime,
+                startAmount,
+                deltaAmount,
+                1,
+                false,
+                isRelative,
+                isProxy
             )
         );
     }
@@ -230,7 +258,8 @@ abstract contract ScenarioTestEnvironment is Test {
         int256 deltaAmount,
         uint8 exponent,
         bool backwards,
-        bool isRelative
+        bool isRelative,
+        bool isProxy
     ) internal view returns (UserIntent memory) {
         return intent.addSegment(
             encodeErc20RequireComplexData(
@@ -242,13 +271,14 @@ abstract contract ScenarioTestEnvironment is Test {
                 deltaAmount,
                 exponent,
                 backwards,
-                isRelative
+                isRelative,
+                isProxy
             )
         );
     }
 
-    function _addEthRecord(UserIntent memory intent) internal pure returns (UserIntent memory) {
-        return intent.addSegment(encodeEthRecordData(ETH_RECORD_STD_ID));
+    function _addEthRecord(UserIntent memory intent, bool isProxy) internal pure returns (UserIntent memory) {
+        return intent.addSegment(encodeEthRecordData(ETH_RECORD_STD_ID, isProxy));
     }
 
     function _addEthRelease(UserIntent memory intent, int256 amount) internal pure returns (UserIntent memory) {
@@ -283,12 +313,12 @@ abstract contract ScenarioTestEnvironment is Test {
         );
     }
 
-    function _addEthRequire(UserIntent memory intent, int256 amount, bool isRelative)
+    function _addEthRequire(UserIntent memory intent, int256 amount, bool isRelative, bool isProxy)
         internal
         pure
         returns (UserIntent memory)
     {
-        return intent.addSegment(encodeEthRequireData(ETH_REQUIRE_STD_ID, amount, isRelative));
+        return intent.addSegment(encodeEthRequireData(ETH_REQUIRE_STD_ID, amount, isRelative, isProxy));
     }
 
     function _addEthRequireLinear(
@@ -297,11 +327,12 @@ abstract contract ScenarioTestEnvironment is Test {
         uint16 deltaTime,
         int256 startAmount,
         int256 deltaAmount,
-        bool isRelative
+        bool isRelative,
+        bool isProxy
     ) internal pure returns (UserIntent memory) {
         return intent.addSegment(
             encodeEthRequireComplexData(
-                ETH_REQUIRE_STD_ID, startTime, deltaTime, startAmount, deltaAmount, 1, false, isRelative
+                ETH_REQUIRE_STD_ID, startTime, deltaTime, startAmount, deltaAmount, 1, false, isRelative, isProxy
             )
         );
     }
@@ -314,11 +345,20 @@ abstract contract ScenarioTestEnvironment is Test {
         int256 deltaAmount,
         uint8 exponent,
         bool backwards,
-        bool isRelative
+        bool isRelative,
+        bool isProxy
     ) internal pure returns (UserIntent memory) {
         return intent.addSegment(
             encodeEthRequireComplexData(
-                ETH_REQUIRE_STD_ID, startTime, deltaTime, startAmount, deltaAmount, exponent, backwards, isRelative
+                ETH_REQUIRE_STD_ID,
+                startTime,
+                deltaTime,
+                startAmount,
+                deltaAmount,
+                exponent,
+                backwards,
+                isRelative,
+                isProxy
             )
         );
     }

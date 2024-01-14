@@ -12,7 +12,8 @@ import {ETH_RELEASE_STD_ID} from "../../../src/core/EntryPoint.sol";
 import {EthRequire, encodeEthRequireData} from "../../../src/standards/EthRequire.sol";
 import {ETH_REQUIRE_STD_ID} from "../../../src/core/EntryPoint.sol";
 import {SimpleCall} from "../../../src/standards/SimpleCall.sol";
-import {AbstractAccount} from "../../../src/wallet/AbstractAccount.sol";
+import {SimpleAccountFactory} from "../../../src/samples/SimpleAccountFactory.sol";
+import {SimpleAccount} from "../../../src/samples/SimpleAccount.sol";
 import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 
 abstract contract TestEnvironment is Test {
@@ -24,7 +25,7 @@ abstract contract TestEnvironment is Test {
     EthRelease internal _ethRelease;
     EthRequire internal _ethRequire;
     SimpleCall internal _simpleCall;
-    AbstractAccount internal _account;
+    SimpleAccount internal _account;
 
     address internal _publicAddress = _getPublicAddress(uint256(keccak256("account_private_key")));
 
@@ -33,7 +34,10 @@ abstract contract TestEnvironment is Test {
         _simpleCall = new SimpleCall();
         _ethRequire = new EthRequire();
         _ethRelease = new EthRelease();
-        _account = new AbstractAccount(_entryPoint, _publicAddress);
+
+        //deploy contracts
+        SimpleAccountFactory accountFactory = new SimpleAccountFactory(_entryPoint);
+        _account = accountFactory.createAccount(_publicAddress, 0);
 
         //register intent standards to entry point
         _entryPoint.registerIntentStandard(_ethRelease);
@@ -64,7 +68,7 @@ abstract contract TestEnvironment is Test {
         pure
         returns (UserIntent memory)
     {
-        return intent.addSegment(encodeEthRequireData(ETH_REQUIRE_STD_ID, amount, isRelative));
+        return intent.addSegment(encodeEthRequireData(ETH_REQUIRE_STD_ID, amount, isRelative, false));
     }
 
     function _getPublicAddress(uint256 privateKey) internal pure returns (address) {

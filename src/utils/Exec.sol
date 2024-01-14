@@ -5,27 +5,27 @@ pragma solidity ^0.8.22;
 
 /**
  * Utility functions helpful when making different kinds of contract calls in Solidity.
- * note: this library has been modified from it's original version so that "getReturnData"
- * doesn't take in a max length and instead there is a new function called "getReturnDataSize"
- * to allow for manually overflow checking and custom error throwing by the application
- * using this library. The function "callAndRevert" was modified with an added "txGas"
- * parameter. The function "getRevertReasonMax" was added to get just the reason string from
- * a revert or require. The function "getReturnDataMax" was added to allow specifying an offset
- * as well as a max length when fetching return data.
  */
 library Exec {
+    // helpful constants
+    uint256 public constant REVERT_REASON_MAX_LEN = 2048;
+    uint256 public constant REVERT_REASON_START_OFFSET = 0x44;
+
+    // make a low level call
     function call(address to, uint256 value, bytes memory data, uint256 txGas) internal returns (bool success) {
         assembly {
             success := call(txGas, to, value, add(data, 0x20), mload(data), 0, 0)
         }
     }
 
+    // make a low level static call
     function staticcall(address to, bytes memory data, uint256 txGas) internal view returns (bool success) {
         assembly {
             success := staticcall(txGas, to, add(data, 0x20), mload(data), 0, 0)
         }
     }
 
+    // make a low level delegate call
     function delegateCall(address to, bytes memory data, uint256 txGas) internal returns (bool success) {
         assembly {
             success := delegatecall(txGas, to, add(data, 0x20), mload(data), 0, 0)
@@ -39,20 +39,8 @@ library Exec {
         }
     }
 
-    // get returned data from last call or calldelegate
-    function getReturnData() internal pure returns (bytes memory returnData) {
-        assembly {
-            let len := returndatasize()
-            let ptr := mload(0x40)
-            mstore(0x40, add(ptr, add(len, 0x20)))
-            mstore(ptr, len)
-            returndatacopy(add(ptr, 0x20), 0, len)
-            returnData := ptr
-        }
-    }
-
-    // get returned data from last call or calldelegate
-    function getReturnDataMax(uint256 offset, uint256 maxLen) internal pure returns (bytes memory returnData) {
+    // get returned data from last call
+    function getReturnData(uint256 offset, uint256 maxLen) internal pure returns (bytes memory returnData) {
         assembly {
             let len := returndatasize()
             if gt(len, offset) {
@@ -67,22 +55,11 @@ library Exec {
         }
     }
 
-    // get revert reason from last call or calldelegate
-    function getRevertReasonMax(uint256 maxLen) internal pure returns (bytes memory returnData) {
-        returnData = getReturnDataMax(0x44, maxLen);
-    }
-
-    // revert with explicit byte array (probably reverted info from call)
-    function revertWithData(bytes memory returnData) internal pure {
+    // revert with the same returned data from the last call
+    function forwardRevert(uint256 maxLen) internal pure {
+        bytes memory returnData = getReturnData(0, maxLen);
         assembly {
             revert(add(returnData, 32), mload(returnData))
-        }
-    }
-
-    function callAndRevert(address to, bytes memory data, uint256 maxLen) internal {
-        bool success = call(to, 0, data, gasleft());
-        if (!success) {
-            revertWithData(getReturnDataMax(0, maxLen));
         }
     }
 }

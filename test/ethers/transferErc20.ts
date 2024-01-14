@@ -11,10 +11,11 @@ describe('Transfer ERC-20 Test', () => {
     useEmbeddedStandards: true,
     useCompression: false,
     useStatefulCompression: false,
+    useAccountAsEOAProxy: false,
   };
 
   before(async () => {
-    env = await deployTestEnvironment({ numAbstractAccounts: MAX_INTENTS });
+    env = await deployTestEnvironment({ numAccounts: MAX_INTENTS });
     scenario = new TransferErc20Scenario(env);
     scenario.init();
   });
@@ -39,23 +40,26 @@ describe('Transfer ERC-20 Test', () => {
   });
 
   it('Should run single intent', async () => {
-    const account = env.abstractAccounts[0];
+    const solverAddress = env.deployerAddress;
+    const accountAddress = scenarioOptions.useAccountAsEOAProxy
+      ? env.eoaProxyAccounts[0].signerAddress
+      : env.simpleAccounts[0].contractAddress;
     const to = env.utils.randomAddresses(1)[0];
-    const previousSolverBalance = await env.test.erc20.balanceOf(env.deployerAddress);
+    const previousSolverBalance = await env.test.erc20.balanceOf(solverAddress);
     const previousToBalance = await env.test.erc20.balanceOf(to);
-    const previousFromBalance = await env.test.erc20.balanceOf(account.contractAddress);
+    const previousFromBalance = await env.test.erc20.balanceOf(accountAddress);
 
     //transfer
     const transferResults = await scenario.run([to], scenarioOptions);
     await expect(transferResults.tx).to.not.be.reverted;
 
-    expect(await env.test.erc20.balanceOf(account.contractAddress)).to.equal(
-      previousFromBalance - (transferResults.amount + transferResults.fee),
-      'Senders balance is incorrect',
-    );
-    expect(await env.test.erc20.balanceOf(env.deployerAddress)).to.equal(
+    expect(await env.test.erc20.balanceOf(solverAddress)).to.equal(
       previousSolverBalance + transferResults.fee,
       'Solvers balance is incorrect',
+    );
+    expect(await env.test.erc20.balanceOf(accountAddress)).to.equal(
+      previousFromBalance - (transferResults.amount + transferResults.fee),
+      'Senders balance is incorrect',
     );
     expect(await env.test.erc20.balanceOf(to)).to.equal(
       previousToBalance + transferResults.amount,
@@ -64,27 +68,32 @@ describe('Transfer ERC-20 Test', () => {
   });
 
   it('Should run multi intent', async () => {
+    const solverAddress = env.deployerAddress;
     const to: string[] = env.utils.randomAddresses(MAX_INTENTS);
+    const accountAddresses: string[] = [];
     const previousToBalances: bigint[] = [];
     const previousFromBalances: bigint[] = [];
-    const previousSolverBalance = await env.test.erc20.balanceOf(env.deployerAddress);
+    const previousSolverBalance = await env.test.erc20.balanceOf(solverAddress);
     for (let i = 0; i < MAX_INTENTS; i++) {
-      const account = env.abstractAccounts[i];
+      const accountAddress = scenarioOptions.useAccountAsEOAProxy
+        ? env.eoaProxyAccounts[0].signerAddress
+        : env.simpleAccounts[0].contractAddress;
+      accountAddresses.push(accountAddress);
       previousToBalances.push(await env.test.erc20.balanceOf(to[i]));
-      previousFromBalances.push(await env.test.erc20.balanceOf(account.contractAddress));
+      previousFromBalances.push(await env.test.erc20.balanceOf(accountAddress));
     }
 
     //transfer
     const transferResults = await scenario.run(to, scenarioOptions);
     await expect(transferResults.tx).to.not.be.reverted;
 
-    expect(await env.test.erc20.balanceOf(env.deployerAddress)).to.equal(
+    expect(await env.test.erc20.balanceOf(solverAddress)).to.equal(
       previousSolverBalance + transferResults.fee * BigInt(MAX_INTENTS),
       'Solvers balance is incorrect',
     );
     for (let i = 0; i < MAX_INTENTS; i++) {
-      const account = env.abstractAccounts[i];
-      expect(await env.test.erc20.balanceOf(account.contractAddress)).to.equal(
+      const accountAddress = accountAddresses[i];
+      expect(await env.test.erc20.balanceOf(accountAddress)).to.equal(
         previousFromBalances[i] - (transferResults.amount + transferResults.fee),
         'Senders balance is incorrect',
       );

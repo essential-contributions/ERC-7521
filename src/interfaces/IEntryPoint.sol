@@ -69,5 +69,5 @@ interface IEntryPoint is INonceManager, IIntentStandardRegistry {
     /**
      * returns true if the given standard is currently executing an intent segment for the msg.sender.
      */
-    function verifyExecutingIntentSegmentForStandard(IIntentStandard intentStandard) external returns (bool);
+    function verifyExecutingIntentSegmentForStandard(IIntentStandard intentStandard) external view returns (bool);
 }

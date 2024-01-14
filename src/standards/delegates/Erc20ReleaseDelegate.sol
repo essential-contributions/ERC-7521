@@ -20,19 +20,21 @@ contract Erc20ReleaseDelegate {
      * Release the given ERC-20 tokens
      * @dev only allowed to be called via a delegate call
      * @param erc20Contract the contract that controls the erc20.
+     * @param from the target to release tokens from (for proxy accounts).
      * @param to the target to release tokens to.
      * @param amount the amount to release.
      */
-    function releaseErc20(address erc20Contract, address to, uint256 amount) external {
+    function releaseErc20(address erc20Contract, address from, address to, uint256 amount) external {
         require(address(this) != _this, "must be delegate call");
-        IERC20(erc20Contract).transfer(to, amount);
+        if (from == address(0)) IERC20(erc20Contract).transfer(to, amount);
+        else IERC20(erc20Contract).transferFrom(from, to, amount);
     }
 
-    function _encodeReleaseErc20(address erc20Contract, address to, uint256 amount)
+    function _encodeReleaseErc20(address erc20Contract, address from, address to, uint256 amount)
         internal
         pure
         returns (bytes memory)
     {
-        return abi.encodeWithSelector(this.releaseErc20.selector, erc20Contract, to, amount);
+        return abi.encodeWithSelector(this.releaseErc20.selector, erc20Contract, from, to, amount);
     }
 }

@@ -35,7 +35,8 @@ contract TransferEth is ScenarioTestEnvironment {
             uint32(block.timestamp - releaseAt),
             uint16(releaseDuration),
             releaseStartAmount,
-            (releaseEndAmount - releaseStartAmount) / int256(releaseDuration)
+            (releaseEndAmount - releaseStartAmount) / int256(releaseDuration),
+            false
         );
         bytes memory executeTransferETH = abi.encodeWithSelector(_account.execute.selector, ethRecipient, ethAmount, "");
         intent = _addUserOp(intent, callGasLimit, executeTransferETH);

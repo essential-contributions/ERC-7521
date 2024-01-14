@@ -1,15 +1,15 @@
 import { Provider, Signer } from 'ethers';
 import { ethers } from 'hardhat';
 import {
-  AbstractAccount,
-  DataRegistry,
+  SimpleAccountFactory,
+  SimpleAccount,
   EntryPoint,
   SolverUtils,
   TestERC20,
   TestUniswap,
   TestWrappedNativeToken,
 } from '../../typechain';
-import { Curve, LinearCurve } from '../library/curveCoder';
+import { Curve } from '../library/curveCoder';
 import { SimpleCallSegment } from '../library/standards/simpleCall';
 import { UserOperationSegment } from '../library/standards/userOperation';
 import { SequentialNonceSegment } from '../library/standards/sequentialNonce';
@@ -33,10 +33,10 @@ export type Environment = {
     call: (callData: string) => SimpleCallSegment;
     userOp: (callData: string, gasLimit: number) => UserOperationSegment;
     sequentialNonce: (nonce: number) => SequentialNonceSegment;
-    ethRecord: () => EthRecordSegment;
+    ethRecord: (proxy: boolean) => EthRecordSegment;
     ethRelease: (curve: Curve) => EthReleaseSegment;
     ethRequire: (curve: Curve) => EthRequireSegment;
-    erc20Record: (contract: string) => Erc20RecordSegment;
+    erc20Record: (contract: string, proxy: boolean) => Erc20RecordSegment;
     erc20Release: (contract: string, curve: Curve) => Erc20ReleaseSegment;
     erc20Require: (contract: string, curve: Curve) => Erc20RequireSegment;
   };
@@ -44,10 +44,10 @@ export type Environment = {
     call: (callData: string) => SimpleCallSegment;
     userOp: (callData: string, gasLimit: number) => UserOperationSegment;
     sequentialNonce: (nonce: number) => SequentialNonceSegment;
-    ethRecord: () => EthRecordSegment;
+    ethRecord: (proxy: boolean) => EthRecordSegment;
     ethRelease: (curve: Curve) => EthReleaseSegment;
     ethRequire: (curve: Curve) => EthRequireSegment;
-    erc20Record: (contract: string) => Erc20RecordSegment;
+    erc20Record: (contract: string, proxy: boolean) => Erc20RecordSegment;
     erc20Release: (contract: string, curve: Curve) => Erc20ReleaseSegment;
     erc20Require: (contract: string, curve: Curve) => Erc20RequireSegment;
   };
@@ -65,34 +65,36 @@ export type Environment = {
     general: GeneralIntentCompression;
     registerAddresses: (addresses: string[]) => Promise<void>;
   };
-  solverUtils: SolverUtils;
-  abstractAccounts: SmartContractAccount[];
+  simpleAccounts: SmartContractAccount[];
+  eoaProxyAccounts: SmartContractAccount[];
   gasUsed: {
     entrypoint: bigint;
     registerStandard: bigint;
-    abstractAccount: bigint;
+    simpleAccountFactory: bigint;
+    simpleAccount: bigint;
     generalCompression: bigint;
   };
   utils: {
     getNonce: (account: string) => Promise<number>;
     randomAddresses: (num: number) => string[];
   };
+  solverUtils: SolverUtils;
+  simpleAccountFactory: SimpleAccountFactory;
 };
 export type SmartContractAccount = {
-  contract: AbstractAccount;
+  contract: SimpleAccount;
   contractAddress: string;
   signer: Signer;
+  signerAddress: string;
 };
 
 // Deploy configuration options
 export type DeployConfiguration = {
-  numAbstractAccounts: number;
+  numAccounts: number;
 };
 
 // Deploy the testing environment
-export async function deployTestEnvironment(
-  config: DeployConfiguration = { numAbstractAccounts: 4 },
-): Promise<Environment> {
+export async function deployTestEnvironment(config: DeployConfiguration = { numAccounts: 4 }): Promise<Environment> {
   const provider = ethers.provider;
   const network = await provider.getNetwork();
   const signers = await ethers.getSigners();
@@ -122,7 +124,7 @@ export async function deployTestEnvironment(
   const sequentialNonce = await registerIntentStandard('SequentialNonce', entrypoint, deployer);
   const simpleCall = await registerIntentStandard('SimpleCall', entrypoint, deployer);
   const userOperation = await registerIntentStandard('UserOperation', entrypoint, deployer);
-  const registerStandardGas =
+  const registerStandardGasUsed =
     (erc20Record.gasUsed +
       erc20Release.gasUsed +
       erc20Require.gasUsed +
@@ -148,25 +150,43 @@ export async function deployTestEnvironment(
   );
   const solverUtilsAddress = await solverUtils.getAddress();
 
+  //deploy smart contract wallet factories
+  const simpleAccountFactory = await ethers.deployContract('SimpleAccountFactory', [entrypointAddress], deployer);
+  const simpleAccountFactoryGasUsed = (await simpleAccountFactory.deploymentTransaction()?.wait())?.gasUsed || 0n;
+
   //deploy smart contract wallets
-  let abstractAccountGasUsed = 0n;
-  const abstractAccounts: SmartContractAccount[] = [];
-  for (let i = 0; i < config.numAbstractAccounts; i++) {
+  let simpleAccountGasUsed = 0n;
+  const simpleAccounts: SmartContractAccount[] = [];
+  for (let i = 0; i < config.numAccounts; i++) {
     const signer = new ethers.Wallet(ethers.hexlify(ethers.randomBytes(32)));
-    const account = await ethers.deployContract(
-      'AbstractAccount',
-      [entrypointAddress, await signer.getAddress()],
-      deployer,
-    );
-    abstractAccounts.push({
-      contract: account,
-      contractAddress: await account.getAddress(),
-      signer,
-    });
-    const gasUsed = (await account.deploymentTransaction()?.wait())?.gasUsed;
-    abstractAccountGasUsed += gasUsed ? gasUsed : 0n;
+    const signerAddress = await signer.getAddress();
+
+    const createAccountReceipt = await (await simpleAccountFactory.createAccount(signerAddress, i)).wait();
+    const contractAddress = await simpleAccountFactory.getFunction('getAddress(address,uint256)')(signerAddress, i);
+    const contract = await ethers.getContractAt('SimpleAccount', contractAddress, deployer);
+
+    simpleAccounts.push({ contract, contractAddress, signer, signerAddress });
+    simpleAccountGasUsed += createAccountReceipt?.gasUsed || 0n;
   }
-  abstractAccountGasUsed /= BigInt(config.numAbstractAccounts);
+  simpleAccountGasUsed /= BigInt(config.numAccounts);
+
+  //deploy smart contract wallets intended to serve as proxies for an EOA
+  const eoaProxyAccounts: SmartContractAccount[] = [];
+  for (let i = 0; i < config.numAccounts; i++) {
+    const signer = new ethers.Wallet(ethers.hexlify(ethers.randomBytes(32))).connect(provider);
+    const signerAddress = await signer.getAddress();
+
+    await simpleAccountFactory.createAccount(signerAddress, i);
+    const contractAddress = await simpleAccountFactory.getFunction('getAddress(address,uint256)')(signerAddress, i);
+    const contract = await ethers.getContractAt('SimpleAccount', contractAddress, deployer);
+
+    const fundAmount = ethers.parseEther('1');
+    await deployer.sendTransaction({ to: signerAddress, value: fundAmount });
+    await testERC20.connect(signer).approve(contractAddress, ethers.MaxUint256);
+    await testWrappedNativeToken.connect(signer).approve(contractAddress, ethers.MaxUint256);
+
+    eoaProxyAccounts.push({ contract, contractAddress, signer, signerAddress });
+  }
 
   //fund exchange
   const funder = signers[signers.length - 1];
@@ -218,8 +238,12 @@ export async function deployTestEnvironment(
 
   //fill the data registry with low frequency items
   (await dataRegistry.addFourByteItem(ethers.hexlify(ethers.randomBytes(32)))).wait();
-  for (const acct of abstractAccounts) {
+  for (const acct of simpleAccounts) {
     (await dataRegistry.addFourByteItem('0x' + acct.contractAddress.substring(2).padStart(64, '0'))).wait();
+  }
+  for (const acct of eoaProxyAccounts) {
+    (await dataRegistry.addFourByteItem('0x' + acct.contractAddress.substring(2).padStart(64, '0'))).wait();
+    (await dataRegistry.addFourByteItem('0x' + acct.signerAddress.substring(2).padStart(64, '0'))).wait();
   }
 
   //sync registry
@@ -236,10 +260,10 @@ export async function deployTestEnvironment(
       call: (callData: string) => new SimpleCallSegment(callStdId, callData),
       userOp: (callData: string, gasLimit: number) => new UserOperationSegment(userOperationStdId, callData, gasLimit),
       sequentialNonce: (nonce: number) => new SequentialNonceSegment(sequentialNonceStdId, nonce),
-      ethRecord: () => new EthRecordSegment(ethRecordStdId),
+      ethRecord: (proxy: boolean) => new EthRecordSegment(ethRecordStdId, proxy),
       ethRelease: (curve: Curve) => new EthReleaseSegment(ethReleaseStdId, curve),
       ethRequire: (curve: Curve) => new EthRequireSegment(ethRequireStdId, curve),
-      erc20Record: (contract: string) => new Erc20RecordSegment(erc20RecordStdId, contract),
+      erc20Record: (contract: string, proxy: boolean) => new Erc20RecordSegment(erc20RecordStdId, contract, proxy),
       erc20Release: (contract: string, curve: Curve) => new Erc20ReleaseSegment(erc20ReleaseStdId, contract, curve),
       erc20Require: (contract: string, curve: Curve) => new Erc20RequireSegment(erc20RequireStdId, contract, curve),
     },
@@ -248,10 +272,11 @@ export async function deployTestEnvironment(
       userOp: (callData: string, gasLimit: number) =>
         new UserOperationSegment(userOperation.standardId, callData, gasLimit),
       sequentialNonce: (nonce: number) => new SequentialNonceSegment(sequentialNonce.standardId, nonce),
-      ethRecord: () => new EthRecordSegment(ethRecord.standardId),
+      ethRecord: (proxy: boolean) => new EthRecordSegment(ethRecord.standardId, proxy),
       ethRelease: (curve: Curve) => new EthReleaseSegment(ethRelease.standardId, curve),
       ethRequire: (curve: Curve) => new EthRequireSegment(ethRequire.standardId, curve),
-      erc20Record: (contract: string) => new Erc20RecordSegment(erc20Record.standardId, contract),
+      erc20Record: (contract: string, proxy: boolean) =>
+        new Erc20RecordSegment(erc20Record.standardId, contract, proxy),
       erc20Release: (contract: string, curve: Curve) =>
         new Erc20ReleaseSegment(erc20Release.standardId, contract, curve),
       erc20Require: (contract: string, curve: Curve) =>
@@ -275,12 +300,13 @@ export async function deployTestEnvironment(
         }
       },
     },
-    solverUtils,
-    abstractAccounts,
+    simpleAccounts: simpleAccounts,
+    eoaProxyAccounts: eoaProxyAccounts,
     gasUsed: {
       entrypoint: entrypointGasUsed,
-      registerStandard: registerStandardGas,
-      abstractAccount: abstractAccountGasUsed,
+      registerStandard: registerStandardGasUsed,
+      simpleAccountFactory: simpleAccountFactoryGasUsed,
+      simpleAccount: simpleAccountGasUsed,
       generalCompression: generalCompressionGasUsed,
     },
     utils: {
@@ -293,6 +319,8 @@ export async function deployTestEnvironment(
         return addresses;
       },
     },
+    solverUtils,
+    simpleAccountFactory,
   };
 }
 

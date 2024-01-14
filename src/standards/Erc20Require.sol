@@ -2,12 +2,19 @@
 pragma solidity ^0.8.22;
 
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
+import {IProxyAccount} from "../interfaces/IProxyAccount.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
 import {pop} from "./utils/ContextData.sol";
 import {getSegmentWord} from "./utils/SegmentData.sol";
-import {evaluateCurve, encodeConstantCurve, encodeComplexCurve, isCurveRelative} from "./utils/CurveCoder.sol";
+import {
+    evaluateCurve,
+    encodeConstantCurve,
+    encodeComplexCurve,
+    isCurveRelative,
+    isCurveProxy
+} from "./utils/CurveCoder.sol";
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
 /**
@@ -15,7 +22,7 @@ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
  * @dev data
  *   [bytes32] standard - the intent standard identifier
  *   [address] token - the ERC20 token contract address
- *   [bytes1]  flags - evaluate backwards (flip), relative, exponent [fr-- eeee] [exponent: 0 = const, 1 = linear, >1 = exponential]
+ *   [bytes1]  flags - evaluate backwards (flip), relative, as proxy, exponent [frp- eeee] [exponent: 0 = const, 1 = linear, >1 = exponential]
  *   [uint32]  startAmount - starting amount
  *   [uint8]   startAmountMult - amount multiplier (final_amount = amount * (amountMult * 10)) [first bit = negative]
  * --only for linear or exponential--
@@ -60,7 +67,10 @@ abstract contract Erc20RequireCore {
 
         // check requirement
         if (requiredBalance > 0) {
-            uint256 currentBalance = IERC20(token).balanceOf(intentSender);
+            address account = intentSender;
+            if (isCurveProxy(curve)) account = IProxyAccount(intentSender).proxyFor();
+
+            uint256 currentBalance = IERC20(token).balanceOf(account);
             require(
                 currentBalance >= uint256(requiredBalance),
                 string.concat(
@@ -116,13 +126,14 @@ contract Erc20Require is Erc20RequireCore, IIntentStandard {
  * @param token the ERC20 token contract address
  * @param amount amount required
  * @param isRelative meant to be evaluated relatively
+ * @param isProxy curve is for an account other than the original sender
  * @return the fully encoded intent standard segment data
  */
-function encodeErc20RequireData(bytes32 standardId, address token, int256 amount, bool isRelative)
+function encodeErc20RequireData(bytes32 standardId, address token, int256 amount, bool isRelative, bool isProxy)
     pure
     returns (bytes memory)
 {
-    bytes6 data = encodeConstantCurve(amount, isRelative);
+    bytes6 data = encodeConstantCurve(amount, isRelative, isProxy);
     return abi.encodePacked(standardId, uint256(uint160(token)), data);
 }
 
@@ -137,6 +148,7 @@ function encodeErc20RequireData(bytes32 standardId, address token, int256 amount
  * @param exponent the exponent order of the curve
  * @param backwards evaluate curve from right to left
  * @param isRelative meant to be evaluated relatively
+ * @param isProxy curve is for an account other than the original sender
  * @return the fully encoded intent standard segment data
  */
 function encodeErc20RequireComplexData(
@@ -148,8 +160,10 @@ function encodeErc20RequireComplexData(
     int256 deltaAmount,
     uint8 exponent,
     bool backwards,
-    bool isRelative
+    bool isRelative,
+    bool isProxy
 ) pure returns (bytes memory) {
-    bytes16 data = encodeComplexCurve(startTime, deltaTime, startAmount, deltaAmount, exponent, backwards, isRelative);
+    bytes16 data =
+        encodeComplexCurve(startTime, deltaTime, startAmount, deltaAmount, exponent, backwards, isRelative, isProxy);
     return abi.encodePacked(standardId, uint256(uint160(token)), data);
 }

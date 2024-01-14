@@ -2,6 +2,7 @@
 pragma solidity ^0.8.22;
 
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
+import {IProxyAccount} from "../interfaces/IProxyAccount.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
 import {push} from "./utils/ContextData.sol";
@@ -13,13 +14,14 @@ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
  * @dev data
  *   [bytes32] standard - the intent standard identifier
  *   [address] token - the ERC20 token contract address
+ *   [bytes1]  flags - (optional) as proxy [---- ---p]
  */
 abstract contract Erc20RecordCore {
     /**
      * Validate intent segment structure (typically just formatting).
      */
     function _validateErc20Record(bytes calldata segmentData) internal pure {
-        require(segmentData.length == 64, "ERC-20 Record data length invalid");
+        require(segmentData.length == 64 || segmentData.length == 65, "ERC-20 Record data length invalid");
     }
 
     /**
@@ -31,9 +33,13 @@ abstract contract Erc20RecordCore {
         returns (bytes memory)
     {
         address token = address(uint160(uint256(getSegmentWord(segmentData, 32))));
+        address account = intentSender;
+        if (segmentData.length == 65 && uint8(segmentData[64]) > 0) {
+            account = IProxyAccount(intentSender).proxyFor();
+        }
 
         //push current eth balance to the context data
-        uint256 balance = IERC20(token).balanceOf(intentSender);
+        uint256 balance = IERC20(token).balanceOf(account);
         return push(context, bytes32(balance));
     }
 }
@@ -75,8 +81,10 @@ contract Erc20Record is Erc20RecordCore, IIntentStandard {
  * Helper function to encode intent standard segment data.
  * @param standardId the entry point identifier for this standard
  * @param token the token contract address
+ * @param isProxy for an account other than the original sender
  * @return the fully encoded intent standard segment data
  */
-function encodeErc20RecordData(bytes32 standardId, address token) pure returns (bytes memory) {
+function encodeErc20RecordData(bytes32 standardId, address token, bool isProxy) pure returns (bytes memory) {
+    if (isProxy) return abi.encodePacked(standardId, uint256(uint160(token)), uint8(1));
     return abi.encodePacked(standardId, uint256(uint160(token)));
 }

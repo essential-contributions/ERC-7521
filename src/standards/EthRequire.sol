@@ -2,18 +2,25 @@
 pragma solidity ^0.8.22;
 
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
+import {IProxyAccount} from "../interfaces/IProxyAccount.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
 import {pop} from "./utils/ContextData.sol";
 import {getSegmentWord} from "./utils/SegmentData.sol";
-import {evaluateCurve, encodeConstantCurve, encodeComplexCurve, isCurveRelative} from "./utils/CurveCoder.sol";
+import {
+    evaluateCurve,
+    encodeConstantCurve,
+    encodeComplexCurve,
+    isCurveRelative,
+    isCurveProxy
+} from "./utils/CurveCoder.sol";
 
 /**
  * Eth Require Intent Standard core logic
  * @dev data
  *   [bytes32] standard - the intent standard identifier
- *   [bytes1]  flags - evaluate backwards (flip), relative, exponent [fr-- eeee] [exponent: 0 = const, 1 = linear, >1 = exponential]
+ *   [bytes1]  flags - evaluate backwards (flip), relative, as proxy, exponent [frp- eeee] [exponent: 0 = const, 1 = linear, >1 = exponential]
  *   [uint32]  startAmount - starting amount
  *   [uint8]   startAmountMult - amount multiplier (final_amount = amount * (amountMult * 10)) [first bit = negative]
  * --only for linear or exponential--
@@ -56,7 +63,10 @@ abstract contract EthRequireCore {
 
         // check requirement
         if (requiredBalance > 0) {
-            uint256 currentBalance = intentSender.balance;
+            address account = intentSender;
+            if (isCurveProxy(curve)) account = IProxyAccount(intentSender).proxyFor();
+
+            uint256 currentBalance = account.balance;
             require(
                 currentBalance >= uint256(requiredBalance),
                 string.concat(
@@ -109,10 +119,14 @@ contract EthRequire is EthRequireCore, IIntentStandard {
  * @param standardId the entry point identifier for this standard
  * @param amount amount required
  * @param isRelative meant to be evaluated relatively
+ * @param isProxy curve is for an account other than the original sender
  * @return the fully encoded intent standard segment data
  */
-function encodeEthRequireData(bytes32 standardId, int256 amount, bool isRelative) pure returns (bytes memory) {
-    bytes6 data = encodeConstantCurve(amount, isRelative);
+function encodeEthRequireData(bytes32 standardId, int256 amount, bool isRelative, bool isProxy)
+    pure
+    returns (bytes memory)
+{
+    bytes6 data = encodeConstantCurve(amount, isRelative, isProxy);
     return abi.encodePacked(standardId, data);
 }
 
@@ -126,6 +140,7 @@ function encodeEthRequireData(bytes32 standardId, int256 amount, bool isRelative
  * @param exponent the exponent order of the curve
  * @param backwards evaluate curve from right to left
  * @param isRelative meant to be evaluated relatively
+ * @param isProxy curve is for an account other than the original sender
  * @return the fully encoded intent standard segment data
  */
 function encodeEthRequireComplexData(
@@ -136,8 +151,10 @@ function encodeEthRequireComplexData(
     int256 deltaAmount,
     uint8 exponent,
     bool backwards,
-    bool isRelative
+    bool isRelative,
+    bool isProxy
 ) pure returns (bytes memory) {
-    bytes16 data = encodeComplexCurve(startTime, deltaTime, startAmount, deltaAmount, exponent, backwards, isRelative);
+    bytes16 data =
+        encodeComplexCurve(startTime, deltaTime, startAmount, deltaAmount, exponent, backwards, isRelative, isProxy);
     return abi.encodePacked(standardId, data);
 }

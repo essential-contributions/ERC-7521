@@ -4,18 +4,21 @@ import { IntentSegment } from '../intent';
 // The intent object
 export class Erc20RecordSegment extends IntentSegment {
   private standard: string;
-  private contract: string;
+  private token: string;
+  private proxy: boolean;
 
-  constructor(standard: string, contract: string) {
+  constructor(standard: string, token: string, proxy: boolean = false) {
     super();
     if (!ethers.isHexString(standard, 32)) throw new Error(`standard is not a valid bytes32 (standard: ${standard})`);
-    if (!ethers.isAddress(contract)) throw new Error(`contract is not a valid address (contract: ${contract})`);
+    if (!ethers.isAddress(token)) throw new Error(`token is not a valid address (token: ${token})`);
     this.standard = standard;
-    this.contract = contract;
+    this.token = token;
+    this.proxy = proxy;
   }
 
   //gets the bytes abi encoding of the segment
   asBytes(): string {
-    return ethers.solidityPacked(['bytes32', 'uint256'], [this.standard, this.contract]);
+    if (this.proxy) return ethers.solidityPacked(['bytes32', 'uint256', 'uint8'], [this.standard, this.token, 1]);
+    return ethers.solidityPacked(['bytes32', 'uint256'], [this.standard, this.token]);
   }
 }

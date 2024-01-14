@@ -2,7 +2,7 @@ import { TxFeeCalculator, TxResult } from './benchmark/feeCalculator';
 import { MainnetCalculator } from './benchmark/mainnet';
 import { OPStackCalculator } from './benchmark/opstack';
 import { Environment, deployTestEnvironment } from './scenarios/environment';
-import { ScenarioOptions } from './scenarios/scenario';
+import { ScenarioOptions, ScenarioResult } from './scenarios/scenario';
 import { TokenSwapScenario } from './scenarios/tokenSwapScenario';
 import { TransferErc20Scenario } from './scenarios/transferErc20Scenario';
 import { TransferEthScenario } from './scenarios/transferEthScenario';
@@ -21,7 +21,7 @@ async function main() {
   logParameters();
 
   console.log('DEPLOYMENT');
-  const env = await deployTestEnvironment({ numAbstractAccounts: MAX_INTENT_BATCH });
+  const env = await deployTestEnvironment({ numAccounts: MAX_INTENT_BATCH });
   logDeployments(env);
 
   console.log('SCENARIOS');
@@ -68,6 +68,7 @@ async function main() {
     useEmbeddedStandards: true,
     useCompression: false,
     useStatefulCompression: false,
+    useAccountAsEOAProxy: false,
   };
   logScenarios(await run(embeddedStandards));
 
@@ -76,6 +77,7 @@ async function main() {
     useEmbeddedStandards: true,
     useCompression: true,
     useStatefulCompression: false,
+    useAccountAsEOAProxy: false,
   };
   logScenarios(await run(nonStatefulCompression), 'Non-Stateful Compression');
 
@@ -84,14 +86,34 @@ async function main() {
     useEmbeddedStandards: true,
     useCompression: true,
     useStatefulCompression: true,
+    useAccountAsEOAProxy: false,
   };
   logScenarios(await run(statefulCompression), 'Stateful Compression');
+
+  //embedded for EOA
+  const embeddedStandardsEOA: ScenarioOptions = {
+    useEmbeddedStandards: true,
+    useCompression: false,
+    useStatefulCompression: false,
+    useAccountAsEOAProxy: true,
+  };
+  logScenarios(await run(embeddedStandardsEOA), 'Proxy Contracts for EOAs');
+
+  //embedded with compression
+  const nonStatefulCompressionEOA: ScenarioOptions = {
+    useEmbeddedStandards: true,
+    useCompression: true,
+    useStatefulCompression: true,
+    useAccountAsEOAProxy: true,
+  };
+  logScenarios(await run(nonStatefulCompressionEOA), 'Stateful Compression Proxy for EOAs');
 
   //registered
   const registeredStandards: ScenarioOptions = {
     useEmbeddedStandards: false,
     useCompression: false,
     useStatefulCompression: false,
+    useAccountAsEOAProxy: false,
   };
   logScenarios(await run(registeredStandards), 'Using Registered Standards');
 
@@ -100,6 +122,7 @@ async function main() {
     useEmbeddedStandards: false,
     useCompression: true,
     useStatefulCompression: true,
+    useAccountAsEOAProxy: false,
   };
   logScenarios(await run(registeredStatefulCompression), 'Using Registered Standards w/ Stateful Compression');
 }
@@ -130,7 +153,8 @@ function logDeployments(env: Environment) {
     console.log(`| ${n} | ${g} | $${c} | ${p} |`);
   }
   line('Deploy EntryPoint', env.gasUsed.entrypoint);
-  line('Deploy Abstract Acct', env.gasUsed.abstractAccount);
+  line('Deploy Simple Acct Fac', env.gasUsed.simpleAccountFactory);
+  line('Deploy Simple Acct', env.gasUsed.simpleAccount);
   line('Deploy Gen Compression', env.gasUsed.generalCompression);
   line('Register Standard', env.gasUsed.registerStandard);
   console.log('');
@@ -158,24 +182,29 @@ function logScenarios(results: ScenariosResults, subHeading?: string) {
     const n = name.padEnd(21, ' ');
     const b = results.base.gasUsed;
     const xb = `${b} (${results.base.bytesUsed})`.padEnd(16, ' ');
-    const x1 = `${Math.round(results.r1.gasUsed / 1)} (${Math.round(results.r1.bytesUsed / 1)})`.padEnd(16, ' ');
-    const x4 = `${Math.round(results.r2.gasUsed / 4)} (${Math.round(results.r2.bytesUsed / 4)})`.padEnd(16, ' ');
-    const x8 = `${Math.round(results.r3.gasUsed / 8)} (${Math.round(results.r3.bytesUsed / 8)})`.padEnd(16, ' ');
-    const x16 = `${Math.round(results.r4.gasUsed / 16)} (${Math.round(results.r4.bytesUsed / 16)})`.padEnd(16, ' ');
+    function calc(res: ScenarioResult, div: number): string {
+      if (res.invalidOptions) return '       --       ';
+      return `${Math.round(res.gasUsed / div)} (${Math.round(res.bytesUsed / div)})`.padEnd(16, ' ');
+    }
+    const x1 = calc(results.r1, 1);
+    const x4 = calc(results.r2, 4);
+    const x8 = calc(results.r3, 8);
+    const x16 = calc(results.r4, 16);
     console.log(`| ${n} | ${xb} | ${x1} | ${x4} | ${x8} | ${x16} |`);
 
     function subline(name: string, calculator: TxFeeCalculator, results: ScenarioResults) {
       const n = name.padEnd(19, ' ');
       const b = calculator.calcTxFee(results.base);
       const xb = `($${price(b.toString())})`.padEnd(16, ' ');
-      const g1 = Math.round((calculator.calcTxFee(results.r1) * 10000) / 1) / 10000;
-      const x1 = `($${price(g1.toString())}) ${percent(b, g1)}`.padEnd(16 + 9, ' ');
-      const g4 = Math.round((calculator.calcTxFee(results.r2) * 10000) / 4) / 10000;
-      const x4 = `($${price(g4.toString())}) ${percent(b, g4)}`.padEnd(16 + 9, ' ');
-      const g8 = Math.round((calculator.calcTxFee(results.r3) * 10000) / 8) / 10000;
-      const x8 = `($${price(g8.toString())}) ${percent(b, g8)}`.padEnd(16 + 9, ' ');
-      const g16 = Math.round((calculator.calcTxFee(results.r4) * 10000) / 16) / 10000;
-      const x16 = `($${price(g16.toString())}) ${percent(b, g16)}`.padEnd(16 + 9, ' ');
+      function calc(res: ScenarioResult, div: number): string {
+        const g = Math.round((calculator.calcTxFee(res) * 10000) / div) / 10000;
+        if (res.invalidOptions) return '       --       ';
+        return `($${price(g.toString())}) ${percent(b, g)}`.padEnd(16 + 9, ' ');
+      }
+      const x1 = calc(results.r1, 1);
+      const x4 = calc(results.r2, 4);
+      const x8 = calc(results.r3, 8);
+      const x16 = calc(results.r4, 16);
       console.log(`|   ${n} | ${xb} | ${x1} | ${x4} | ${x8} | ${x16} |`);
     }
     subline('mainnet', new MainnetCalculator(GAS_PRICE, ETH_PRICE), results);
@@ -199,11 +228,11 @@ export type ScenariosResults = {
 
 // Scenario results
 export type ScenarioResults = {
-  base: TxResult;
-  r1: TxResult;
-  r2: TxResult;
-  r3: TxResult;
-  r4: TxResult;
+  base: ScenarioResult;
+  r1: ScenarioResult;
+  r2: ScenarioResult;
+  r3: ScenarioResult;
+  r4: ScenarioResult;
 };
 
 // Pad price string

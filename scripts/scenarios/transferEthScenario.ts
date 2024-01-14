@@ -1,6 +1,12 @@
 import { ethers } from 'hardhat';
 import { Transaction } from 'ethers';
-import { ScenarioOptions, ScenarioResult, Scenario, DEFAULT_SCENARIO_OPTIONS } from './scenario';
+import {
+  ScenarioOptions,
+  ScenarioResult,
+  Scenario,
+  INVALID_OPTIONS_RESULT,
+  DEFAULT_SCENARIO_OPTIONS,
+} from './scenario';
 import { Environment, SmartContractAccount } from '../../scripts/scenarios/environment';
 import { buildSolution, UserIntent } from '../../scripts/library/intent';
 import { Curve, LinearCurve } from '../../scripts/library/curveCoder';
@@ -21,7 +27,7 @@ export class TransferEthScenario extends Scenario {
     if (needToMint > 0) {
       await (await this.env.test.erc20.mint(this.env.deployerAddress, needToMint)).wait();
     }
-    for (const account of this.env.abstractAccounts) {
+    for (const account of this.env.simpleAccounts) {
       const needToMint = ethers.parseEther('1000') - (await this.env.test.erc20.balanceOf(account.contractAddress));
       if (needToMint > 0) {
         await (await this.env.test.erc20.mint(account.contractAddress, needToMint)).wait();
@@ -29,6 +35,16 @@ export class TransferEthScenario extends Scenario {
       const needToFund = ethers.parseEther('10') - (await this.env.provider.getBalance(account.contractAddress));
       if (needToFund > 0) {
         await (await this.env.deployer.sendTransaction({ to: account.contractAddress, value: needToFund })).wait();
+      }
+    }
+    for (const account of this.env.eoaProxyAccounts) {
+      const needToMint = ethers.parseEther('1000') - (await this.env.test.erc20.balanceOf(account.signerAddress));
+      if (needToMint > 0) {
+        await (await this.env.test.erc20.mint(account.signerAddress, needToMint)).wait();
+      }
+      const needToFund = ethers.parseEther('10') - (await this.env.provider.getBalance(account.signerAddress));
+      if (needToFund > 0) {
+        await (await this.env.deployer.sendTransaction({ to: account.signerAddress, value: needToFund })).wait();
       }
     }
   }
@@ -45,12 +61,13 @@ export class TransferEthScenario extends Scenario {
     const bytesUsed = serialized.length / 2 - 1;
     const gasUsed = Number((await tx.wait())?.gasUsed || 0n);
     const txFee = ((await tx.wait())?.gasUsed || 0n) * ((await tx.wait())?.gasPrice || 0n);
-    return { gasUsed, bytesUsed, txFee, serialized, amount, fee: 0n, tx: txPromise };
+    return { invalidOptions: false, gasUsed, bytesUsed, txFee, serialized, amount, fee: 0n, tx: txPromise };
   }
 
   //runs the scenario
   public async run(count?: string[] | number, options?: ScenarioOptions): Promise<ScenarioResult> {
     options = options || DEFAULT_SCENARIO_OPTIONS;
+    if (options.useAccountAsEOAProxy) return INVALID_OPTIONS_RESULT;
     count = count || 1;
     let to: string[];
     let batchSize: number;
@@ -64,14 +81,14 @@ export class TransferEthScenario extends Scenario {
     }
     if (options.useStatefulCompression) await this.env.compression.registerAddresses(to);
 
-    if (this.env.abstractAccounts.length < batchSize) throw new Error('not enough abstract accounts to run batch');
+    if (this.env.simpleAccounts.length < batchSize) throw new Error('not enough abstract accounts to run batch');
     const timestamp = (await this.env.provider.getBlock('latest'))?.timestamp || 0;
     const amount = ethers.parseEther('1');
     const fee = ethers.parseEther('0.1');
 
     const intents = [];
     for (let i = 0; i < batchSize; i++) {
-      const account = this.env.abstractAccounts[i];
+      const account = this.env.simpleAccounts[i];
       const intent = new UserIntent(account.contractAddress);
       if (options.useEmbeddedStandards) {
         //using the embedded intent standard versions
@@ -118,7 +135,7 @@ export class TransferEthScenario extends Scenario {
     const bytesUsed = serialized.length / 2 - 1;
     const gasUsed = Number((await tx.wait())?.gasUsed || 0n);
     const txFee = ((await tx.wait())?.gasUsed || 0n) * ((await tx.wait())?.gasPrice || 0n);
-    return { gasUsed, bytesUsed, txFee, serialized, amount, fee, tx: txPromise };
+    return { invalidOptions: false, gasUsed, bytesUsed, txFee, serialized, amount, fee, tx: txPromise };
   }
 
   //////////////////////
