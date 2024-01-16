@@ -12,10 +12,39 @@ import "../../../src/standards/utils/CurveCoder.sol";
  * Solution:
  * 1. the solver executes the operation and pockets the released tokens
  */
-contract TransferErc20 is TestEnvironment {
+abstract contract TransferErc20Scenario is TestEnvironment {
     uint256 private _accountInitialERC20Balance = 10 ether;
 
-    function _intentForCase(uint256 erc20ReleaseAmount, address transferRecipient, uint256 transferAmount)
+    function transferErc20_setUp() public {
+        //fund account
+        _testERC20.mint(address(_account), _accountInitialERC20Balance);
+
+        //set block timestamp to something reasonable
+        vm.warp(1700952587);
+    }
+
+    function transferErc20_run() public returns (uint256 erc20ReleaseAmount, uint256 transferAmount) {
+        erc20ReleaseAmount = 0.1 ether;
+        transferAmount = 1 ether;
+        address erc20Recipient = _publicAddressSolver;
+        address transferRecipient = _publicAddress;
+
+        //build intent
+        UserIntent memory intent = _intentForTransferErc20(erc20ReleaseAmount, transferRecipient, transferAmount);
+        intent = _signIntent(intent);
+
+        //build solution
+        IntentSolution memory solution = _solutionForTransferErc20(intent, erc20Recipient);
+
+        //execute
+        _entryPoint.handleIntents(solution);
+    }
+
+    ///////////////////////////////
+    // Private Builder Functions //
+    ///////////////////////////////
+
+    function _intentForTransferErc20(uint256 erc20ReleaseAmount, address transferRecipient, uint256 transferAmount)
         private
         view
         returns (UserIntent memory)
@@ -45,7 +74,7 @@ contract TransferErc20 is TestEnvironment {
         return intent;
     }
 
-    function _solutionForCase(UserIntent memory intent, address erc20Recipient)
+    function _solutionForTransferErc20(UserIntent memory intent, address erc20Recipient)
         private
         view
         returns (IntentSolution memory)
@@ -57,43 +86,5 @@ contract TransferErc20 is TestEnvironment {
         order[2] = 1;
         order[3] = 0;
         return _solution(intent, solverIntent, order);
-    }
-
-    function setUp() public override {
-        super.setUp();
-
-        //fund account
-        _testERC20.mint(address(_account), _accountInitialERC20Balance);
-
-        //set block timestamp to something reasonable
-        vm.warp(1700952587);
-    }
-
-    function test_transferERC20() public {
-        uint256 erc20ReleaseAmount = 0.1 ether;
-        address erc20Recipient = _publicAddressSolver;
-        uint256 transferAmount = 1 ether;
-        address transferRecipient = _publicAddress;
-
-        //build intent
-        UserIntent memory intent = _intentForCase(erc20ReleaseAmount, transferRecipient, transferAmount);
-        intent = _signIntent(intent);
-
-        //build solution
-        IntentSolution memory solution = _solutionForCase(intent, erc20Recipient);
-
-        //execute
-        _entryPoint.handleIntents(solution);
-
-        //verify end state
-        uint256 solverBalance = _testERC20.balanceOf(_publicAddressSolver);
-        assertEq(solverBalance, erc20ReleaseAmount, "The solver ended up with incorrect token balance");
-
-        uint256 userBalance = _testERC20.balanceOf(address(_account));
-        uint256 expectedUserBalance = _accountInitialERC20Balance - (erc20ReleaseAmount + transferAmount);
-        assertEq(userBalance, expectedUserBalance, "The user ended up with incorrect token balance");
-
-        uint256 recipientBalance = _testERC20.balanceOf(address(_publicAddress));
-        assertEq(recipientBalance, transferAmount, "The recipient didn't get the expected tokens");
     }
 }
