@@ -58,7 +58,7 @@ abstract contract TestEnvironment is Test {
     SequentialNonce internal _sequentialNonceStandard;
     SimpleCall internal _simpleCallStandard;
     UserOperation internal _userOperationStandard;
-    
+
     //accounts
     SimpleAccount internal _account;
 
