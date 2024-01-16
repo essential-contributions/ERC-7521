@@ -1,6 +1,7 @@
 import { TxFeeCalculator, TxResult } from './benchmark/feeCalculator';
 import { MainnetCalculator } from './benchmark/mainnet';
 import { OPStackCalculator } from './benchmark/opstack';
+import { ArbitrumCalculator } from './benchmark/arbitrum';
 import { Environment, deployTestEnvironment } from './scenarios/environment';
 import { ScenarioOptions, ScenarioResult } from './scenarios/scenario';
 import { TokenSwapScenario } from './scenarios/tokenSwapScenario';
@@ -14,6 +15,8 @@ const ETH_PRICE = 2250;
 const OP_GAS_PRICE = 0.004;
 const OP_DATA_PRICE = 38;
 const OP_DATA_SCALER = 0.684;
+const ARB_GAS_PRICE = 0.004;
+const ARB_DATA_PRICE = 30;
 
 // Main script entry
 async function main() {
@@ -69,6 +72,7 @@ async function main() {
     useCompression: false,
     useStatefulCompression: false,
     useAccountAsEOAProxy: false,
+    useBLSSignatureAggregation: false,
   };
   logScenarios(await run(embeddedStandards));
 
@@ -78,6 +82,7 @@ async function main() {
     useCompression: true,
     useStatefulCompression: false,
     useAccountAsEOAProxy: false,
+    useBLSSignatureAggregation: false,
   };
   logScenarios(await run(nonStatefulCompression), 'Non-Stateful Compression');
 
@@ -87,8 +92,39 @@ async function main() {
     useCompression: true,
     useStatefulCompression: true,
     useAccountAsEOAProxy: false,
+    useBLSSignatureAggregation: false,
   };
   logScenarios(await run(statefulCompression), 'Stateful Compression');
+
+  //embedded with bls signatures
+  const blsSignatureAggregation: ScenarioOptions = {
+    useEmbeddedStandards: true,
+    useCompression: false,
+    useStatefulCompression: false,
+    useAccountAsEOAProxy: false,
+    useBLSSignatureAggregation: true,
+  };
+  logScenarios(await run(blsSignatureAggregation), 'BLS Signature Aggregation');
+
+  //embedded with bls signatures and compression
+  const blsCompression: ScenarioOptions = {
+    useEmbeddedStandards: true,
+    useCompression: true,
+    useStatefulCompression: false,
+    useAccountAsEOAProxy: false,
+    useBLSSignatureAggregation: true,
+  };
+  logScenarios(await run(blsCompression), 'BLS Signature Aggregation w/ Compression');
+
+  //embedded with bls signatures and stateful compression
+  const blsStatefulCompression: ScenarioOptions = {
+    useEmbeddedStandards: true,
+    useCompression: true,
+    useStatefulCompression: true,
+    useAccountAsEOAProxy: false,
+    useBLSSignatureAggregation: true,
+  };
+  logScenarios(await run(blsStatefulCompression), 'BLS Signature Aggregation w/ Stateful Compression');
 
   //embedded for EOA
   const embeddedStandardsEOA: ScenarioOptions = {
@@ -96,6 +132,7 @@ async function main() {
     useCompression: false,
     useStatefulCompression: false,
     useAccountAsEOAProxy: true,
+    useBLSSignatureAggregation: false,
   };
   logScenarios(await run(embeddedStandardsEOA), 'Proxy Contracts for EOAs');
 
@@ -105,6 +142,7 @@ async function main() {
     useCompression: true,
     useStatefulCompression: true,
     useAccountAsEOAProxy: true,
+    useBLSSignatureAggregation: false,
   };
   logScenarios(await run(nonStatefulCompressionEOA), 'Stateful Compression Proxy for EOAs');
 
@@ -114,6 +152,7 @@ async function main() {
     useCompression: false,
     useStatefulCompression: false,
     useAccountAsEOAProxy: false,
+    useBLSSignatureAggregation: false,
   };
   logScenarios(await run(registeredStandards), 'Using Registered Standards');
 
@@ -123,6 +162,7 @@ async function main() {
     useCompression: true,
     useStatefulCompression: true,
     useAccountAsEOAProxy: false,
+    useBLSSignatureAggregation: false,
   };
   logScenarios(await run(registeredStatefulCompression), 'Using Registered Standards w/ Stateful Compression');
 }
@@ -136,6 +176,8 @@ function logParameters() {
   console.log('| Optimism Data Price     | ' + (OP_DATA_PRICE + 'gwei').padEnd(16, ' ') + ' |');
   console.log('| Optimism Gas Price      | ' + (OP_GAS_PRICE + 'gwei').padEnd(16, ' ') + ' |');
   console.log('| Optimism Data Scaler    | ' + OP_DATA_SCALER.toString().padEnd(16, ' ') + ' |');
+  console.log('| Arbitrum Data Price     | ' + (ARB_DATA_PRICE + 'gwei').padEnd(16, ' ') + ' |');
+  console.log('| Arbitrum Gas Price      | ' + (ARB_GAS_PRICE + 'gwei').padEnd(16, ' ') + ' |');
   console.log('');
 }
 
@@ -153,6 +195,7 @@ function logDeployments(env: Environment) {
     console.log(`| ${n} | ${g} | $${c} | ${p} |`);
   }
   line('Deploy EntryPoint', env.gasUsed.entrypoint);
+  line('Deploy BLS Aggregator', env.gasUsed.blsSignatureAggregator);
   line('Deploy Simple Acct Fac', env.gasUsed.simpleAccountFactory);
   line('Deploy Simple Acct', env.gasUsed.simpleAccount);
   line('Deploy Gen Compression', env.gasUsed.generalCompression);
@@ -209,6 +252,7 @@ function logScenarios(results: ScenariosResults, subHeading?: string) {
     }
     subline('mainnet', new MainnetCalculator(GAS_PRICE, ETH_PRICE), results);
     subline('opstack', new OPStackCalculator(OP_GAS_PRICE, OP_DATA_PRICE, OP_DATA_SCALER, ETH_PRICE), results);
+    subline('arbitrum', new ArbitrumCalculator(ARB_GAS_PRICE, ARB_DATA_PRICE, ETH_PRICE), results);
 
     console.log(
       '|                       |                  |                  |                  |                  |                  |',

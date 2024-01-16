@@ -30,6 +30,7 @@ export type ScenarioOptions = {
   useCompression: boolean;
   useStatefulCompression: boolean;
   useAccountAsEOAProxy: boolean;
+  useBLSSignatureAggregation: boolean;
 };
 
 // Default scenario options
@@ -38,6 +39,7 @@ export const DEFAULT_SCENARIO_OPTIONS: ScenarioOptions = {
   useCompression: false,
   useStatefulCompression: false,
   useAccountAsEOAProxy: false,
+  useBLSSignatureAggregation: false,
 };
 
 // The scenario object

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.22;
 
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
-import {IProxyAccount} from "../interfaces/IProxyAccount.sol";
+import {IAccountProxy} from "../interfaces/IAccountProxy.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
@@ -68,7 +68,7 @@ abstract contract Erc20RequireCore {
         // check requirement
         if (requiredBalance > 0) {
             address account = intentSender;
-            if (isCurveProxy(curve)) account = IProxyAccount(intentSender).proxyFor();
+            if (isCurveProxy(curve)) account = IAccountProxy(intentSender).proxyFor();
 
             uint256 currentBalance = IERC20(token).balanceOf(account);
             require(

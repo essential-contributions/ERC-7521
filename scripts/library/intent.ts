@@ -42,13 +42,19 @@ export class UserIntent {
     return this.signature;
   }
 
+  //manually sets the signature field if account using signature scheme other than ECDSA
+  public async setSignature(signature: string) {
+    this.signature = signature;
+  }
+
   //gets the hash of the intent
   public hash(chainId: bigint, entrypoint: string): string {
     const abi = new ethers.AbiCoder();
     const intentData: BytesLike[] = this.segments.map((segment) => segment.asBytes());
     const intentDataHash = ethers.keccak256(abi.encode(['bytes[]'], [intentData]));
     const intentHash = ethers.keccak256(abi.encode(['address', 'bytes32'], [this.sender, intentDataHash]));
-    return ethers.keccak256(abi.encode(['bytes32', 'address', 'uint256'], [intentHash, entrypoint, chainId]));
+    const hash = ethers.keccak256(abi.encode(['bytes32', 'address', 'uint256'], [intentHash, entrypoint, chainId]));
+    return ethers.zeroPadValue(hash, 32);
   }
 
   //gets the intent object with segment data encoded

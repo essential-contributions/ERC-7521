@@ -295,8 +295,16 @@ contract EntryPoint is
 
         // validate aggregated intent signature
         UserIntent[] memory aggregatedIntents = new UserIntent[](aggregatedIntentTotal);
+        uint256 h = 0;
+        uint256 g = 0;
         for (uint256 i = 0; i < solsLen; i++) {
-            for (uint256 j = 0; j < solutions[0].intents.length; j++) {}
+            for (uint256 j = 0; j < solutions[i].intents.length; j++) {
+                if ((uint256(intentsToAggregate) & (1 << g)) > 0) {
+                    aggregatedIntents[h] = solutions[i].intents[j];
+                    h++;
+                }
+                g++;
+            }
         }
         aggregator.validateSignatures(aggregatedIntents, signature);
 

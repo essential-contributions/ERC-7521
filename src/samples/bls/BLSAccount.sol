@@ -1,32 +1,41 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.22;
 
-import {BaseAccount} from "../core/BaseAccount.sol";
-import {IAggregator} from "../interfaces/IAggregator.sol";
-import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
-import {IAccountProxy} from "../interfaces/IAccountProxy.sol";
-import {IIntentDelegate} from "../interfaces/IIntentDelegate.sol";
-import {UserIntent} from "../interfaces/UserIntent.sol";
-import {Exec} from "../utils/Exec.sol";
-import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
+import {IBLSAccount} from "./IBLSAccount.sol";
+import {BaseAccount} from "../../core/BaseAccount.sol";
+import {IAggregator} from "../../interfaces/IAggregator.sol";
+import {IEntryPoint} from "../../interfaces/IEntryPoint.sol";
+import {IAccountProxy} from "../../interfaces/IAccountProxy.sol";
+import {IIntentDelegate} from "../../interfaces/IIntentDelegate.sol";
+import {UserIntent, UserIntentLib} from "../../interfaces/UserIntent.sol";
+import {Exec} from "../../utils/Exec.sol";
+import {BLS} from "./lib/BLS.sol";
 import {Initializable} from "openzeppelin/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "openzeppelin/proxy/utils/UUPSUpgradeable.sol";
 
 /**
- * A minimal account.
- *  this is sample minimal account.
- *  has a single signer that can send requests through the entryPoint.
+ * Minimal BLS-based account that uses an aggregated signature.
+ * The account must maintain its own BLS public key, and expose its trusted signature aggregator.
  */
-contract SimpleAccount is BaseAccount, UUPSUpgradeable, Initializable, IAccountProxy {
-    using ECDSA for bytes32;
+contract BLSAccount is BaseAccount, UUPSUpgradeable, Initializable, IAccountProxy, IBLSAccount {
+    using UserIntentLib for UserIntent;
 
     IEntryPoint private immutable _entryPoint;
+    IAggregator private immutable _aggregator;
+    uint256[4] private _publicKey;
     address private _owner;
 
-    event SimpleAccountInitialized(IEntryPoint indexed entryPoint, address indexed owner);
+    bytes32 public constant BLS_DOMAIN = keccak256("erc7521.bls.domain");
 
-    constructor(IEntryPoint anEntryPoint) {
+    event BLSAccountInitialized(
+        IEntryPoint indexed entryPoint, IAggregator indexed aggregator, uint256[4] indexed publicKey
+    );
+
+    // The constructor is used only for the "implementation" and only sets immutable values.
+    // Mutable value slots for proxy accounts are set by the 'initialize' function.
+    constructor(IEntryPoint anEntryPoint, IAggregator anAggregator) {
         _entryPoint = anEntryPoint;
+        _aggregator = anAggregator;
         _disableInitializers();
     }
 
@@ -35,9 +44,15 @@ contract SimpleAccount is BaseAccount, UUPSUpgradeable, Initializable, IAccountP
      * a new implementation of SimpleAccount must be deployed with the new EntryPoint address, then upgrading
      * the implementation by calling `upgradeTo()`
      */
-    function initialize(address anOwner) public virtual initializer {
+    function initialize(uint256[4] calldata aPublicKey, address anOwner) public virtual initializer {
         _owner = anOwner;
-        emit SimpleAccountInitialized(_entryPoint, _owner);
+        _publicKey = aPublicKey;
+        emit BLSAccountInitialized(_entryPoint, _aggregator, _publicKey);
+    }
+
+    /// @inheritdoc IBLSAccount
+    function getBlsPublicKey() public view override returns (uint256[4] memory) {
+        return _publicKey;
     }
 
     /// @inheritdoc BaseAccount
@@ -63,9 +78,14 @@ contract SimpleAccount is BaseAccount, UUPSUpgradeable, Initializable, IAccountP
         override
         returns (IAggregator)
     {
-        bytes32 hash = intentHash.toEthSignedMessageHash();
-        require(_owner == hash.recover(intent.signature), "invalid signature");
-        return IAggregator(address(0));
+        if (intent.signature.length > 0) {
+            uint256[2] memory signature = abi.decode(intent.signature, (uint256[2]));
+            uint256[2] memory message = BLS.hashToPoint(BLS_DOMAIN, abi.encodePacked(intentHash));
+            BLS.verifySingle(signature, _publicKey, message);
+
+            return IAggregator(address(0));
+        }
+        return _aggregator;
     }
 
     /**

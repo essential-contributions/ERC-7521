@@ -1,8 +1,9 @@
 import { Provider, Signer } from 'ethers';
 import { ethers } from 'hardhat';
 import {
-  SimpleAccountFactory,
   SimpleAccount,
+  BLSAccount,
+  BLSSignatureAggregator,
   EntryPoint,
   SolverUtils,
   TestERC20,
@@ -20,6 +21,7 @@ import { Erc20RecordSegment } from '../library/standards/erc20Record';
 import { Erc20ReleaseSegment } from '../library/standards/erc20Release';
 import { Erc20RequireSegment } from '../library/standards/erc20Require';
 import { GeneralIntentCompression } from '../library/compression/generalIntentCompression';
+import { BlsSigner, BlsSignerFactory, BlsVerifier } from '../library/bls/bls';
 
 // Environment definition
 export type Environment = {
@@ -29,6 +31,8 @@ export type Environment = {
   deployerAddress: string;
   entrypoint: EntryPoint;
   entrypointAddress: string;
+  blsSignatureAggregator: BLSSignatureAggregator;
+  blsSignatureAggregatorAddress: string;
   standards: {
     call: (callData: string) => SimpleCallSegment;
     userOp: (callData: string, gasLimit: number) => UserOperationSegment;
@@ -67,8 +71,11 @@ export type Environment = {
   };
   simpleAccounts: SmartContractAccount[];
   eoaProxyAccounts: SmartContractAccount[];
+  blsAccounts: BLSSmartContractAccount[];
+  blsVerifier: BlsVerifier;
   gasUsed: {
     entrypoint: bigint;
+    blsSignatureAggregator: bigint;
     registerStandard: bigint;
     simpleAccountFactory: bigint;
     simpleAccount: bigint;
@@ -79,13 +86,19 @@ export type Environment = {
     randomAddresses: (num: number) => string[];
   };
   solverUtils: SolverUtils;
-  simpleAccountFactory: SimpleAccountFactory;
 };
 export type SmartContractAccount = {
   contract: SimpleAccount;
   contractAddress: string;
   signer: Signer;
   signerAddress: string;
+};
+export type BLSSmartContractAccount = {
+  contract: BLSAccount;
+  contractAddress: string;
+  signer: BlsSigner;
+  owner: Signer;
+  ownerAddress: string;
 };
 
 // Deploy configuration options
@@ -150,11 +163,22 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
   );
   const solverUtilsAddress = await solverUtils.getAddress();
 
+  //deploy signature aggregation contracts
+  const blsSignatureAggregator = await ethers.deployContract('BLSSignatureAggregator', [entrypointAddress], deployer);
+  const blsSignatureAggregatorAddress = await blsSignatureAggregator.getAddress();
+  const blsSignatureAggregatorGasUsed = (await blsSignatureAggregator.deploymentTransaction()?.wait())?.gasUsed || 0n;
+
   //deploy smart contract wallet factories
   const simpleAccountFactory = await ethers.deployContract('SimpleAccountFactory', [entrypointAddress], deployer);
   const simpleAccountFactoryGasUsed = (await simpleAccountFactory.deploymentTransaction()?.wait())?.gasUsed || 0n;
+  const blsAccountFactory = await ethers.deployContract(
+    'BLSAccountFactory',
+    [entrypointAddress, blsSignatureAggregatorAddress],
+    deployer,
+  );
 
   //deploy smart contract wallets
+  const fundAmount = ethers.parseEther('1');
   let simpleAccountGasUsed = 0n;
   const simpleAccounts: SmartContractAccount[] = [];
   for (let i = 0; i < config.numAccounts; i++) {
@@ -164,6 +188,8 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
     const createAccountReceipt = await (await simpleAccountFactory.createAccount(signerAddress, i)).wait();
     const contractAddress = await simpleAccountFactory.getFunction('getAddress(address,uint256)')(signerAddress, i);
     const contract = await ethers.getContractAt('SimpleAccount', contractAddress, deployer);
+
+    await deployer.sendTransaction({ to: contractAddress, value: fundAmount });
 
     simpleAccounts.push({ contract, contractAddress, signer, signerAddress });
     simpleAccountGasUsed += createAccountReceipt?.gasUsed || 0n;
@@ -180,12 +206,34 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
     const contractAddress = await simpleAccountFactory.getFunction('getAddress(address,uint256)')(signerAddress, i);
     const contract = await ethers.getContractAt('SimpleAccount', contractAddress, deployer);
 
-    const fundAmount = ethers.parseEther('1');
     await deployer.sendTransaction({ to: signerAddress, value: fundAmount });
     await testERC20.connect(signer).approve(contractAddress, ethers.MaxUint256);
     await testWrappedNativeToken.connect(signer).approve(contractAddress, ethers.MaxUint256);
 
     eoaProxyAccounts.push({ contract, contractAddress, signer, signerAddress });
+  }
+
+  //deploy smart contract wallets intended to serve as proxies for an EOA
+  const BLS_DOMAIN = ethers.toBeArray(ethers.keccak256(Buffer.from('erc7521.bls.domain')));
+  const blsSignerFactory = await BlsSignerFactory.new(BLS_DOMAIN);
+  const blsVerifier = new BlsVerifier(BLS_DOMAIN);
+  const blsAccounts: BLSSmartContractAccount[] = [];
+  for (let i = 0; i < config.numAccounts; i++) {
+    const owner = new ethers.Wallet(ethers.hexlify(ethers.randomBytes(32))).connect(provider);
+    const ownerAddress = await owner.getAddress();
+
+    const signer = blsSignerFactory.createSigner(`0x${(i + 10).toString(16).padStart(64, '0')}`);
+    await blsAccountFactory.createAccount(signer.pubkey, ownerAddress, i);
+    const contractAddress = await blsAccountFactory.getFunction('getAddress(uint256[4],address,uint256)')(
+      signer.pubkey,
+      ownerAddress,
+      i,
+    );
+    const contract = await ethers.getContractAt('BLSAccount', contractAddress, deployer);
+
+    await deployer.sendTransaction({ to: contractAddress, value: fundAmount });
+
+    blsAccounts.push({ contract, contractAddress, signer, owner, ownerAddress });
   }
 
   //fund exchange
@@ -232,6 +280,7 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
   (await dataRegistry.addTwoByteItem(ethers.hexlify(ethers.randomBytes(32)))).wait();
   (await dataRegistry.addTwoByteItem('0x' + testUniswapAddress.substring(2).padStart(64, '0'))).wait();
   (await dataRegistry.addTwoByteItem('0x' + solverUtilsAddress.substring(2).padStart(64, '0'))).wait();
+  (await dataRegistry.addTwoByteItem('0x' + blsSignatureAggregatorAddress.substring(2).padStart(64, '0'))).wait();
   (await dataRegistry.addFunctionSelector('0xb61d27f6')).wait();
   (await dataRegistry.addFunctionSelector('0xa9059cbb')).wait();
   (await dataRegistry.addFunctionSelector('0x18c6051a')).wait();
@@ -239,6 +288,9 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
   //fill the data registry with low frequency items
   (await dataRegistry.addFourByteItem(ethers.hexlify(ethers.randomBytes(32)))).wait();
   for (const acct of simpleAccounts) {
+    (await dataRegistry.addFourByteItem('0x' + acct.contractAddress.substring(2).padStart(64, '0'))).wait();
+  }
+  for (const acct of blsAccounts) {
     (await dataRegistry.addFourByteItem('0x' + acct.contractAddress.substring(2).padStart(64, '0'))).wait();
   }
   for (const acct of eoaProxyAccounts) {
@@ -256,6 +308,8 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
     deployerAddress: await deployer.getAddress(),
     entrypoint,
     entrypointAddress,
+    blsSignatureAggregator,
+    blsSignatureAggregatorAddress,
     standards: {
       call: (callData: string) => new SimpleCallSegment(callStdId, callData),
       userOp: (callData: string, gasLimit: number) => new UserOperationSegment(userOperationStdId, callData, gasLimit),
@@ -302,8 +356,11 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
     },
     simpleAccounts: simpleAccounts,
     eoaProxyAccounts: eoaProxyAccounts,
+    blsAccounts: blsAccounts,
+    blsVerifier: blsVerifier,
     gasUsed: {
       entrypoint: entrypointGasUsed,
+      blsSignatureAggregator: blsSignatureAggregatorGasUsed,
       registerStandard: registerStandardGasUsed,
       simpleAccountFactory: simpleAccountFactoryGasUsed,
       simpleAccount: simpleAccountGasUsed,
@@ -320,7 +377,6 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
       },
     },
     solverUtils,
-    simpleAccountFactory,
   };
 }
 

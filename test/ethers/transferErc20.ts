@@ -12,6 +12,7 @@ describe('Transfer ERC-20 Test', () => {
     useCompression: false,
     useStatefulCompression: false,
     useAccountAsEOAProxy: false,
+    useBLSSignatureAggregation: false,
   };
 
   before(async () => {
@@ -41,9 +42,10 @@ describe('Transfer ERC-20 Test', () => {
 
   it('Should run single intent', async () => {
     const solverAddress = env.deployerAddress;
-    const accountAddress = scenarioOptions.useAccountAsEOAProxy
-      ? env.eoaProxyAccounts[0].signerAddress
-      : env.simpleAccounts[0].contractAddress;
+    let accountAddress: string = env.simpleAccounts[0].contractAddress;
+    if (scenarioOptions.useAccountAsEOAProxy) accountAddress = env.eoaProxyAccounts[0].signerAddress;
+    else if (scenarioOptions.useBLSSignatureAggregation) accountAddress = env.blsAccounts[0].contractAddress;
+
     const to = env.utils.randomAddresses(1)[0];
     const previousSolverBalance = await env.test.erc20.balanceOf(solverAddress);
     const previousToBalance = await env.test.erc20.balanceOf(to);
@@ -75,9 +77,10 @@ describe('Transfer ERC-20 Test', () => {
     const previousFromBalances: bigint[] = [];
     const previousSolverBalance = await env.test.erc20.balanceOf(solverAddress);
     for (let i = 0; i < MAX_INTENTS; i++) {
-      const accountAddress = scenarioOptions.useAccountAsEOAProxy
-        ? env.eoaProxyAccounts[0].signerAddress
-        : env.simpleAccounts[0].contractAddress;
+      let accountAddress: string = env.simpleAccounts[i].contractAddress;
+      if (scenarioOptions.useAccountAsEOAProxy) accountAddress = env.eoaProxyAccounts[i].signerAddress;
+      else if (scenarioOptions.useBLSSignatureAggregation) accountAddress = env.blsAccounts[i].contractAddress;
+
       accountAddresses.push(accountAddress);
       previousToBalances.push(await env.test.erc20.balanceOf(to[i]));
       previousFromBalances.push(await env.test.erc20.balanceOf(accountAddress));

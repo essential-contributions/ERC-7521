@@ -12,6 +12,7 @@ describe('Transfer ETH Test', () => {
     useCompression: false,
     useStatefulCompression: false,
     useAccountAsEOAProxy: false,
+    useBLSSignatureAggregation: false,
   };
 
   before(async () => {
@@ -41,12 +42,13 @@ describe('Transfer ETH Test', () => {
   });
 
   it('Should run single intent', async () => {
-    const account = env.simpleAccounts[0];
+    let accountAddress: string = env.simpleAccounts[0].contractAddress;
+    if (scenarioOptions.useBLSSignatureAggregation) accountAddress = env.blsAccounts[0].contractAddress;
     const to = env.utils.randomAddresses(1)[0];
     const previousSolverBalanceErc20 = await env.test.erc20.balanceOf(env.deployerAddress);
-    const previousFromBalanceErc20 = await env.test.erc20.balanceOf(account.contractAddress);
+    const previousFromBalanceErc20 = await env.test.erc20.balanceOf(accountAddress);
     const previousToBalance = await env.provider.getBalance(to);
-    const previousFromBalance = await env.provider.getBalance(account.contractAddress);
+    const previousFromBalance = await env.provider.getBalance(accountAddress);
 
     //transfer
     const transferResults = await scenario.run([to], scenarioOptions);
@@ -56,11 +58,11 @@ describe('Transfer ETH Test', () => {
       previousSolverBalanceErc20 + transferResults.fee,
       'Solvers token balance is incorrect',
     );
-    expect(await env.test.erc20.balanceOf(account.contractAddress)).to.equal(
+    expect(await env.test.erc20.balanceOf(accountAddress)).to.equal(
       previousFromBalanceErc20 - transferResults.fee,
       'Senders token balance is incorrect',
     );
-    expect(await env.provider.getBalance(account.contractAddress)).to.equal(
+    expect(await env.provider.getBalance(accountAddress)).to.equal(
       previousFromBalance - transferResults.amount,
       'Senders balance is incorrect',
     );
@@ -71,33 +73,37 @@ describe('Transfer ETH Test', () => {
   });
 
   it('Should run multi intent', async () => {
+    const solverAddress = env.deployerAddress;
     const to: string[] = env.utils.randomAddresses(MAX_INTENTS);
+    const accountAddresses: string[] = [];
     const previousToBalances: bigint[] = [];
     const previousFromBalances: bigint[] = [];
     const previousFromBalancesErc20: bigint[] = [];
-    const previousSolverBalanceErc20 = await env.test.erc20.balanceOf(env.deployerAddress);
+    const previousSolverBalanceErc20 = await env.test.erc20.balanceOf(solverAddress);
     for (let i = 0; i < MAX_INTENTS; i++) {
-      const account = env.simpleAccounts[i];
+      let accountAddress: string = env.simpleAccounts[i].contractAddress;
+      if (scenarioOptions.useBLSSignatureAggregation) accountAddress = env.blsAccounts[i].contractAddress;
+      accountAddresses.push(accountAddress);
       previousToBalances.push(await env.provider.getBalance(to[i]));
-      previousFromBalances.push(await env.provider.getBalance(account.contractAddress));
-      previousFromBalancesErc20.push(await env.test.erc20.balanceOf(account.contractAddress));
+      previousFromBalances.push(await env.provider.getBalance(accountAddress));
+      previousFromBalancesErc20.push(await env.test.erc20.balanceOf(accountAddress));
     }
 
     //transfer
     const transferResults = await scenario.run(to, scenarioOptions);
     await expect(transferResults.tx).to.not.be.reverted;
 
-    expect(await env.test.erc20.balanceOf(env.deployerAddress)).to.equal(
+    expect(await env.test.erc20.balanceOf(solverAddress)).to.equal(
       previousSolverBalanceErc20 + transferResults.fee * BigInt(MAX_INTENTS),
       'Solvers token balance is incorrect',
     );
     for (let i = 0; i < MAX_INTENTS; i++) {
-      const account = env.simpleAccounts[i];
-      expect(await env.test.erc20.balanceOf(account.contractAddress)).to.equal(
+      const accountAddress = accountAddresses[i];
+      expect(await env.test.erc20.balanceOf(accountAddress)).to.equal(
         previousFromBalancesErc20[i] - transferResults.fee,
         'Senders token balance is incorrect',
       );
-      expect(await env.provider.getBalance(account.contractAddress)).to.equal(
+      expect(await env.provider.getBalance(accountAddress)).to.equal(
         previousFromBalances[i] - transferResults.amount,
         'Senders balance is incorrect',
       );

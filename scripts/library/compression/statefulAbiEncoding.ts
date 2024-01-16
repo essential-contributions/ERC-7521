@@ -43,13 +43,13 @@ export class StatefulAbiEncoding {
   // Sync up with the on-chain data registry
   public async sync() {
     const one = await this.dataRegistry.queryFilter(this.dataRegistry.filters.OneByteRegistryAdd());
-    for (const o of one) this.oneByteList[Number(o.args[0])] = o.data.substring(2);
+    for (const o of one) this.oneByteList[Number(o.args[0])] = o.data.substring(2).toLowerCase();
     const two = await this.dataRegistry.queryFilter(this.dataRegistry.filters.TwoByteRegistryAdd());
-    for (const t of two) this.twoByteList[Number(t.args[0])] = t.data.substring(2);
+    for (const t of two) this.twoByteList[Number(t.args[0])] = t.data.substring(2).toLowerCase();
     const four = await this.dataRegistry.queryFilter(this.dataRegistry.filters.FourByteRegistryAdd());
-    for (const f of four) this.fourByteList[Number(f.args[0])] = f.data.substring(2);
+    for (const f of four) this.fourByteList[Number(f.args[0])] = f.data.substring(2).toLowerCase();
     const fnsel = await this.dataRegistry.queryFilter(this.dataRegistry.filters.FnSelRegistryAdd());
-    for (const s of fnsel) this.fnSelList[Number(s.args[0])] = s.data.substring(2);
+    for (const s of fnsel) this.fnSelList[Number(s.args[0])] = s.data.substring(2).toLowerCase();
   }
 
   // Encodes the given array of bytes
@@ -143,7 +143,7 @@ export class StatefulAbiEncoding {
   //encode single element (max 32bytes)
   private doEncode(bytes: string): string {
     if (!bytes) return '';
-    bytes = (' ' + bytes).slice(1);
+    bytes = (' ' + bytes).slice(1).toLowerCase();
 
     //encode by one byte lookup
     let encodedViaLookup1: string | undefined;
