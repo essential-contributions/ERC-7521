@@ -69,11 +69,4 @@ contract TestUniswap {
 
     // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
-
-    /**
-     * Add a test to exclude this contract from coverage report
-     * note: there is currently an open ticket to resolve this more gracefully
-     * https://github.com/foundry-rs/foundry/issues/2988
-     */
-    function test() public {}
 }
