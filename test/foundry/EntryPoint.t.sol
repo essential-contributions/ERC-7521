@@ -9,7 +9,7 @@ import "../../src/interfaces/IIntentStandard.sol";
 contract EntryPointTest is TestEnvironment {
     function test_getUserIntentHash() public {
         UserIntent memory intent = _intent();
-        bytes32 expectedHash = 0x0657772e5d310553fa34314f6b3fc1a0d3935aec895150d8be0a8f8ad08bd8dd;
+        bytes32 expectedHash = 0x8e30ad927432fad99136072f6d342ad3e87a4f6a9d86c424b0bfd865136d6dae;
         bytes32 intentHash = _entryPoint.getUserIntentHash(intent);
         assertEq(intentHash, expectedHash);
     }
@@ -28,26 +28,26 @@ contract EntryPointTest is TestEnvironment {
 
     function test_failRegisterIntentStandard_alreadyRegistered() public {
         vm.expectRevert("AA81 already registered");
-        _entryPoint.registerIntentStandard(_ethRelease);
+        _entryPoint.registerIntentStandard(_ethReleaseStandard);
     }
 
     function test_getIntentStandardContract() public {
-        bytes32 standardId = _entryPoint.getIntentStandardId(_ethRelease);
+        bytes32 standardId = _entryPoint.getIntentStandardId(_ethReleaseStandard);
         IIntentStandard registeredStandard = _entryPoint.getIntentStandardContract(standardId);
-        bytes32 expectedHash = keccak256(abi.encode(IIntentStandard(_ethRelease)));
+        bytes32 expectedHash = keccak256(abi.encode(IIntentStandard(_ethReleaseStandard)));
         bytes32 registeredHash = keccak256(abi.encode(registeredStandard));
         assertEq(registeredHash, expectedHash);
     }
 
     function test_failGetIntentStandardContract_unknownStandard() public {
-        bytes32 standardId = _entryPoint.getIntentStandardId(_ethRelease);
+        bytes32 standardId = _entryPoint.getIntentStandardId(_ethReleaseStandard);
         vm.expectRevert("AA82 unknown standard");
         _entryPoint.getIntentStandardContract(standardId << 1);
     }
 
     function test_getIntentStandardId() public {
-        bytes32 standardId = _entryPoint.getIntentStandardId(_ethRelease);
-        bytes32 expectedStandardId = _entryPoint.getIntentStandardId(_ethRelease);
+        bytes32 standardId = _entryPoint.getIntentStandardId(_ethReleaseStandard);
+        bytes32 expectedStandardId = _entryPoint.getIntentStandardId(_ethReleaseStandard);
         assertEq(standardId, expectedStandardId);
     }
 

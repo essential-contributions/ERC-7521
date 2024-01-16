@@ -3,7 +3,7 @@ pragma solidity ^0.8.22;
 
 /* solhint-disable func-name-mixedcase */
 
-import "../utils/ScenarioTestEnvironment.sol";
+import "../utils/TestEnvironment.sol";
 import "../../../src/standards/utils/CurveCoder.sol";
 
 /*
@@ -12,7 +12,7 @@ import "../../../src/standards/utils/CurveCoder.sol";
  * Solution:
  * 1. the solver executes the operation and pockets the released tokens
  */
-contract TransferEth is ScenarioTestEnvironment {
+contract TransferEth is TestEnvironment {
     uint256 private _accountInitialETHBalance = 1 ether;
     uint256 private _accountInitialERC20Balance = 10 ether;
 

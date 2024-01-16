@@ -3,10 +3,10 @@ pragma solidity ^0.8.22;
 
 /* solhint-disable func-name-mixedcase */
 
-import "./utils/ScenarioTestEnvironment.sol";
+import "./utils/TestEnvironment.sol";
 import "../../src/interfaces/IEntryPoint.sol";
 
-contract SimpleAccountTest is ScenarioTestEnvironment {
+contract SimpleAccountTest is TestEnvironment {
     function test_entryPoint() public {
         assertEq(address(_account.entryPoint()), address(_entryPoint));
     }
