@@ -31,27 +31,43 @@ abstract contract TokenSwapScenario is TestEnvironment {
         vm.warp(1700952587);
     }
 
-    function tokenSwap_run(bool constantRelease)
+    function tokenSwap_run(bool constantExpectation, bool ethToErc20, bool useReqisteredStandards)
         public
-        returns (uint256 erc20ReleaseAmount, uint256 ethRequireAmount, uint256 slippage)
+        returns (uint256 releaseAmount, uint256 requireAmount, uint256 slippage)
     {
-        erc20ReleaseAmount = 1 ether;
-        ethRequireAmount = 0.9 ether;
+        releaseAmount = 1 ether;
+        requireAmount = 0.9 ether;
         slippage = 5;
         uint256 duration = 3000;
         uint256 evaluateAt = 1000;
 
         //build intent
         UserIntent memory intent;
-        if (constantRelease) {
-            intent = _constantReleaseIntent(erc20ReleaseAmount, ethRequireAmount, duration, evaluateAt);
+        if (constantExpectation) {
+            intent = _constantExpectationIntent(releaseAmount, requireAmount, duration, evaluateAt);
         } else {
-            intent = _constantExpectationIntent(erc20ReleaseAmount, ethRequireAmount, duration, evaluateAt);
+            if (ethToErc20) {
+                intent = _constantReleaseEthIntent(releaseAmount, requireAmount, duration, evaluateAt);
+            } else {
+                intent = _constantReleaseErc20Intent(releaseAmount, requireAmount, duration, evaluateAt);
+            }
+        }
+        if (useReqisteredStandards) {
+            intent = _useRegisteredStandards(intent);
         }
         intent = _signIntent(intent);
 
         //build solution
-        IntentSolution memory solution = _solutionForTokenSwap(intent, erc20ReleaseAmount, ethRequireAmount);
+        IntentSolution memory solution;
+        if (constantExpectation) {
+            solution = _solutionForTokenSwap(intent, requireAmount);
+        } else {
+            if (ethToErc20) {
+                solution = _solutionForTokenSwapToErc20(intent, requireAmount);
+            } else {
+                solution = _solutionForTokenSwap(intent, requireAmount);
+            }
+        }
 
         //execute
         _entryPoint.handleIntents(solution);
@@ -86,7 +102,7 @@ abstract contract TokenSwapScenario is TestEnvironment {
         return intent;
     }
 
-    function _constantReleaseIntent(
+    function _constantReleaseErc20Intent(
         uint256 erc20ReleaseAmount,
         uint256 ethRequireAmount,
         uint256 requireDuration,
@@ -112,14 +128,57 @@ abstract contract TokenSwapScenario is TestEnvironment {
         return intent;
     }
 
-    function _solutionForTokenSwap(UserIntent memory intent, uint256 erc20ReleaseAmount, uint256 ethRequireAmount)
+    function _constantReleaseEthIntent(
+        uint256 ethReleaseAmount,
+        uint256 erc20RequireAmount,
+        uint256 requireDuration,
+        uint256 requireAt
+    ) private view returns (UserIntent memory) {
+        int256 requireStartAmount = 0;
+        int256 requireEndAmount = int256((erc20RequireAmount * requireDuration) / requireAt);
+
+        //build intent
+        UserIntent memory intent = _intent();
+        intent = _addSequentialNonce(intent, 1);
+        intent = _addErc20Record(intent, false);
+        intent = _addEthRelease(intent, int256(ethReleaseAmount));
+        intent = _addErc20RequireLinear(
+            intent,
+            uint32(block.timestamp - requireAt),
+            uint16(requireDuration),
+            requireStartAmount,
+            (requireEndAmount - requireStartAmount) / int256(requireDuration),
+            true,
+            false
+        );
+        return intent;
+    }
+
+    function _solutionForTokenSwap(UserIntent memory intent, uint256 ethRequireAmount)
         private
         view
         returns (IntentSolution memory)
     {
-        bytes memory solve = _solverSwapERC20ForETHAndForward(
-            erc20ReleaseAmount, address(_publicAddressSolver), ethRequireAmount, address(_account)
-        );
+        bytes memory solve =
+            _solverSwapERC20ForETHAndForward(address(_publicAddressSolver), ethRequireAmount, address(_account));
+        UserIntent memory solverIntent = _solverIntent();
+        solverIntent = _addSimpleCall(solverIntent, solve);
+        uint256[] memory order = new uint256[](5);
+        order[0] = 0;
+        order[1] = 0;
+        order[2] = 0;
+        order[3] = 1;
+        order[4] = 0;
+        return _solution(intent, solverIntent, order);
+    }
+
+    function _solutionForTokenSwapToErc20(UserIntent memory intent, uint256 erc20RequireAmount)
+        private
+        view
+        returns (IntentSolution memory)
+    {
+        bytes memory solve =
+            _solverSwapETHForERC20AndForward(address(_publicAddressSolver), erc20RequireAmount, address(_account));
         UserIntent memory solverIntent = _solverIntent();
         solverIntent = _addSimpleCall(solverIntent, solve);
         uint256[] memory order = new uint256[](5);

@@ -14,8 +14,8 @@ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 contract SolverUtils is IAccount {
     constructor(TestUniswap testUniswap, IERC20 erc20Token, IERC20 wrappedNativeToken) {
         // set token approvals
-        IERC20(erc20Token).approve(address(testUniswap), type(uint256).max);
-        IERC20(erc20Token).approve(address(wrappedNativeToken), type(uint256).max);
+        erc20Token.approve(address(testUniswap), type(uint256).max);
+        wrappedNativeToken.approve(address(testUniswap), type(uint256).max);
     }
 
     /**
@@ -31,7 +31,48 @@ contract SolverUtils is IAccount {
      * @param uniswap The address of the Uniswap router contract.
      * @param erc20 The address of the ERC20 token to be swapped.
      * @param weth The address of the Wrapped Ether (WETH) token on Uniswap.
-     * @param amountOutMinimum The minimum amount of ETH expected after the swap.
+     * @param recipient The address to receive the swapped ERC20 (after forwarding).
+     * @param forwardAmount The amount of ERC20 to forward to another address.
+     * @param forwardTo The address to forward the ERC20 to.
+     */
+    function swapETHForERC20AndForward(
+        address uniswap,
+        address erc20,
+        address weth,
+        address recipient,
+        uint256 forwardAmount,
+        address forwardTo
+    ) external {
+        uint256 balance = address(this).balance;
+
+        // wrap
+        TestWrappedNativeToken(payable(weth)).deposit{value: balance}();
+
+        // swap tokens
+        ExactInputSingleParams memory swapParams = ExactInputSingleParams({
+            tokenIn: weth,
+            tokenOut: erc20,
+            fee: uint24(0),
+            recipient: address(this),
+            deadline: uint256(0),
+            amountIn: balance,
+            amountOutMinimum: balance,
+            sqrtPriceLimitX96: uint160(0)
+        });
+        uint256 amount = TestUniswap(payable(uniswap)).exactInputSingle(swapParams);
+
+        // forward some erc20
+        IERC20(erc20).transfer(forwardTo, forwardAmount);
+
+        // send the remainder recipient
+        IERC20(erc20).transfer(recipient, amount - forwardAmount);
+    }
+
+    /**
+     * Swap ERC20 tokens for ETH and forward some ETH to another address.
+     * @param uniswap The address of the Uniswap router contract.
+     * @param erc20 The address of the ERC20 token to be swapped.
+     * @param weth The address of the Wrapped Ether (WETH) token on Uniswap.
      * @param recipient The address to receive the swapped ETH (after forwarding).
      * @param forwardAmount The amount of ETH to forward to another address.
      * @param forwardTo The address to forward the ETH to.
@@ -40,11 +81,12 @@ contract SolverUtils is IAccount {
         address uniswap,
         address erc20,
         address weth,
-        uint256 amountOutMinimum,
         address recipient,
         uint256 forwardAmount,
         address forwardTo
     ) external {
+        uint256 balance = IERC20(erc20).balanceOf(address(this));
+
         // swap tokens
         ExactInputSingleParams memory swapParams = ExactInputSingleParams({
             tokenIn: erc20,
@@ -52,8 +94,8 @@ contract SolverUtils is IAccount {
             fee: uint24(0),
             recipient: address(this),
             deadline: uint256(0),
-            amountIn: IERC20(erc20).balanceOf(address(this)),
-            amountOutMinimum: amountOutMinimum,
+            amountIn: balance,
+            amountOutMinimum: balance,
             sqrtPriceLimitX96: uint160(0)
         });
         uint256 amount = TestUniswap(payable(uniswap)).exactInputSingle(swapParams);

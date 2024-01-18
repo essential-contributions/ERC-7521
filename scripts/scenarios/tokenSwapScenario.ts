@@ -287,7 +287,6 @@ export class TokenSwapScenario extends Scenario {
       this.env.test.uniswapAddress,
       this.env.test.erc20Address,
       this.env.test.wrappedNativeTokenAddress,
-      amount,
       solver,
       amount,
       to,

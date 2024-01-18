@@ -158,13 +158,12 @@ abstract contract TestEnvironment is Test {
 
     /**
      * Private helper function to build call data for the solver to swap tokens and forward some ETH.
-     * @param minETH The minimum amount of ETH to be received after the swap.
      * @param to The address to receive the swapped ETH.
      * @param forwardAmount The amount of ETH to forward to another address.
      * @param forwardTo The address to forward the ETH to.
      * @return The encoded call data for the swap and forward action.
      */
-    function _solverSwapERC20ForETHAndForward(uint256 minETH, address to, uint256 forwardAmount, address forwardTo)
+    function _solverSwapERC20ForETHAndForward(address to, uint256 forwardAmount, address forwardTo)
         internal
         view
         returns (bytes memory)
@@ -174,7 +173,29 @@ abstract contract TestEnvironment is Test {
             _testUniswap,
             _testERC20,
             _testWrappedNativeToken,
-            minETH,
+            to,
+            forwardAmount,
+            forwardTo
+        );
+    }
+
+    /**
+     * Private helper function to build call data for the solver to swap tokens and forward some ETH.
+     * @param to The address to receive the swapped ETH.
+     * @param forwardAmount The amount of ETH to forward to another address.
+     * @param forwardTo The address to forward the ETH to.
+     * @return The encoded call data for the swap and forward action.
+     */
+    function _solverSwapETHForERC20AndForward(address to, uint256 forwardAmount, address forwardTo)
+        internal
+        view
+        returns (bytes memory)
+    {
+        return abi.encodeWithSelector(
+            SolverUtils.swapETHForERC20AndForward.selector,
+            _testUniswap,
+            _testERC20,
+            _testWrappedNativeToken,
             to,
             forwardAmount,
             forwardTo

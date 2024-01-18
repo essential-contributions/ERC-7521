@@ -200,8 +200,6 @@ contract EntryPoint is
                     _executeSequentialNonce(intent.sender, intent.intentData[segmentIndex]);
                 } else if (standardId == USER_OPERATION_STD_ID) {
                     _executeUserOperation(intent.sender, intent.intentData[segmentIndex]);
-                } else {
-                    revert FailedIntent(intentIndex, segmentIndex, "AA82 unknown standard");
                 }
             } else {
                 // execute as a registered standard
