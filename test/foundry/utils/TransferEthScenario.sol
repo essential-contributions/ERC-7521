@@ -16,10 +16,16 @@ abstract contract TransferEthScenario is TestEnvironment {
     uint256 private _accountInitialETHBalance = 1 ether;
     uint256 private _accountInitialERC20Balance = 10 ether;
 
-    function transferETH_setUp() public {
+    function transferEth_setUp() public {
         //fund account
         _testERC20.mint(address(_account), _accountInitialERC20Balance);
         vm.deal(address(_account), _accountInitialETHBalance);
+        _testERC20.mint(address(_account2), _accountInitialERC20Balance);
+        vm.deal(address(_account2), _accountInitialETHBalance);
+        _testERC20.mint(address(_account3), _accountInitialERC20Balance);
+        vm.deal(address(_account3), _accountInitialETHBalance);
+        _testERC20.mint(address(_account4), _accountInitialERC20Balance);
+        vm.deal(address(_account4), _accountInitialETHBalance);
 
         //set block timestamp to something reasonable
         vm.warp(1700952587);

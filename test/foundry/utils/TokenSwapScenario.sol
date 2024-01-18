@@ -17,9 +17,15 @@ abstract contract TokenSwapScenario is TestEnvironment {
     uint256 private _accountInitialERC20Balance = 100 ether;
 
     function tokenSwap_setUp() public {
-        //fund account
+        //fund accounts
         _testERC20.mint(address(_account), _accountInitialERC20Balance);
         vm.deal(address(_account), _accountInitialETHBalance);
+        _testERC20.mint(address(_account2), _accountInitialERC20Balance);
+        vm.deal(address(_account2), _accountInitialETHBalance);
+        _testERC20.mint(address(_account3), _accountInitialERC20Balance);
+        vm.deal(address(_account3), _accountInitialETHBalance);
+        _testERC20.mint(address(_account4), _accountInitialERC20Balance);
+        vm.deal(address(_account4), _accountInitialETHBalance);
 
         //set block timestamp to something reasonable
         vm.warp(1700952587);
@@ -45,7 +51,7 @@ abstract contract TokenSwapScenario is TestEnvironment {
         intent = _signIntent(intent);
 
         //build solution
-        IntentSolution memory solution = _solutionForCase(intent, erc20ReleaseAmount, ethRequireAmount);
+        IntentSolution memory solution = _solutionForTokenSwap(intent, erc20ReleaseAmount, ethRequireAmount);
 
         //execute
         _entryPoint.handleIntents(solution);
@@ -106,7 +112,7 @@ abstract contract TokenSwapScenario is TestEnvironment {
         return intent;
     }
 
-    function _solutionForCase(UserIntent memory intent, uint256 erc20ReleaseAmount, uint256 ethRequireAmount)
+    function _solutionForTokenSwap(UserIntent memory intent, uint256 erc20ReleaseAmount, uint256 ethRequireAmount)
         private
         view
         returns (IntentSolution memory)

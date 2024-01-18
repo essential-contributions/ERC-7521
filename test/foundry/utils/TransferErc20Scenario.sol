@@ -18,6 +18,9 @@ abstract contract TransferErc20Scenario is TestEnvironment {
     function transferErc20_setUp() public {
         //fund account
         _testERC20.mint(address(_account), _accountInitialERC20Balance);
+        _testERC20.mint(address(_account2), _accountInitialERC20Balance);
+        _testERC20.mint(address(_account3), _accountInitialERC20Balance);
+        _testERC20.mint(address(_account4), _accountInitialERC20Balance);
 
         //set block timestamp to something reasonable
         vm.warp(1700952587);

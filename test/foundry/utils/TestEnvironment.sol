@@ -61,6 +61,9 @@ abstract contract TestEnvironment is Test {
 
     //accounts
     SimpleAccount internal _account;
+    SimpleAccount internal _account2;
+    SimpleAccount internal _account3;
+    SimpleAccount internal _account4;
 
     //testing contracts
     TestERC20 internal _testERC20;
@@ -83,6 +86,12 @@ abstract contract TestEnvironment is Test {
     //keys
     uint256 internal constant _privateKey = uint256(keccak256("account_private_key"));
     address internal _publicAddress = _getPublicAddress(_privateKey);
+    uint256 internal constant _privateKey2 = uint256(keccak256("account_private_key2"));
+    address internal _publicAddress2 = _getPublicAddress(_privateKey2);
+    uint256 internal constant _privateKey3 = uint256(keccak256("account_private_key3"));
+    address internal _publicAddress3 = _getPublicAddress(_privateKey3);
+    uint256 internal constant _privateKey4 = uint256(keccak256("account_private_key4"));
+    address internal _publicAddress4 = _getPublicAddress(_privateKey4);
 
     uint256 internal constant _privateKeySolver = uint256(keccak256("solver_private_key"));
     address internal _publicAddressSolver = _getPublicAddress(_privateKeySolver);
@@ -119,7 +128,10 @@ abstract contract TestEnvironment is Test {
 
         //deploy accounts
         SimpleAccountFactory accountFactory = new SimpleAccountFactory(_entryPoint);
-        _account = accountFactory.createAccount(_publicAddress, 0);
+        _account = accountFactory.createAccount(_publicAddress, 111);
+        _account2 = accountFactory.createAccount(_publicAddress2, 222);
+        _account3 = accountFactory.createAccount(_publicAddress3, 333);
+        _account4 = accountFactory.createAccount(_publicAddress4, 444);
 
         //deploy test contracts
         _testERC20 = new TestERC20();
@@ -142,16 +154,6 @@ abstract contract TestEnvironment is Test {
         vm.deal(address(this), amount);
         _testWrappedNativeToken.deposit{value: amount}();
         _testWrappedNativeToken.transfer(to, amount);
-    }
-
-    /**
-     * Private helper function to build call data for the account claiming an ERC20 airdrop.
-     * @param amount The amount of ERC20 tokens to claim in the airdrop.
-     * @return The encoded call data for the claim airdrop action.
-     */
-    function _accountClaimAirdropERC20(uint256 amount) internal view returns (bytes memory) {
-        bytes memory mintCall = abi.encodeWithSelector(TestERC20.mint.selector, address(_account), amount);
-        return abi.encodeWithSelector(SimpleAccount.execute.selector, _testERC20, 0, mintCall);
     }
 
     /**
@@ -180,26 +182,6 @@ abstract contract TestEnvironment is Test {
     }
 
     /**
-     * Private helper function to build call data for the solver to transfer the test ERC20 token.
-     * @param recipient The token recipient.
-     * @param amount The amount of tokens to transfer.
-     * @return The encoded call data for the transfer action.
-     */
-    function _solverTransferERC20(address recipient, uint256 amount) internal view returns (bytes memory) {
-        return abi.encodeWithSelector(SolverUtils.transferERC20.selector, _testERC20, recipient, amount);
-    }
-
-    /**
-     * Private helper function to build call data for the solver to transfer ETH.
-     * @param recipient The token recipient.
-     * @param amount The amount of ETH to transfer.
-     * @return The encoded call data for the transfer action.
-     */
-    function _solverTransferETH(address recipient, uint256 amount) internal pure returns (bytes memory) {
-        return abi.encodeWithSelector(SolverUtils.transferETH.selector, recipient, amount);
-    }
-
-    /**
      * Private helper function to build a call intent struct for the solver.
      * @return The created UserIntent struct.
      */
@@ -213,6 +195,14 @@ abstract contract TestEnvironment is Test {
      */
     function _intent() internal view returns (UserIntent memory) {
         return IntentBuilder.create(address(_account));
+    }
+
+    /**
+     * Private helper function to build a user intent struct.
+     * @return The created UserIntent struct.
+     */
+    function _intent(uint256 accountIndex) internal view returns (UserIntent memory) {
+        return IntentBuilder.create(address(_getAccount(accountIndex)));
     }
 
     function _addErc20Record(UserIntent memory intent, bool isProxy) internal view returns (UserIntent memory) {
@@ -433,6 +423,52 @@ abstract contract TestEnvironment is Test {
         return intent.addSegment(encodeUserOperationData(USER_OPERATION_STD_ID, callGasLimit, callData));
     }
 
+    function _useRegisteredStandards(UserIntent memory intent) internal view returns (UserIntent memory) {
+        for (uint256 i = 0; i < intent.intentData.length; i++) {
+            bytes memory data = intent.intentData[i];
+            bytes32 stdId;
+            assembly {
+                stdId := mload(add(32, data))
+            }
+            if (stdId == SIMPLE_CALL_STD_ID) stdId = bytes32(_simpleCallStdId);
+            else if (stdId == ERC20_RECORD_STD_ID) stdId = bytes32(_erc20RecordStdId);
+            else if (stdId == ERC20_RELEASE_STD_ID) stdId = bytes32(_erc20ReleaseStdId);
+            else if (stdId == ERC20_REQUIRE_STD_ID) stdId = bytes32(_erc20RequireStdId);
+            else if (stdId == ETH_RECORD_STD_ID) stdId = bytes32(_ethRecordStdId);
+            else if (stdId == ETH_RELEASE_STD_ID) stdId = bytes32(_ethReleaseStdId);
+            else if (stdId == ETH_REQUIRE_STD_ID) stdId = bytes32(_ethRequireStdId);
+            else if (stdId == SEQUENTIAL_NONCE_STD_ID) stdId = bytes32(_sequentialNonceStdId);
+            else if (stdId == USER_OPERATION_STD_ID) stdId = bytes32(_userOperationStdId);
+            assembly {
+                mstore(add(32, data), stdId)
+            }
+        }
+        return intent;
+    }
+
+    /**
+     * Private helper function to build an intent solution struct.
+     * @param intent First intent that's part of the solution.
+     * @return The created IntentSolution struct.
+     */
+    function _solution(UserIntent memory intent) internal view returns (IntentSolution memory) {
+        UserIntent[] memory intents = new UserIntent[](1);
+        intents[0] = intent;
+
+        uint256 len = intent.intentData.length;
+        uint256[] memory order = new uint256[](len);
+        uint256 index = 0;
+        while (len > 0) {
+            if (len > 0) {
+                order[index] = 0;
+                len--;
+                index++;
+            }
+        }
+
+        return IntentSolution({timestamp: block.timestamp, intents: intents, order: order});
+    }
+
     /**
      * Private helper function to build an intent solution struct.
      * @param intent1 First intent that's part of the solution.
@@ -527,7 +563,8 @@ abstract contract TestEnvironment is Test {
     function _signIntent(UserIntent memory intent) internal view returns (UserIntent memory) {
         bytes32 intentHash = _entryPoint.getUserIntentHash(intent);
         bytes32 digest = intentHash.toEthSignedMessageHash();
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(_privateKey, digest);
+        uint256 privateKey = _getPrivateKeyBySender(intent.sender);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
         intent.signature = abi.encodePacked(r, s, v);
         return intent;
     }
@@ -543,6 +580,30 @@ abstract contract TestEnvironment is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(_wrong_private_key, digest);
         intent.signature = abi.encodePacked(r, s, v);
         return intent;
+    }
+
+    /**
+     * Private helper function to get an account.
+     * @param accountIndex The index of the account.
+     * @return The account.
+     */
+    function _getAccount(uint256 accountIndex) internal view returns (address) {
+        if (accountIndex == 1) return address(_account2);
+        if (accountIndex == 2) return address(_account3);
+        if (accountIndex == 3) return address(_account4);
+        return address(_account);
+    }
+
+    /**
+     * Private helper function to get the private key for a sender.
+     * @param sender The sender address.
+     * @return The account.
+     */
+    function _getPrivateKeyBySender(address sender) internal view returns (uint256) {
+        if (sender == address(_account2)) return _privateKey2;
+        if (sender == address(_account3)) return _privateKey3;
+        if (sender == address(_account4)) return _privateKey4;
+        return _privateKey;
     }
 
     /**

@@ -11,6 +11,18 @@ contract SimpleAccountTest is TestEnvironment {
         assertEq(address(_account.entryPoint()), address(_entryPoint));
     }
 
+    function test_failValidation_notFromEntryPoint() public {
+        UserIntent memory intent = _intent();
+
+        vm.expectRevert("not from account EntryPoint");
+        _account.validateUserIntent(intent, bytes32(0));
+    }
+
+    function test_failExecution_notFromExecutingIntentStandard() public {
+        vm.expectRevert("entryPoint not executing intent standard for sender");
+        _account.execute(address(0), uint256(0), "");
+    }
+
     function test_failExecuteBatch_invalidInputs() public {
         // targets.length != values.length
         address[] memory targets = new address[](2);
