@@ -60,12 +60,12 @@ abstract contract TokenSwapScenario is TestEnvironment {
         //build solution
         IntentSolution memory solution;
         if (constantExpectation) {
-            solution = _solutionForTokenSwap(intent, requireAmount);
+            solution = _solutionForTokenSwap(intent, requireAmount, useReqisteredStandards);
         } else {
             if (ethToErc20) {
-                solution = _solutionForTokenSwapToErc20(intent, requireAmount);
+                solution = _solutionForTokenSwapToErc20(intent, requireAmount, useReqisteredStandards);
             } else {
-                solution = _solutionForTokenSwap(intent, requireAmount);
+                solution = _solutionForTokenSwap(intent, requireAmount, useReqisteredStandards);
             }
         }
 
@@ -154,7 +154,7 @@ abstract contract TokenSwapScenario is TestEnvironment {
         return intent;
     }
 
-    function _solutionForTokenSwap(UserIntent memory intent, uint256 ethRequireAmount)
+    function _solutionForTokenSwap(UserIntent memory intent, uint256 ethRequireAmount, bool useReqisteredStandards)
         private
         view
         returns (IntentSolution memory)
@@ -169,14 +169,17 @@ abstract contract TokenSwapScenario is TestEnvironment {
         order[2] = 0;
         order[3] = 1;
         order[4] = 0;
+        if (useReqisteredStandards) {
+            solverIntent = _useRegisteredStandards(solverIntent);
+        }
         return _solution(intent, solverIntent, order);
     }
 
-    function _solutionForTokenSwapToErc20(UserIntent memory intent, uint256 erc20RequireAmount)
-        private
-        view
-        returns (IntentSolution memory)
-    {
+    function _solutionForTokenSwapToErc20(
+        UserIntent memory intent,
+        uint256 erc20RequireAmount,
+        bool useReqisteredStandards
+    ) private view returns (IntentSolution memory) {
         bytes memory solve =
             _solverSwapETHForERC20AndForward(address(_publicAddressSolver), erc20RequireAmount, address(_account));
         UserIntent memory solverIntent = _solverIntent();
@@ -187,6 +190,9 @@ abstract contract TokenSwapScenario is TestEnvironment {
         order[2] = 0;
         order[3] = 1;
         order[4] = 0;
+        if (useReqisteredStandards) {
+            solverIntent = _useRegisteredStandards(solverIntent);
+        }
         return _solution(intent, solverIntent, order);
     }
 }

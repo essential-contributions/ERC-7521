@@ -35,6 +35,7 @@ import {SimpleCall, encodeSimpleCallData} from "../../../src/standards/SimpleCal
 import {SIMPLE_CALL_STD_ID} from "../../../src/core/EntryPoint.sol";
 import {UserOperation, encodeUserOperationData} from "../../../src/standards/UserOperation.sol";
 import {USER_OPERATION_STD_ID} from "../../../src/core/EntryPoint.sol";
+import {FailingStandard} from "../../../src/test/FailingStandard.sol";
 import {TestERC20} from "../../../src/test/TestERC20.sol";
 import {TestUniswap} from "../../../src/test/TestUniswap.sol";
 import {TestWrappedNativeToken} from "../../../src/test/TestWrappedNativeToken.sol";
@@ -66,6 +67,7 @@ abstract contract TestEnvironment is Test {
     SimpleAccount internal _account4;
 
     //testing contracts
+    FailingStandard internal _failingStandard;
     TestERC20 internal _testERC20;
     TestUniswap internal _testUniswap;
     TestWrappedNativeToken internal _testWrappedNativeToken;
@@ -81,6 +83,7 @@ abstract contract TestEnvironment is Test {
     bytes32 internal _sequentialNonceStdId;
     bytes32 internal _simpleCallStdId;
     bytes32 internal _userOperationStdId;
+    bytes32 internal _failingStdId;
     address internal _token;
 
     //keys
@@ -138,6 +141,8 @@ abstract contract TestEnvironment is Test {
         _testWrappedNativeToken = new TestWrappedNativeToken();
         _testUniswap = new TestUniswap(_testWrappedNativeToken);
         _solverUtils = new SolverUtils(_testUniswap, _testERC20, _testWrappedNativeToken);
+        _failingStandard = new FailingStandard();
+        _failingStdId = _entryPoint.registerIntentStandard(_failingStandard);
         _token = address(_testERC20);
 
         //fund exchange
@@ -442,6 +447,16 @@ abstract contract TestEnvironment is Test {
         returns (UserIntent memory)
     {
         return intent.addSegment(encodeUserOperationData(USER_OPERATION_STD_ID, callGasLimit, callData));
+    }
+
+    function _addFailingStandard(UserIntent memory intent, bool withReason, bool forContextData)
+        internal
+        view
+        returns (UserIntent memory)
+    {
+        if (forContextData) return intent.addSegment(abi.encodePacked(_failingStdId, uint256(123)));
+        if (withReason) return intent.addSegment(abi.encodePacked(_failingStdId, bytes1(0)));
+        return intent.addSegment(abi.encodePacked(_failingStdId));
     }
 
     function _useRegisteredStandards(UserIntent memory intent) internal view returns (UserIntent memory) {

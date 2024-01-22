@@ -127,4 +127,52 @@ contract EntryPointTest is TestEnvironment {
         vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 3, "AA69 not fully executed"));
         _entryPoint.handleIntents(solution);
     }
+
+    function test_failHandleIntent_unknownStandard() public {
+        UserIntent memory intent = _intent();
+        bytes[] memory datas = new bytes[](1);
+        datas[0] = abi.encode(bytes32(0x1122334455667788112233445566778811223344556677881122334455667788));
+        intent.intentData = datas;
+        intent = _signIntent(intent);
+        IntentSolution memory solution = _solution(intent);
+
+        vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA82 unknown standard"));
+        _entryPoint.handleIntents(solution);
+    }
+
+    function test_failHandleIntent_invalidExecutionContext() public {
+        UserIntent memory intent = _intent();
+        intent = _addFailingStandard(intent, false, true);
+        intent = _signIntent(intent);
+        IntentSolution memory solution = _solution(intent);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA60 invalid execution context")
+        );
+        _entryPoint.handleIntents(solution);
+    }
+
+    function test_failHandleIntent_intentStandardFailure() public {
+        UserIntent memory intent = _intent();
+        intent = _addFailingStandard(intent, false, false);
+        intent = _signIntent(intent);
+        IntentSolution memory solution = _solution(intent);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA61 execution failed (or OOG)")
+        );
+        _entryPoint.handleIntents(solution);
+    }
+
+    function test_failHandleIntent_intentStandardFailureWithReason() public {
+        UserIntent memory intent = _intent();
+        intent = _addFailingStandard(intent, true, false);
+        intent = _signIntent(intent);
+        IntentSolution memory solution = _solution(intent);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA61 execution failed: test revert")
+        );
+        _entryPoint.handleIntents(solution);
+    }
 }

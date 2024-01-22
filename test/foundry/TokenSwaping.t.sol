@@ -35,6 +35,8 @@ contract TokenSwapping is TokenSwapScenario {
         assertEq(userERC20Tokens, expectedUserERC20Balance, "The user released more ERC20 tokens than expected");
     }
 
+    //TODO: do proxy
+
     function test_tokenSwap_constantExpectation() public {
         uint256 accountInitialETHBalance = address(_account).balance;
         uint256 accountInitialERC20Balance = _testERC20.balanceOf(address(_account));
