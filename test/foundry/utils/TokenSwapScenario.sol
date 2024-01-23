@@ -27,11 +27,15 @@ abstract contract TokenSwapScenario is TestEnvironment {
         _testERC20.mint(address(_account4), _accountInitialERC20Balance);
         vm.deal(address(_account4), _accountInitialETHBalance);
 
+        //fund account for proxy testing
+        _testERC20.mint(address(_publicAddress), _accountInitialERC20Balance);
+        vm.deal(address(_publicAddress), _accountInitialETHBalance);
+
         //set block timestamp to something reasonable
         vm.warp(1700952587);
     }
 
-    function tokenSwap_run(bool constantExpectation, bool ethToErc20, bool useReqisteredStandards)
+    function tokenSwap_run(bool constantExpectation, bool ethToErc20, bool useReqisteredStandards, bool isProxy)
         public
         returns (uint256 releaseAmount, uint256 requireAmount, uint256 slippage)
     {
@@ -44,12 +48,12 @@ abstract contract TokenSwapScenario is TestEnvironment {
         //build intent
         UserIntent memory intent;
         if (constantExpectation) {
-            intent = _constantExpectationIntent(releaseAmount, requireAmount, duration, evaluateAt);
+            intent = _constantExpectationIntent(releaseAmount, requireAmount, duration, evaluateAt, isProxy);
         } else {
             if (ethToErc20) {
-                intent = _constantReleaseEthIntent(releaseAmount, requireAmount, duration, evaluateAt);
+                intent = _constantReleaseEthIntent(releaseAmount, requireAmount, duration, evaluateAt, isProxy);
             } else {
-                intent = _constantReleaseErc20Intent(releaseAmount, requireAmount, duration, evaluateAt);
+                intent = _constantReleaseErc20Intent(releaseAmount, requireAmount, duration, evaluateAt, isProxy);
             }
         }
         if (useReqisteredStandards) {
@@ -60,12 +64,12 @@ abstract contract TokenSwapScenario is TestEnvironment {
         //build solution
         IntentSolution memory solution;
         if (constantExpectation) {
-            solution = _solutionForTokenSwap(intent, requireAmount, useReqisteredStandards);
+            solution = _solutionForTokenSwap(intent, requireAmount, useReqisteredStandards, isProxy);
         } else {
             if (ethToErc20) {
-                solution = _solutionForTokenSwapToErc20(intent, requireAmount, useReqisteredStandards);
+                solution = _solutionForTokenSwapToErc20(intent, requireAmount, useReqisteredStandards, isProxy);
             } else {
-                solution = _solutionForTokenSwap(intent, requireAmount, useReqisteredStandards);
+                solution = _solutionForTokenSwap(intent, requireAmount, useReqisteredStandards, isProxy);
             }
         }
 
@@ -81,7 +85,8 @@ abstract contract TokenSwapScenario is TestEnvironment {
         uint256 erc20ReleaseAmount,
         uint256 ethRequireAmount,
         uint256 releaseDuration,
-        uint256 releaseAt
+        uint256 releaseAt,
+        bool isProxy
     ) private view returns (UserIntent memory) {
         int256 releaseStartAmount = 0;
         int256 releaseEndAmount = int256((erc20ReleaseAmount * releaseDuration) / releaseAt);
@@ -89,16 +94,16 @@ abstract contract TokenSwapScenario is TestEnvironment {
         //build intent
         UserIntent memory intent = _intent();
         intent = _addSequentialNonce(intent, 1);
-        intent = _addEthRecord(intent, false);
+        intent = _addEthRecord(intent, isProxy);
         intent = _addErc20ReleaseLinear(
             intent,
             uint32(block.timestamp - releaseAt),
             uint16(releaseDuration),
             releaseStartAmount,
             (releaseEndAmount - releaseStartAmount) / int256(releaseDuration),
-            false
+            isProxy
         );
-        intent = _addEthRequire(intent, int256(ethRequireAmount), true, false);
+        intent = _addEthRequire(intent, int256(ethRequireAmount), true, isProxy);
         return intent;
     }
 
@@ -106,7 +111,8 @@ abstract contract TokenSwapScenario is TestEnvironment {
         uint256 erc20ReleaseAmount,
         uint256 ethRequireAmount,
         uint256 requireDuration,
-        uint256 requireAt
+        uint256 requireAt,
+        bool isProxy
     ) private view returns (UserIntent memory) {
         int256 requireStartAmount = 0;
         int256 requireEndAmount = int256((ethRequireAmount * requireDuration) / requireAt);
@@ -114,8 +120,8 @@ abstract contract TokenSwapScenario is TestEnvironment {
         //build intent
         UserIntent memory intent = _intent();
         intent = _addSequentialNonce(intent, 1);
-        intent = _addEthRecord(intent, false);
-        intent = _addErc20Release(intent, int256(erc20ReleaseAmount), false);
+        intent = _addEthRecord(intent, isProxy);
+        intent = _addErc20Release(intent, int256(erc20ReleaseAmount), isProxy);
         intent = _addEthRequireLinear(
             intent,
             uint32(block.timestamp - requireAt),
@@ -123,7 +129,7 @@ abstract contract TokenSwapScenario is TestEnvironment {
             requireStartAmount,
             (requireEndAmount - requireStartAmount) / int256(requireDuration),
             true,
-            false
+            isProxy
         );
         return intent;
     }
@@ -132,7 +138,8 @@ abstract contract TokenSwapScenario is TestEnvironment {
         uint256 ethReleaseAmount,
         uint256 erc20RequireAmount,
         uint256 requireDuration,
-        uint256 requireAt
+        uint256 requireAt,
+        bool isProxy
     ) private view returns (UserIntent memory) {
         int256 requireStartAmount = 0;
         int256 requireEndAmount = int256((erc20RequireAmount * requireDuration) / requireAt);
@@ -140,7 +147,7 @@ abstract contract TokenSwapScenario is TestEnvironment {
         //build intent
         UserIntent memory intent = _intent();
         intent = _addSequentialNonce(intent, 1);
-        intent = _addErc20Record(intent, false);
+        intent = _addErc20Record(intent, isProxy);
         intent = _addEthRelease(intent, int256(ethReleaseAmount));
         intent = _addErc20RequireLinear(
             intent,
@@ -149,18 +156,25 @@ abstract contract TokenSwapScenario is TestEnvironment {
             requireStartAmount,
             (requireEndAmount - requireStartAmount) / int256(requireDuration),
             true,
-            false
+            isProxy
         );
         return intent;
     }
 
-    function _solutionForTokenSwap(UserIntent memory intent, uint256 ethRequireAmount, bool useReqisteredStandards)
-        private
-        view
-        returns (IntentSolution memory)
-    {
+    function _solutionForTokenSwap(
+        UserIntent memory intent,
+        uint256 ethRequireAmount,
+        bool useReqisteredStandards,
+        bool isProxy
+    ) private view returns (IntentSolution memory) {
+        address forwardTo;
+        if (isProxy) {
+            forwardTo = address(_publicAddress);
+        } else {
+            forwardTo = address(_account);
+        }
         bytes memory solve =
-            _solverSwapERC20ForETHAndForward(address(_publicAddressSolver), ethRequireAmount, address(_account));
+            _solverSwapERC20ForETHAndForward(address(_publicAddressSolver), ethRequireAmount, forwardTo);
         UserIntent memory solverIntent = _solverIntent();
         solverIntent = _addSimpleCall(solverIntent, solve);
         uint256[] memory order = new uint256[](5);
@@ -178,10 +192,17 @@ abstract contract TokenSwapScenario is TestEnvironment {
     function _solutionForTokenSwapToErc20(
         UserIntent memory intent,
         uint256 erc20RequireAmount,
-        bool useReqisteredStandards
+        bool useReqisteredStandards,
+        bool isProxy
     ) private view returns (IntentSolution memory) {
+        address forwardTo;
+        if (isProxy) {
+            forwardTo = address(_publicAddress);
+        } else {
+            forwardTo = address(_account);
+        }
         bytes memory solve =
-            _solverSwapETHForERC20AndForward(address(_publicAddressSolver), erc20RequireAmount, address(_account));
+            _solverSwapETHForERC20AndForward(address(_publicAddressSolver), erc20RequireAmount, forwardTo);
         UserIntent memory solverIntent = _solverIntent();
         solverIntent = _addSimpleCall(solverIntent, solve);
         uint256[] memory order = new uint256[](5);

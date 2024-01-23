@@ -175,4 +175,30 @@ contract EntryPointTest is TestEnvironment {
         );
         _entryPoint.handleIntents(solution);
     }
+
+    function test_absoluteRequires() public {
+        int256 erc20Balance = int256(_testERC20.balanceOf(address(_account)));
+        int256 ethBalance = int256(address(_account).balance);
+
+        UserIntent memory intent = _intent();
+        intent = _addErc20Require(intent, erc20Balance, false, false);
+        intent = _addEthRequire(intent, ethBalance, false, false);
+        intent = _signIntent(intent);
+        IntentSolution memory solution = _solution(intent);
+
+        _entryPoint.handleIntents(solution);
+    }
+
+    function test_aggregation() public {
+        UserIntent memory intent = _intent(address(_testAggregationAccount));
+        UserIntent memory intent2 = _intent(address(_testAggregationAccount2));
+        IntentSolution[] memory solutions = new IntentSolution[](1);
+        uint256[] memory order = new uint256[](2);
+        order[1] = 1;
+        solutions[0] = _solution(intent, intent2, order);
+
+        _entryPoint.handleIntentsAggregated(
+            solutions, _testAggregator, bytes32(uint256(0x03)), abi.encode(ADMIN_SIGNATURE)
+        );
+    }
 }

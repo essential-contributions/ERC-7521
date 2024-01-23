@@ -31,32 +31,54 @@ abstract contract TransferEthScenario is TestEnvironment {
         vm.warp(1700952587);
     }
 
-    function transferEth_run() public returns (uint256 erc20ReleaseAmount, uint256 transferAmount) {
+    function transferEth_run(bool multi) public returns (uint256 erc20ReleaseAmount, uint256 transferAmount) {
         erc20ReleaseAmount = 1 ether;
         transferAmount = 0.1 ether;
         address erc20Recipient = _publicAddressSolver;
-        address ethRecipient = _publicAddress;
 
-        //build intent
-        UserIntent memory intent = _intentForTransferEth(erc20ReleaseAmount, ethRecipient, transferAmount);
-        intent = _signIntent(intent);
+        if (multi) {
+            //build intents
+            UserIntent memory intent = _intentForTransferEth(0, erc20ReleaseAmount, _recipientAddress, transferAmount);
+            intent = _signIntent(intent);
+            UserIntent memory intent2 = _intentForTransferEth(1, erc20ReleaseAmount, _recipientAddress2, transferAmount);
+            intent2 = _signIntent(intent2);
+            UserIntent memory intent3 = _intentForTransferEth(2, erc20ReleaseAmount, _recipientAddress3, transferAmount);
+            intent3 = _signIntent(intent3);
+            UserIntent memory intent4 = _intentForTransferEth(3, erc20ReleaseAmount, _recipientAddress4, transferAmount);
+            intent4 = _signIntent(intent4);
 
-        //build solution
-        IntentSolution memory solution = _solutionForTransferEth(intent, erc20Recipient);
+            //build solution
+            IntentSolution[] memory solutions = new IntentSolution[](4);
+            solutions[0] = _solutionForTransferEth(intent, erc20Recipient);
+            solutions[1] = _solutionForTransferEth(intent2, erc20Recipient);
+            solutions[2] = _solutionForTransferEth(intent3, erc20Recipient);
+            solutions[3] = _solutionForTransferEth(intent4, erc20Recipient);
 
-        //execute
-        _entryPoint.handleIntents(solution);
+            //execute
+            _entryPoint.handleIntentsMulti(solutions);
+        } else {
+            //build intents
+            UserIntent memory intent = _intentForTransferEth(0, erc20ReleaseAmount, _recipientAddress, transferAmount);
+            intent = _signIntent(intent);
+
+            //build solution
+            IntentSolution memory solution = _solutionForTransferEth(intent, erc20Recipient);
+
+            //execute
+            _entryPoint.handleIntents(solution);
+        }
     }
 
     ///////////////////////////////
     // Private Builder Functions //
     ///////////////////////////////
 
-    function _intentForTransferEth(uint256 erc20ReleaseAmount, address ethRecipient, uint256 ethAmount)
-        private
-        view
-        returns (UserIntent memory)
-    {
+    function _intentForTransferEth(
+        uint256 accountIndex,
+        uint256 erc20ReleaseAmount,
+        address ethRecipient,
+        uint256 ethAmount
+    ) private view returns (UserIntent memory) {
         uint256 releaseDuration = 3000;
         uint256 releaseAt = 1000;
         int256 releaseStartAmount = 0;
@@ -64,7 +86,7 @@ abstract contract TransferEthScenario is TestEnvironment {
         uint32 callGasLimit = 100_000;
 
         //build intent
-        UserIntent memory intent = _intent();
+        UserIntent memory intent = _intent(accountIndex);
         intent = _addSequentialNonce(intent, 1);
         intent = _addErc20ReleaseLinear(
             intent,

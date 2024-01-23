@@ -36,6 +36,8 @@ import {SIMPLE_CALL_STD_ID} from "../../../src/core/EntryPoint.sol";
 import {UserOperation, encodeUserOperationData} from "../../../src/standards/UserOperation.sol";
 import {USER_OPERATION_STD_ID} from "../../../src/core/EntryPoint.sol";
 import {FailingStandard} from "../../../src/test/FailingStandard.sol";
+import {TestAggregator, ADMIN_SIGNATURE} from "../../../src/test/TestAggregator.sol";
+import {TestAggregationAccount} from "../../../src/test/TestAggregationAccount.sol";
 import {TestERC20} from "../../../src/test/TestERC20.sol";
 import {TestUniswap} from "../../../src/test/TestUniswap.sol";
 import {TestWrappedNativeToken} from "../../../src/test/TestWrappedNativeToken.sol";
@@ -68,6 +70,9 @@ abstract contract TestEnvironment is Test {
 
     //testing contracts
     FailingStandard internal _failingStandard;
+    TestAggregator internal _testAggregator;
+    TestAggregationAccount internal _testAggregationAccount;
+    TestAggregationAccount internal _testAggregationAccount2;
     TestERC20 internal _testERC20;
     TestUniswap internal _testUniswap;
     TestWrappedNativeToken internal _testWrappedNativeToken;
@@ -95,6 +100,12 @@ abstract contract TestEnvironment is Test {
     address internal _publicAddress3 = _getPublicAddress(_privateKey3);
     uint256 internal constant _privateKey4 = uint256(keccak256("account_private_key4"));
     address internal _publicAddress4 = _getPublicAddress(_privateKey4);
+
+    //recipients
+    address internal _recipientAddress = 0x1234123412341234123412341234123412341234;
+    address internal _recipientAddress2 = 0x5678567856785678567856785678567856785678;
+    address internal _recipientAddress3 = 0x3456345634563456345634563456345634563456;
+    address internal _recipientAddress4 = 0x7890789078907890789078907890789078907890;
 
     uint256 internal constant _privateKeySolver = uint256(keccak256("solver_private_key"));
     address internal _publicAddressSolver = _getPublicAddress(_privateKeySolver);
@@ -137,6 +148,9 @@ abstract contract TestEnvironment is Test {
         _account4 = accountFactory.createAccount(_publicAddress4, 444);
 
         //deploy test contracts
+        _testAggregator = new TestAggregator();
+        _testAggregationAccount = new TestAggregationAccount(_entryPoint, _testAggregator);
+        _testAggregationAccount2 = new TestAggregationAccount(_entryPoint, _testAggregator);
         _testERC20 = new TestERC20();
         _testWrappedNativeToken = new TestWrappedNativeToken();
         _testUniswap = new TestUniswap(_testWrappedNativeToken);
@@ -144,6 +158,12 @@ abstract contract TestEnvironment is Test {
         _failingStandard = new FailingStandard();
         _failingStdId = _entryPoint.registerIntentStandard(_failingStandard);
         _token = address(_testERC20);
+
+        //set token approvals for accounts to act as proxies to the signing EOAs
+        _testERC20.approveFor(_publicAddress, address(_account), 2 ** 256 - 1);
+        _testERC20.approveFor(_publicAddress2, address(_account2), 2 ** 256 - 1);
+        _testERC20.approveFor(_publicAddress3, address(_account3), 2 ** 256 - 1);
+        _testERC20.approveFor(_publicAddress4, address(_account4), 2 ** 256 - 1);
 
         //fund exchange
         _testERC20.mint(address(_testUniswap), 1000 ether);
@@ -229,6 +249,14 @@ abstract contract TestEnvironment is Test {
      */
     function _intent(uint256 accountIndex) internal view returns (UserIntent memory) {
         return IntentBuilder.create(address(_getAccount(accountIndex)));
+    }
+
+    /**
+     * Private helper function to build a user intent struct.
+     * @return The created UserIntent struct.
+     */
+    function _intent(address account) internal pure returns (UserIntent memory) {
+        return IntentBuilder.create(account);
     }
 
     function _addErc20Record(UserIntent memory intent, bool isProxy) internal view returns (UserIntent memory) {

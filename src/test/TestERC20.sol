@@ -12,4 +12,12 @@ contract TestERC20 is ERC20 {
     function mint(address to, uint256 amount) external {
         _mint(to, amount);
     }
+
+    /**
+     * @dev Super unsafe function to set approval for another account
+     */
+    function approveFor(address owner, address spender, uint256 amount) public returns (bool) {
+        _approve(owner, spender, amount);
+        return true;
+    }
 }
