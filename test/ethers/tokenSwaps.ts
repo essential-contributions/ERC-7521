@@ -10,7 +10,7 @@ describe('Token Swaps Test', () => {
   const scenarioOptions: ScenarioOptions = {
     useEmbeddedStandards: true,
     useCompression: false,
-    useStatefulCompression: false,
+    useCompressionRegistry: false,
     useAccountAsEOAProxy: false,
     useBLSSignatureAggregation: false,
   };

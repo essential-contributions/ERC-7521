@@ -1,4 +1,4 @@
-import { TxFeeCalculator, TxResult } from './benchmark/feeCalculator';
+import { TxFeeCalculator } from './benchmark/feeCalculator';
 import { MainnetCalculator } from './benchmark/mainnet';
 import { OPStackCalculator } from './benchmark/opstack';
 import { ArbitrumCalculator } from './benchmark/arbitrum';
@@ -70,37 +70,37 @@ async function main() {
   const embeddedStandards: ScenarioOptions = {
     useEmbeddedStandards: true,
     useCompression: false,
-    useStatefulCompression: false,
+    useCompressionRegistry: false,
     useAccountAsEOAProxy: false,
     useBLSSignatureAggregation: false,
   };
   logScenarios(await run(embeddedStandards));
 
   //embedded with compression
-  const nonStatefulCompression: ScenarioOptions = {
+  const nonRegistryCompression: ScenarioOptions = {
     useEmbeddedStandards: true,
     useCompression: true,
-    useStatefulCompression: false,
+    useCompressionRegistry: false,
     useAccountAsEOAProxy: false,
     useBLSSignatureAggregation: false,
   };
-  logScenarios(await run(nonStatefulCompression), 'Non-Stateful Compression');
+  logScenarios(await run(nonRegistryCompression), 'Non-Registry Compression');
 
-  //embedded with stateful compression
-  const statefulCompression: ScenarioOptions = {
+  //embedded with registry compression
+  const registryCompression: ScenarioOptions = {
     useEmbeddedStandards: true,
     useCompression: true,
-    useStatefulCompression: true,
+    useCompressionRegistry: true,
     useAccountAsEOAProxy: false,
     useBLSSignatureAggregation: false,
   };
-  logScenarios(await run(statefulCompression), 'Stateful Compression');
+  logScenarios(await run(registryCompression), 'Registry Compression');
 
   //embedded with bls signatures
   const blsSignatureAggregation: ScenarioOptions = {
     useEmbeddedStandards: true,
     useCompression: false,
-    useStatefulCompression: false,
+    useCompressionRegistry: false,
     useAccountAsEOAProxy: false,
     useBLSSignatureAggregation: true,
   };
@@ -110,61 +110,61 @@ async function main() {
   const blsCompression: ScenarioOptions = {
     useEmbeddedStandards: true,
     useCompression: true,
-    useStatefulCompression: false,
+    useCompressionRegistry: false,
     useAccountAsEOAProxy: false,
     useBLSSignatureAggregation: true,
   };
   logScenarios(await run(blsCompression), 'BLS Signature Aggregation w/ Compression');
 
-  //embedded with bls signatures and stateful compression
-  const blsStatefulCompression: ScenarioOptions = {
+  //embedded with bls signatures and registry compression
+  const blsRegistryCompression: ScenarioOptions = {
     useEmbeddedStandards: true,
     useCompression: true,
-    useStatefulCompression: true,
+    useCompressionRegistry: true,
     useAccountAsEOAProxy: false,
     useBLSSignatureAggregation: true,
   };
-  logScenarios(await run(blsStatefulCompression), 'BLS Signature Aggregation w/ Stateful Compression');
+  logScenarios(await run(blsRegistryCompression), 'BLS Signature Aggregation w/ Registry Compression');
 
   //embedded for EOA
   const embeddedStandardsEOA: ScenarioOptions = {
     useEmbeddedStandards: true,
     useCompression: false,
-    useStatefulCompression: false,
+    useCompressionRegistry: false,
     useAccountAsEOAProxy: true,
     useBLSSignatureAggregation: false,
   };
   logScenarios(await run(embeddedStandardsEOA), 'Proxy Contracts for EOAs');
 
   //embedded with compression
-  const nonStatefulCompressionEOA: ScenarioOptions = {
+  const nonRegistryCompressionEOA: ScenarioOptions = {
     useEmbeddedStandards: true,
     useCompression: true,
-    useStatefulCompression: true,
+    useCompressionRegistry: true,
     useAccountAsEOAProxy: true,
     useBLSSignatureAggregation: false,
   };
-  logScenarios(await run(nonStatefulCompressionEOA), 'Stateful Compression Proxy for EOAs');
+  logScenarios(await run(nonRegistryCompressionEOA), 'Registry Compression Proxy for EOAs');
 
   //registered
   const registeredStandards: ScenarioOptions = {
     useEmbeddedStandards: false,
     useCompression: false,
-    useStatefulCompression: false,
+    useCompressionRegistry: false,
     useAccountAsEOAProxy: false,
     useBLSSignatureAggregation: false,
   };
   logScenarios(await run(registeredStandards), 'Using Registered Standards');
 
-  //registered with stateful compression
-  const registeredStatefulCompression: ScenarioOptions = {
+  //registered with registry compression
+  const registeredRegistryCompression: ScenarioOptions = {
     useEmbeddedStandards: false,
     useCompression: true,
-    useStatefulCompression: true,
+    useCompressionRegistry: true,
     useAccountAsEOAProxy: false,
     useBLSSignatureAggregation: false,
   };
-  logScenarios(await run(registeredStatefulCompression), 'Using Registered Standards w/ Stateful Compression');
+  logScenarios(await run(registeredRegistryCompression), 'Using Registered Standards w/ Registry Compression');
 }
 
 // Log parameters
@@ -198,7 +198,7 @@ function logDeployments(env: Environment) {
   line('Deploy BLS Aggregator', env.gasUsed.blsSignatureAggregator);
   line('Deploy Simple Acct Fac', env.gasUsed.simpleAccountFactory);
   line('Deploy Simple Acct', env.gasUsed.simpleAccount);
-  line('Deploy Gen Compression', env.gasUsed.generalCompression);
+  line('Deploy Compression', env.gasUsed.calldataCompression);
   line('Register Standard', env.gasUsed.registerStandard);
   console.log('');
 }

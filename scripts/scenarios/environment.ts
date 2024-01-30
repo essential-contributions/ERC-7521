@@ -20,8 +20,8 @@ import { EthRequireSegment } from '../library/standards/ethRequire';
 import { Erc20RecordSegment } from '../library/standards/erc20Record';
 import { Erc20ReleaseSegment } from '../library/standards/erc20Release';
 import { Erc20RequireSegment } from '../library/standards/erc20Require';
-import { GeneralIntentCompression } from '../library/compression/generalIntentCompression';
 import { BlsSigner, BlsSignerFactory, BlsVerifier } from '../library/bls/bls';
+import { CalldataCompression } from '../library/compression/calldataCompression';
 
 // Environment definition
 export type Environment = {
@@ -66,7 +66,7 @@ export type Environment = {
     solverUtilsAddress: string;
   };
   compression: {
-    general: GeneralIntentCompression;
+    entryPointCompression: CalldataCompression;
     registerAddresses: (addresses: string[]) => Promise<void>;
   };
   simpleAccounts: SmartContractAccount[];
@@ -79,7 +79,7 @@ export type Environment = {
     registerStandard: bigint;
     simpleAccountFactory: bigint;
     simpleAccount: bigint;
-    generalCompression: bigint;
+    calldataCompression: bigint;
   };
   utils: {
     getNonce: (account: string) => Promise<number>;
@@ -242,64 +242,40 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
   await testWrappedNativeToken.connect(funder).deposit({ value: ethers.parseEther('1000') });
   await testWrappedNativeToken.connect(funder).transfer(testUniswapAddress, ethers.parseEther('1000'));
 
-  //deploy stateful encoding and intent compression helpers
-  const dataRegistry = await ethers.deployContract('DataRegistry', [], deployer);
-  const dataRegistryAddress = await dataRegistry.getAddress();
-  const generalCompression = await ethers.deployContract(
-    'GeneralIntentCompression',
-    [entrypointAddress, dataRegistryAddress],
-    deployer,
-  );
-  const generalCompressionGasUsed = (await generalCompression.deploymentTransaction()?.wait())?.gasUsed || 0n;
-  const generalIntentCompression = new GeneralIntentCompression(generalCompression, dataRegistry);
+  //deploy the general static registry
+  const commonAddresses = [testWrappedNativeTokenAddress, testUniswapAddress, blsSignatureAggregatorAddress];
+  const generalStaticRegistry = await ethers.deployContract('GeneralStaticRegistry', [commonAddresses], deployer);
+  const generalStaticRegistryAddress = await generalStaticRegistry.getAddress();
 
-  //fill the data registry with high frequency items
-  (await dataRegistry.addOneByteItem(ethers.hexlify(ethers.randomBytes(32)))).wait();
-  (await dataRegistry.addOneByteItem('0x' + testERC20Address.substring(2).padStart(64, '0'))).wait();
-  (await dataRegistry.addOneByteItem('0x' + testWrappedNativeTokenAddress.substring(2).padStart(64, '0'))).wait();
-  (await dataRegistry.addOneByteItem(callStdId)).wait();
-  (await dataRegistry.addOneByteItem(erc20RecordStdId)).wait();
-  (await dataRegistry.addOneByteItem(erc20ReleaseStdId)).wait();
-  (await dataRegistry.addOneByteItem(erc20RequireStdId)).wait();
-  (await dataRegistry.addOneByteItem(ethRecordStdId)).wait();
-  (await dataRegistry.addOneByteItem(ethReleaseStdId)).wait();
-  (await dataRegistry.addOneByteItem(ethRequireStdId)).wait();
-  (await dataRegistry.addOneByteItem(sequentialNonceStdId)).wait();
-  (await dataRegistry.addOneByteItem(userOperationStdId)).wait();
-  (await dataRegistry.addOneByteItem(simpleCall.standardId)).wait();
-  (await dataRegistry.addOneByteItem(userOperation.standardId)).wait();
-  (await dataRegistry.addOneByteItem(sequentialNonce.standardId)).wait();
-  (await dataRegistry.addOneByteItem(ethRecord.standardId)).wait();
-  (await dataRegistry.addOneByteItem(ethRelease.standardId)).wait();
-  (await dataRegistry.addOneByteItem(ethRequire.standardId)).wait();
-  (await dataRegistry.addOneByteItem(erc20Record.standardId)).wait();
-  (await dataRegistry.addOneByteItem(erc20Release.standardId)).wait();
-  (await dataRegistry.addOneByteItem(erc20Require.standardId)).wait();
-
-  //fill the data registry with medium frequency items
-  (await dataRegistry.addTwoByteItem(ethers.hexlify(ethers.randomBytes(32)))).wait();
-  (await dataRegistry.addTwoByteItem('0x' + testUniswapAddress.substring(2).padStart(64, '0'))).wait();
-  (await dataRegistry.addTwoByteItem('0x' + solverUtilsAddress.substring(2).padStart(64, '0'))).wait();
-  (await dataRegistry.addTwoByteItem('0x' + blsSignatureAggregatorAddress.substring(2).padStart(64, '0'))).wait();
-  (await dataRegistry.addFunctionSelector('0xb61d27f6')).wait();
-  (await dataRegistry.addFunctionSelector('0xa9059cbb')).wait();
-  (await dataRegistry.addFunctionSelector('0x18c6051a')).wait();
-
-  //fill the data registry with low frequency items
-  (await dataRegistry.addFourByteItem(ethers.hexlify(ethers.randomBytes(32)))).wait();
+  //deploy the public storage registry
+  const publicStorageRegistry = await ethers.deployContract('PublicStorageRegistry', [], deployer);
+  const publicStorageRegistryAddress = await publicStorageRegistry.getAddress();
+  (await publicStorageRegistry.register(ethers.hexlify(ethers.randomBytes(32).slice(0, 20)))).wait();
   for (const acct of simpleAccounts) {
-    (await dataRegistry.addFourByteItem('0x' + acct.contractAddress.substring(2).padStart(64, '0'))).wait();
+    (await publicStorageRegistry.register(acct.contractAddress)).wait();
   }
   for (const acct of blsAccounts) {
-    (await dataRegistry.addFourByteItem('0x' + acct.contractAddress.substring(2).padStart(64, '0'))).wait();
+    (await publicStorageRegistry.register(acct.contractAddress)).wait();
   }
   for (const acct of eoaProxyAccounts) {
-    (await dataRegistry.addFourByteItem('0x' + acct.contractAddress.substring(2).padStart(64, '0'))).wait();
-    (await dataRegistry.addFourByteItem('0x' + acct.signerAddress.substring(2).padStart(64, '0'))).wait();
+    (await publicStorageRegistry.register(acct.contractAddress)).wait();
+    (await publicStorageRegistry.register(acct.signerAddress)).wait();
   }
 
-  //sync registry
-  await generalIntentCompression.sync();
+  //deploy calldata compression for the EntryPoint contract
+  const entryPointCompContract = await ethers.deployContract(
+    'EntryPointCompression',
+    [entrypointAddress, generalStaticRegistryAddress, publicStorageRegistryAddress, '0x00000000'],
+    deployer,
+  );
+  const entryPointCompression = new CalldataCompression(
+    entryPointCompContract,
+    entrypoint,
+    generalStaticRegistry,
+    publicStorageRegistry,
+  );
+  const calldataCompressionGasUsed = (await entryPointCompContract.deploymentTransaction()?.wait())?.gasUsed || 0n;
+  await entryPointCompression.sync();
 
   return {
     chainId: network.chainId,
@@ -347,10 +323,10 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
       solverUtilsAddress,
     },
     compression: {
-      general: generalIntentCompression,
+      entryPointCompression,
       registerAddresses: async (addresses: string[]) => {
         for (const addr of addresses) {
-          (await dataRegistry.addFourByteItem('0x' + addr.substring(2).padStart(64, '0'))).wait();
+          (await publicStorageRegistry.register(addr)).wait();
         }
       },
     },
@@ -364,7 +340,7 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
       registerStandard: registerStandardGasUsed,
       simpleAccountFactory: simpleAccountFactoryGasUsed,
       simpleAccount: simpleAccountGasUsed,
-      generalCompression: generalCompressionGasUsed,
+      calldataCompression: calldataCompressionGasUsed,
     },
     utils: {
       getNonce: async (account: string) => {

@@ -70,7 +70,7 @@ export class TransferErc20Scenario extends Scenario {
       to = count;
       batchSize = count.length;
     }
-    if (options.useStatefulCompression) await this.env.compression.registerAddresses(to);
+    if (options.useCompressionRegistry) await this.env.compression.registerAddresses(to);
     const proxy = options.useAccountAsEOAProxy;
     const bls = options.useBLSSignatureAggregation;
 
@@ -152,15 +152,19 @@ export class TransferErc20Scenario extends Scenario {
     let txPromise: Promise<ContractTransactionResponse>;
     if (options.useCompression) {
       if (aggregatedSignature) {
-        txPromise = this.env.compression.general.handleIntentsAggregated(
-          [solution],
-          this.env.blsSignatureAggregatorAddress,
-          toAggregate,
-          aggregatedSignature,
-          options.useStatefulCompression,
+        txPromise = this.env.compression.entryPointCompression.compressedCall(
+          'handleIntentsAggregated',
+          [[solution], this.env.blsSignatureAggregatorAddress, toAggregate, aggregatedSignature],
+          undefined,
+          options.useCompressionRegistry,
         );
       } else {
-        txPromise = this.env.compression.general.handleIntents(solution, options.useStatefulCompression);
+        txPromise = this.env.compression.entryPointCompression.compressedCall(
+          'handleIntents',
+          [solution],
+          undefined,
+          options.useCompressionRegistry,
+        );
       }
     } else {
       if (aggregatedSignature) {
