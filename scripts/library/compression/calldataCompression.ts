@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 import { CalldataCompression as CalldataCompressionContract, IDataRegistry } from '../../../typechain';
-import { Result, Signer, BaseContract, ContractTransactionResponse } from 'ethers';
+import { Signer, BaseContract, ContractTransactionResponse } from 'ethers';
 
 // Encoding Prefixes
 // 000 - 1 byte dynamic dictionary [1-32] (items to put in storage)
@@ -218,6 +218,45 @@ export class CalldataCompression {
       index += decode.bytesRead * 2;
     }
     return decoded;
+  }
+
+  // Get the length of the L1 dictionary
+  public getL1DictionaryLength(): number {
+    return this.oneByteDictionary.size;
+  }
+
+  // Get item from the L1 dictionary at the given index
+  public getL1DictionaryItem(index: number): string {
+    for (let item of this.oneByteDictionary.entries()) {
+      if (item[1] == index) return item[0];
+    }
+    return '';
+  }
+
+  // Gets the length of the L2 dictionary
+  public getL2DictionaryLength(): number {
+    return this.twoByteDictionary.size;
+  }
+
+  // Get item from the L2 dictionary at the given index
+  public getL2DictionaryItem(index: number): string {
+    for (let item of this.twoByteDictionary.entries()) {
+      if (item[1] == index) return item[0];
+    }
+    return '';
+  }
+
+  // Gets the length of the L3 dictionary
+  public getL3DictionaryLength(): number {
+    return this.fourByteDictionary.size;
+  }
+
+  // Get item from the L3 dictionary at the given index
+  public getL3DictionaryItem(index: number): string {
+    for (let item of this.fourByteDictionary.entries()) {
+      if (item[1] == index) return item[0];
+    }
+    return '';
   }
 
   //////////////////////////////
