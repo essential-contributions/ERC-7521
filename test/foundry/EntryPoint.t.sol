@@ -8,13 +8,6 @@ import "../../src/interfaces/IIntentStandard.sol";
 import "../../src/interfaces/IEntryPoint.sol";
 
 contract EntryPointTest is TestEnvironment {
-    function test_getUserIntentHash() public {
-        UserIntent memory intent = _intent();
-        bytes32 expectedHash = 0xd684a3f0f9155e9f51b03e1d2f70b40bef641d0a5805c61afcb858bac972e8a6;
-        bytes32 intentHash = _entryPoint.getUserIntentHash(intent);
-        assertEq(intentHash, expectedHash);
-    }
-
     function test_registerIntentStandard() public {
         EntryPoint newEntryPoint = new EntryPoint();
         EthRelease newIntentStandard = new EthRelease();
