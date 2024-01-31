@@ -29,7 +29,7 @@ contract TransferErc20 is TransferErc20Scenario {
         assertEq(userBalance, expectedUserBalance, "The user ended up with incorrect token balance");
 
         uint256 recipientBalance = _testERC20.balanceOf(address(_recipientAddress));
-        assertEq(recipientBalance, transferAmount, "The recipient didn't get the expected tokens");
+        assertEq(recipientBalance, transferAmount, "The recipient did not get the expected tokens");
     }
 
     function test_transferErc20_asProxy() public {
@@ -47,7 +47,7 @@ contract TransferErc20 is TransferErc20Scenario {
         assertEq(userBalance, expectedUserBalance, "The user ended up with incorrect token balance");
 
         uint256 recipientBalance = _testERC20.balanceOf(address(_recipientAddress));
-        assertEq(recipientBalance, transferAmount, "The recipient didn't get the expected tokens");
+        assertEq(recipientBalance, transferAmount, "The recipient did not get the expected tokens");
     }
 
     function test_transferErc20_registeredStandards() public {
@@ -65,7 +65,7 @@ contract TransferErc20 is TransferErc20Scenario {
         assertEq(userBalance, expectedUserBalance, "The user ended up with incorrect token balance");
 
         uint256 recipientBalance = _testERC20.balanceOf(address(_recipientAddress));
-        assertEq(recipientBalance, transferAmount, "The recipient didn't get the expected tokens");
+        assertEq(recipientBalance, transferAmount, "The recipient did not get the expected tokens");
     }
 
     function test_transferErc20_asProxyWithRegisteredStandards() public {
@@ -83,6 +83,6 @@ contract TransferErc20 is TransferErc20Scenario {
         assertEq(userBalance, expectedUserBalance, "The user ended up with incorrect token balance");
 
         uint256 recipientBalance = _testERC20.balanceOf(address(_recipientAddress));
-        assertEq(recipientBalance, transferAmount, "The recipient didn't get the expected tokens");
+        assertEq(recipientBalance, transferAmount, "The recipient did not get the expected tokens");
     }
 }

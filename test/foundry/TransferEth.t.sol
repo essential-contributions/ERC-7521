@@ -30,7 +30,7 @@ contract TransferEth is TransferEthScenario {
         assertEq(userTokenBalance, expectedUserTokenBalance, "The user ended up with incorrect token balance");
 
         uint256 recipientBalance = address(_recipientAddress).balance;
-        assertEq(recipientBalance, transferAmount, "The recipient didn't get the expected ETH");
+        assertEq(recipientBalance, transferAmount, "The recipient did not get the expected ETH");
 
         uint256 userBalance = address(_account).balance;
         uint256 expectedUserBalance = accountInitialETHBalance - transferAmount;
@@ -62,7 +62,7 @@ contract TransferEth is TransferEthScenario {
             assertEq(userTokenBalance, expectedUserTokenBalance, "The user ended up with incorrect token balance");
 
             uint256 recipientBalance = address(_recipientAddress).balance;
-            assertEq(recipientBalance, transferAmount, "The recipient didn't get the expected ETH");
+            assertEq(recipientBalance, transferAmount, "The recipient did not get the expected ETH");
 
             uint256 userBalance = address(_account).balance;
             uint256 expectedUserBalance = accountInitialETHBalances[i] - transferAmount;

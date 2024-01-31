@@ -32,7 +32,7 @@ contract GeneralStaticRegistry is IDataRegistry {
     }
 
     function retrieveBatch(uint256 from, uint256 to) external view override returns (bytes[] memory) {
-        require(to > from, "'to' must be before 'from'");
+        require(to > from, "invalid indexes");
         bytes[] memory items = new bytes[](to - from);
         for (uint256 i = from; i < to; i++) {
             items[i - from] = _retrieve(i);
