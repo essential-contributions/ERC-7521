@@ -78,7 +78,8 @@ jobs:
         uses: VeryGoodOpenSource/very_good_coverage@v2
         with:
           path: lcov.info
-          min_coverage: 39
+          min_coverage: 100
+          exclude: test/** src/test/** src/samples/** src/utils/** src/interfaces/**
 
   hardhat:
     name: Hardhat project

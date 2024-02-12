@@ -3,12 +3,24 @@ pragma solidity ^0.8.22;
 
 /* solhint-disable func-name-mixedcase */
 
-import "./utils/ScenarioTestEnvironment.sol";
+import "./utils/TestEnvironment.sol";
 import "../../src/interfaces/IEntryPoint.sol";
 
-contract SimpleAccountTest is ScenarioTestEnvironment {
+contract SimpleAccountTest is TestEnvironment {
     function test_entryPoint() public {
         assertEq(address(_account.entryPoint()), address(_entryPoint));
+    }
+
+    function test_failValidation_notFromEntryPoint() public {
+        UserIntent memory intent = _intent();
+
+        vm.expectRevert("not from account EntryPoint");
+        _account.validateUserIntent(intent, bytes32(0));
+    }
+
+    function test_failExecution_notFromExecutingIntentStandard() public {
+        vm.expectRevert("entryPoint not executing intent standard for sender");
+        _account.execute(address(0), uint256(0), "");
     }
 
     function test_failExecuteBatch_invalidInputs() public {

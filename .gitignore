@@ -18,6 +18,7 @@ docs/
 
 # Coverage file
 lcov.info
+coverage/
 
 # Environment config
 .vscode/

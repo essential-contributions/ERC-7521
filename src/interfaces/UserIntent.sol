@@ -18,6 +18,13 @@ struct UserIntent {
  * Utility functions helpful when working with UserIntent structs.
  */
 library UserIntentLib {
+    function getSegmentStandard(UserIntent calldata intent, uint256 index) internal pure returns (bytes32 standard) {
+        bytes calldata data = intent.intentData[index];
+        assembly {
+            standard := calldataload(data.offset)
+        }
+    }
+
     function hash(UserIntent calldata intent) internal pure returns (bytes32) {
         return keccak256(_pack(intent));
     }

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.22;
 
 /* solhint-disable no-inline-assembly */
+/* solhint-disable private-vars-leading-underscore */
 
 import {ModexpInverse, ModexpSqrt} from "./ModExp.sol";
 
@@ -330,11 +331,4 @@ library BLS {
 
         return out;
     }
-
-    /**
-     * Add a test to exclude this contract from coverage report
-     * note: there is currently an open ticket to resolve this more gracefully
-     * https://github.com/foundry-rs/foundry/issues/2988
-     */
-    function test_test() public {}
 }

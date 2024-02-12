@@ -13,7 +13,6 @@ import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
 import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
-import {getSegmentStandard} from "../standards/utils/SegmentData.sol";
 import {Exec, RevertReason} from "../utils/Exec.sol";
 import {ReentrancyGuard} from "openzeppelin/security/ReentrancyGuard.sol";
 
@@ -162,7 +161,7 @@ contract EntryPoint is
     ) private returns (bytes memory) {
         UserIntent calldata intent = solution.intents[intentIndex];
         if (intent.sender != address(0) && intent.intentData.length > 0) {
-            bytes32 standardId = getSegmentStandard(intent.intentData[segmentIndex]);
+            bytes32 standardId = intent.getSegmentStandard(segmentIndex);
 
             // check if this is an embedded standard
             if (uint256(standardId) < NUM_EMBEDDED_STANDARDS) {
@@ -201,8 +200,6 @@ contract EntryPoint is
                     _executeSequentialNonce(intent.sender, intent.intentData[segmentIndex]);
                 } else if (standardId == USER_OPERATION_STD_ID) {
                     _executeUserOperation(intent.sender, intent.intentData[segmentIndex]);
-                } else {
-                    revert FailedIntent(intentIndex, segmentIndex, "AA82 unknown standard");
                 }
             } else {
                 // execute as a registered standard
@@ -328,7 +325,7 @@ contract EntryPoint is
 
         // validate intent standards are recognized and formatted correctly
         for (uint256 i = 0; i < intent.intentData.length; i++) {
-            bytes32 standardId = getSegmentStandard(intent.intentData[i]);
+            bytes32 standardId = intent.getSegmentStandard(i);
             // validate the intent segment itself
             if (uint256(standardId) < NUM_EMBEDDED_STANDARDS) {
                 if (standardId == SIMPLE_CALL_STD_ID) {
@@ -349,8 +346,6 @@ contract EntryPoint is
                     _validateSequentialNonce(intent.intentData[i]);
                 } else if (standardId == USER_OPERATION_STD_ID) {
                     _validateUserOperation(intent.intentData[i]);
-                } else {
-                    revert("Cannot validate invalid standard");
                 }
             } else {
                 IIntentStandard standard = _registeredStandards[standardId];

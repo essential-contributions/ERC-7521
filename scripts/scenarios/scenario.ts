@@ -28,7 +28,7 @@ export const INVALID_OPTIONS_RESULT: ScenarioResult = {
 export type ScenarioOptions = {
   useEmbeddedStandards: boolean;
   useCompression: boolean;
-  useStatefulCompression: boolean;
+  useCompressionRegistry: boolean;
   useAccountAsEOAProxy: boolean;
   useBLSSignatureAggregation: boolean;
 };
@@ -37,7 +37,7 @@ export type ScenarioOptions = {
 export const DEFAULT_SCENARIO_OPTIONS: ScenarioOptions = {
   useEmbeddedStandards: true,
   useCompression: false,
-  useStatefulCompression: false,
+  useCompressionRegistry: false,
   useAccountAsEOAProxy: false,
   useBLSSignatureAggregation: false,
 };

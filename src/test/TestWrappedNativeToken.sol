@@ -24,11 +24,4 @@ contract TestWrappedNativeToken is ERC20 {
         (bool success,) = msg.sender.call{value: amount}("");
         require(success, "Transfer failed");
     }
-
-    /**
-     * Add a test to exclude this contract from coverage report
-     * note: there is currently an open ticket to resolve this more gracefully
-     * https://github.com/foundry-rs/foundry/issues/2988
-     */
-    function test() public {}
 }

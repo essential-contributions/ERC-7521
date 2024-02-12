@@ -78,6 +78,7 @@ contract BLSAccount is BaseAccount, UUPSUpgradeable, Initializable, IAccountProx
         override
         returns (IAggregator)
     {
+        _requireFromEntryPoint();
         if (intent.signature.length > 0) {
             uint256[2] memory signature = abi.decode(intent.signature, (uint256[2]));
             uint256[2] memory message = BLS.hashToPoint(BLS_DOMAIN, abi.encodePacked(intentHash));
@@ -131,7 +132,7 @@ contract BLSAccount is BaseAccount, UUPSUpgradeable, Initializable, IAccountProx
     }
 
     function _requireFromEntryPointOrOwner() internal view {
-        require(msg.sender == address(_entryPoint) || msg.sender == _owner, "not account owner or entrypoint");
+        if (msg.sender != _owner) _requireFromIntentStandardExecutingForSender();
     }
 
     function _call(address target, uint256 value, bytes memory data) internal {
@@ -145,11 +146,4 @@ contract BLSAccount is BaseAccount, UUPSUpgradeable, Initializable, IAccountProx
 
     // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
-
-    /**
-     * Add a test to exclude this contract from coverage report
-     * note: there is currently an open ticket to resolve this more gracefully
-     * https://github.com/foundry-rs/foundry/issues/2988
-     */
-    function test_test() public {}
 }

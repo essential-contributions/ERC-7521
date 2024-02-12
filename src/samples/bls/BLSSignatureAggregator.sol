@@ -72,11 +72,4 @@ contract BLSSignatureAggregator is IAggregator {
         bytes32 intentHash = keccak256(abi.encode(intent.hash(), address(_entryPoint), block.chainid));
         return BLS.hashToPoint(BLS_DOMAIN, abi.encodePacked(intentHash));
     }
-
-    /**
-     * Add a test to exclude this contract from coverage report
-     * note: there is currently an open ticket to resolve this more gracefully
-     * https://github.com/foundry-rs/foundry/issues/2988
-     */
-    function test_test() public {}
 }

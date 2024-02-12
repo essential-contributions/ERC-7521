@@ -180,15 +180,19 @@ export class TokenSwapScenario extends Scenario {
     let txPromise: Promise<ContractTransactionResponse>;
     if (options.useCompression) {
       if (aggregatedSignature) {
-        txPromise = this.env.compression.general.handleIntentsAggregated(
-          [solution],
-          this.env.blsSignatureAggregatorAddress,
-          toAggregate,
-          aggregatedSignature,
-          options.useStatefulCompression,
+        txPromise = this.env.compression.entryPointCompression.compressedCall(
+          'handleIntentsAggregated',
+          [[solution], this.env.blsSignatureAggregatorAddress, toAggregate, aggregatedSignature],
+          undefined,
+          options.useCompressionRegistry,
         );
       } else {
-        txPromise = this.env.compression.general.handleIntents(solution, options.useStatefulCompression);
+        txPromise = this.env.compression.entryPointCompression.compressedCall(
+          'handleIntents',
+          [solution],
+          undefined,
+          options.useCompressionRegistry,
+        );
       }
     } else {
       if (aggregatedSignature) {
@@ -270,7 +274,12 @@ export class TokenSwapScenario extends Scenario {
 
     //handle intents
     const txPromise = options.useCompression
-      ? this.env.compression.general.handleIntents(solution, options.useStatefulCompression)
+      ? this.env.compression.entryPointCompression.compressedCall(
+          'handleIntents',
+          [solution],
+          undefined,
+          options.useCompressionRegistry,
+        )
       : this.env.entrypoint.handleIntents(solution);
     const tx = await txPromise;
 
@@ -287,7 +296,6 @@ export class TokenSwapScenario extends Scenario {
       this.env.test.uniswapAddress,
       this.env.test.erc20Address,
       this.env.test.wrappedNativeTokenAddress,
-      amount,
       solver,
       amount,
       to,

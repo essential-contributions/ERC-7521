@@ -89,7 +89,7 @@ export class TransferEthScenario extends Scenario {
       to = count;
       batchSize = count.length;
     }
-    if (options.useStatefulCompression) await this.env.compression.registerAddresses(to);
+    if (options.useCompressionRegistry) await this.env.compression.registerAddresses(to);
     const bls = options.useBLSSignatureAggregation;
 
     if (this.env.simpleAccounts.length < batchSize) throw new Error('not enough abstract accounts to run batch');
@@ -165,15 +165,19 @@ export class TransferEthScenario extends Scenario {
     let txPromise: Promise<ContractTransactionResponse>;
     if (options.useCompression) {
       if (aggregatedSignature) {
-        txPromise = this.env.compression.general.handleIntentsAggregated(
-          [solution],
-          this.env.blsSignatureAggregatorAddress,
-          toAggregate,
-          aggregatedSignature,
-          options.useStatefulCompression,
+        txPromise = this.env.compression.entryPointCompression.compressedCall(
+          'handleIntentsAggregated',
+          [[solution], this.env.blsSignatureAggregatorAddress, toAggregate, aggregatedSignature],
+          undefined,
+          options.useCompressionRegistry,
         );
       } else {
-        txPromise = this.env.compression.general.handleIntents(solution, options.useStatefulCompression);
+        txPromise = this.env.compression.entryPointCompression.compressedCall(
+          'handleIntents',
+          [solution],
+          undefined,
+          options.useCompressionRegistry,
+        );
       }
     } else {
       if (aggregatedSignature) {

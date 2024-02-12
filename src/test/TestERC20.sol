@@ -14,9 +14,10 @@ contract TestERC20 is ERC20 {
     }
 
     /**
-     * Add a test to exclude this contract from coverage report
-     * note: there is currently an open ticket to resolve this more gracefully
-     * https://github.com/foundry-rs/foundry/issues/2988
+     * @dev Super unsafe function to set approval for another account
      */
-    function test() public {}
+    function approveFor(address owner, address spender, uint256 amount) public returns (bool) {
+        _approve(owner, spender, amount);
+        return true;
+    }
 }

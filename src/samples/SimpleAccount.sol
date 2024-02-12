@@ -63,6 +63,7 @@ contract SimpleAccount is BaseAccount, UUPSUpgradeable, Initializable, IAccountP
         override
         returns (IAggregator)
     {
+        _requireFromEntryPoint();
         bytes32 hash = intentHash.toEthSignedMessageHash();
         require(_owner == hash.recover(intent.signature), "invalid signature");
         return IAggregator(address(0));
@@ -111,7 +112,7 @@ contract SimpleAccount is BaseAccount, UUPSUpgradeable, Initializable, IAccountP
     }
 
     function _requireFromEntryPointOrOwner() internal view {
-        require(msg.sender == address(_entryPoint) || msg.sender == _owner, "not account owner or entrypoint");
+        if (msg.sender != _owner) _requireFromIntentStandardExecutingForSender();
     }
 
     function _call(address target, uint256 value, bytes memory data) internal {
@@ -125,11 +126,4 @@ contract SimpleAccount is BaseAccount, UUPSUpgradeable, Initializable, IAccountP
 
     // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
-
-    /**
-     * Add a test to exclude this contract from coverage report
-     * note: there is currently an open ticket to resolve this more gracefully
-     * https://github.com/foundry-rs/foundry/issues/2988
-     */
-    function test_test() public {}
 }
