@@ -429,6 +429,46 @@ contract EntryPoint is
         }
     }
 
+    // New function to set prohibited addresses
+    address[] private prohibitedAddresses;
+
+    function setProhibitedAddresses(address[] calldata addresses) external {
+        // Set the list of prohibited addresses
+        prohibitedAddresses = addresses;
+    }
+
+    // New function to check if an address is prohibited
+    function isProhibitedAddress(address addr) internal view returns (bool) {
+        for (uint256 i = 0; i < prohibitedAddresses.length; i++) {
+            if (prohibitedAddresses[i] == addr) {
+                // Address is prohibited
+                return true;
+            }
+        }
+        // Address is not prohibited
+        return false;
+    }
+
+    // New function to check if an address within intentData is prohibited
+    function isProhibitedAddressInIntent(UserIntent calldata intent) internal view returns (bool) {
+        // Check sender's address
+        if (isProhibitedAddress(intent.sender)) {
+            return true;
+        }
+
+        // Check addresses within intentData, if applicable
+        for (uint256 i = 0; i < intent.intentData.length; i++) {
+            address addressInIntent = extractAddressFromIntentData(intent.intentData[i]);
+            if (isProhibitedAddress(addressInIntent)) {
+                return true;
+            }
+        }
+
+        // Address is not prohibited
+        return false;
+    }
+}
+
     /**
      * generates an intent ID for an intent.
      */
