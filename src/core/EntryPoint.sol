@@ -428,44 +428,37 @@ contract EntryPoint is
             revert FailedIntent(intentIndex, 0, "AA24 signature error (or OOG)");
         }
     }
-
-    // New function to set prohibited addresses
-    address[] private prohibitedAddresses;
-
-    function setProhibitedAddresses(address[] calldata addresses) external {
-        // Set the list of prohibited addresses
-        prohibitedAddresses = addresses;
+    mapping(address => bool) public isProhibitedAddress;
+    modifier onlyIntentSender(UserIntent calldata intent) {
+        require(msg.sender == intent.sender, "Not the intent sender");
+        _;
     }
-
-    // New function to check if an address is prohibited
-    function isProhibitedAddress(address addr) internal view returns (bool) {
-        for (uint256 i = 0; i < prohibitedAddresses.length; i++) {
-            if (prohibitedAddresses[i] == addr) {
-                // Address is prohibited
-                return true;
-            }
+    // Access control restriction using the modifier
+    function setProhibitedAddresses(address[] calldata addresses, UserIntent calldata intent) external onlyIntentSender(intent) {
+        for (uint256 i = 0; i < addresses.length; i++) {
+            isProhibitedAddress[addresses[i]] = true;
         }
-        // Address is not prohibited
-        return false;
     }
 
-    // New function to check if an address within intentData is prohibited
     function isProhibitedAddressInIntent(UserIntent calldata intent) internal view returns (bool) {
         // Check sender's address
-        if (isProhibitedAddress(intent.sender)) {
+        if (isProhibitedAddress[intent.sender]) {
             return true;
         }
-
         // Check addresses within intentData, if applicable
         for (uint256 i = 0; i < intent.intentData.length; i++) {
-            address addressInIntent = extractAddressFromIntentData(intent.intentData[i]);
-            if (isProhibitedAddress(addressInIntent)) {
+            address extractedAddress = extractAddressFromIntentData(intent.intentData[i]);
+            if (isProhibitedAddress[extractedAddress]) {
                 return true;
             }
         }
-
         // Address is not prohibited
         return false;
+    }
+    // Add the function to extract an address from intentData
+    function extractAddressFromIntentData(bytes calldata data) internal pure returns (address) {
+        // Implement the logic to extract an address from the data
+        // Example: return address(0x0);
     }
 }
 
