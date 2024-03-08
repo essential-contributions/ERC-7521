@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.24;
 
 function getSegmentWord(bytes calldata data, uint256 byteOffset) pure returns (bytes32 word) {
     assembly {
