@@ -435,11 +435,12 @@ contract EntryPoint is
     }
     // Access control restriction using the modifier
     function setProhibitedAddresses(address[] calldata addresses, UserIntent calldata intent) external onlyIntentSender(intent) {
-        for (uint256 i = 0; i < addresses.length; i++) {
-            isProhibitedAddress[addresses[i]] = true;
+    for (uint256 i = 0; i < addresses.length; i++) {
+        isProhibitedAddress[addresses[i]] = true;
+        unchecked {
+            i++; // cannot overflow without hitting gas limit
         }
     }
-
     function isProhibitedAddressInIntent(UserIntent calldata intent) internal view returns (bool) {
         // Check sender's address
         if (isProhibitedAddress[intent.sender]) {
