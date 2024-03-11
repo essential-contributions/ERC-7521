@@ -26,7 +26,7 @@ contract EntryPointTest is TestEnvironment {
         assertEq(userNonce, 0);
     }
 
-    function test_validateIntent() public view {
+    function test_validateIntent() public {
         UserIntent memory intent = _intent();
         intent = _addSimpleCall(intent, "");
         intent = _addErc20Record(intent, false);

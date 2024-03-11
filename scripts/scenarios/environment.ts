@@ -1,4 +1,4 @@
-import { Provider, Signer } from 'ethers';
+import { Provider, Signer, ContractTransactionReceipt } from 'ethers';
 import { ethers } from 'hardhat';
 import {
   SimpleAccount,
@@ -9,6 +9,7 @@ import {
   TestERC20,
   TestUniswap,
   TestWrappedNativeToken,
+  TransientDataAccount,
 } from '../../typechain';
 import { Curve } from '../library/curveCoder';
 import { SimpleCallSegment } from '../library/standards/simpleCall';
@@ -89,7 +90,7 @@ export type Environment = {
   solverUtils: SolverUtils;
 };
 export type SmartContractAccount = {
-  contract: SimpleAccount;
+  contract: SimpleAccount | TransientDataAccount;
   contractAddress: string;
   signer: Signer;
   signerAddress: string;
@@ -105,10 +106,13 @@ export type BLSSmartContractAccount = {
 // Deploy configuration options
 export type DeployConfiguration = {
   numAccounts: number;
+  useTransientData: boolean;
 };
 
 // Deploy the testing environment
-export async function deployTestEnvironment(config: DeployConfiguration = { numAccounts: 4 }): Promise<Environment> {
+export async function deployTestEnvironment(
+  config: DeployConfiguration = { numAccounts: 4, useTransientData: true },
+): Promise<Environment> {
   const provider = ethers.provider;
   const network = await provider.getNetwork();
   const signers = await ethers.getSigners();
@@ -172,6 +176,7 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
   //deploy smart contract wallet factories
   const simpleAccountFactory = await ethers.deployContract('SimpleAccountFactory', [entrypointAddress], deployer);
   const simpleAccountFactoryGasUsed = (await simpleAccountFactory.deploymentTransaction()?.wait())?.gasUsed || 0n;
+  const transientDataAccountFactory = await ethers.deployContract('TransientDataAccountFactory', [], deployer);
   const blsAccountFactory = await ethers.deployContract(
     'BLSAccountFactory',
     [entrypointAddress, blsSignatureAggregatorAddress],
@@ -186,9 +191,18 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
     const signer = new ethers.Wallet(ethers.hexlify(ethers.randomBytes(32)));
     const signerAddress = await signer.getAddress();
 
-    const createAccountReceipt = await (await simpleAccountFactory.createAccount(signerAddress, i)).wait();
-    const contractAddress = await simpleAccountFactory.getFunction('getAddress(address,uint256)')(signerAddress, i);
-    const contract = await ethers.getContractAt('SimpleAccount', contractAddress, deployer);
+    let createAccountReceipt: ContractTransactionReceipt | null;
+    let contractAddress: string;
+    let contract: SimpleAccount | TransientDataAccount;
+    if (config.useTransientData) {
+      createAccountReceipt = await (await transientDataAccountFactory.createAccount(signerAddress, i)).wait();
+      contractAddress = await transientDataAccountFactory.getFunction('getAddress(address,uint256)')(signerAddress, i);
+      contract = await ethers.getContractAt('TransientDataAccount', contractAddress, deployer);
+    } else {
+      createAccountReceipt = await (await simpleAccountFactory.createAccount(signerAddress, i)).wait();
+      contractAddress = await simpleAccountFactory.getFunction('getAddress(address,uint256)')(signerAddress, i);
+      contract = await ethers.getContractAt('SimpleAccount', contractAddress, deployer);
+    }
 
     await deployer.sendTransaction({ to: contractAddress, value: fundAmount });
 

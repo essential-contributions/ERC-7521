@@ -64,6 +64,7 @@ contract SimpleAccount is BaseAccount, UUPSUpgradeable, Initializable, IAccountP
         returns (IAggregator)
     {
         _requireFromEntryPoint();
+        intentHash = keccak256(abi.encode(intentHash, _entryPoint, block.chainid));
         bytes32 hash = intentHash.toEthSignedMessageHash();
         require(_owner == hash.recover(intent.signature), "invalid signature");
         return IAggregator(address(0));

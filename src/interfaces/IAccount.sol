@@ -15,6 +15,5 @@ interface IAccount {
      */
     function validateUserIntent(UserIntent calldata intent, bytes32 intentHash)
         external
-        view
         returns (IAggregator aggregator);
 }

@@ -55,10 +55,9 @@ interface IEntryPoint is INonceManager, IIntentStandardRegistry {
 
     /**
      * Run validation for the given intent.
-     * @dev This method is view only.
      * @param intent the user intent to validate.
      */
-    function validateIntent(UserIntent calldata intent) external view;
+    function validateIntent(UserIntent calldata intent) external;
 
     /**
      * generate an intent Id - unique identifier for this intent.

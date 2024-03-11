@@ -1,63 +1,50 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
-import {IBLSAccount} from "./IBLSAccount.sol";
 import {BaseAccount} from "../../core/BaseAccount.sol";
 import {IAggregator} from "../../interfaces/IAggregator.sol";
 import {IEntryPoint} from "../../interfaces/IEntryPoint.sol";
 import {IAccountProxy} from "../../interfaces/IAccountProxy.sol";
 import {IIntentDelegate} from "../../interfaces/IIntentDelegate.sol";
-import {UserIntent, UserIntentLib} from "../../interfaces/UserIntent.sol";
+import {UserIntent} from "../../interfaces/UserIntent.sol";
 import {Exec} from "../../utils/Exec.sol";
-import {BLS} from "./lib/BLS.sol";
+import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 import {Initializable} from "openzeppelin/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "openzeppelin/proxy/utils/UUPSUpgradeable.sol";
 
 /**
- * Minimal BLS-based account that uses an aggregated signature.
- * The account must maintain its own BLS public key, and expose its trusted signature aggregator.
+ * A minimal account that uses transient data.
+ *  this is sample minimal account that uses transient data to allow the entrypoint to be picked by a user at sign time.
+ *  has a single signer that can send requests through the entryPoint.
  */
-contract BLSAccount is BaseAccount, UUPSUpgradeable, Initializable, IAccountProxy, IBLSAccount {
-    using UserIntentLib for UserIntent;
+contract TransientDataAccount is BaseAccount, UUPSUpgradeable, Initializable, IAccountProxy {
+    using ECDSA for bytes32;
 
-    IEntryPoint private immutable _entryPoint;
-    IAggregator private immutable _aggregator;
-    uint256[4] private _publicKey;
     address private _owner;
 
-    bytes32 public constant BLS_DOMAIN = keccak256("erc7521.bls.domain");
+    event TransientDataAccountInitialized(address indexed owner);
 
-    event BLSAccountInitialized(
-        IEntryPoint indexed entryPoint, IAggregator indexed aggregator, uint256[4] indexed publicKey
-    );
-
-    // The constructor is used only for the "implementation" and only sets immutable values.
-    // Mutable value slots for proxy accounts are set by the 'initialize' function.
-    constructor(IEntryPoint anEntryPoint, IAggregator anAggregator) {
-        _entryPoint = anEntryPoint;
-        _aggregator = anAggregator;
+    constructor() {
         _disableInitializers();
     }
 
     /**
      * @dev The _entryPoint member is immutable, to reduce gas consumption.  To upgrade EntryPoint,
-     * a new implementation of SimpleAccount must be deployed with the new EntryPoint address, then upgrading
+     * a new implementation of TransientDataAccount must be deployed with the new EntryPoint address, then upgrading
      * the implementation by calling `upgradeTo()`
      */
-    function initialize(uint256[4] calldata aPublicKey, address anOwner) public virtual initializer {
+    function initialize(address anOwner) public virtual initializer {
         _owner = anOwner;
-        _publicKey = aPublicKey;
-        emit BLSAccountInitialized(_entryPoint, _aggregator, _publicKey);
-    }
-
-    /// @inheritdoc IBLSAccount
-    function getBlsPublicKey() public view override returns (uint256[4] memory) {
-        return _publicKey;
+        emit TransientDataAccountInitialized(_owner);
     }
 
     /// @inheritdoc BaseAccount
     function entryPoint() public view virtual override returns (IEntryPoint) {
-        return _entryPoint;
+        IEntryPoint entrypoint;
+        assembly {
+            entrypoint := tload(0)
+        }
+        return entrypoint;
     }
 
     function owner() public view returns (address) {
@@ -74,20 +61,23 @@ contract BLSAccount is BaseAccount, UUPSUpgradeable, Initializable, IAccountProx
      */
     function validateUserIntent(UserIntent calldata intent, bytes32 intentHash)
         external
-        view
         override
         returns (IAggregator)
     {
-        _requireFromEntryPoint();
-        intentHash = keccak256(abi.encode(intentHash, _entryPoint, block.chainid));
-        if (intent.signature.length > 0) {
-            uint256[2] memory signature = abi.decode(intent.signature, (uint256[2]));
-            uint256[2] memory message = BLS.hashToPoint(BLS_DOMAIN, abi.encodePacked(intentHash));
-            BLS.verifySingle(signature, _publicKey, message);
-
-            return IAggregator(address(0));
+        IEntryPoint entrypoint = entryPoint();
+        if (entrypoint == IEntryPoint(address(0))) {
+            entrypoint = IEntryPoint(msg.sender);
+            assembly {
+                tstore(0, entrypoint)
+            }
+        } else if (entrypoint != IEntryPoint(msg.sender)) {
+            revert("invalid entry point");
         }
-        return _aggregator;
+
+        intentHash = keccak256(abi.encode(intentHash, entrypoint, block.chainid));
+        bytes32 hash = intentHash.toEthSignedMessageHash();
+        require(_owner == hash.recover(intent.signature), "invalid signature");
+        return IAggregator(address(0));
     }
 
     /**
@@ -96,6 +86,16 @@ contract BLSAccount is BaseAccount, UUPSUpgradeable, Initializable, IAccountProx
      */
     function proxyFor() external view returns (address) {
         return _owner;
+    }
+    /**
+     * clear all transient data
+     * @dev important if a user or protocol wishes to use multiple entrypoints in a single transaction
+     */
+
+    function clearTransientData() external {
+        assembly {
+            tstore(0, 0)
+        }
     }
 
     /**

@@ -84,14 +84,14 @@ contract EntryPoint is
             // validate intents
             for (uint256 i = 0; i < intsLen; i++) {
                 UserIntent calldata intent = solution.intents[i];
-                bytes32 intentHash = _generateUserIntentHash(intent);
+                bytes32 intentHash = intent.hash();
                 uint256 numSegments = intent.intentData.length;
                 if (numSegments > 256) {
                     revert FailedIntent(i, 0, string.concat("AA63 too many segments"));
                 }
                 if (intent.sender != address(0) && numSegments > 0) {
                     _validateUserIntentWithAccount(intent, intentHash, i, signatureAggregator, validatedIntents);
-                    emit UserIntentEvent(intentHash, intent.sender, msg.sender);
+                    emit UserIntentEvent(_generateUserIntentHash(intentHash), intent.sender, msg.sender);
                 }
             }
 
@@ -314,10 +314,9 @@ contract EntryPoint is
 
     /**
      * Run validation for the given intent.
-     * @dev This method is view only.
      * @param intent the user intent to validate.
      */
-    function validateIntent(UserIntent calldata intent) external view {
+    function validateIntent(UserIntent calldata intent) external {
         // make sure sender is a deployed contract
         if (intent.sender.code.length == 0) {
             revert FailedIntent(0, 0, "AA20 account not deployed");
@@ -364,8 +363,7 @@ contract EntryPoint is
         }
 
         // validate signature
-        bytes32 intentHash = _generateUserIntentHash(intent);
-        _validateUserIntentWithAccount(intent, intentHash, 0, IAggregator(address(0)), bytes32(0));
+        _validateUserIntentWithAccount(intent, intent.hash(), 0, IAggregator(address(0)), bytes32(0));
     }
 
     /**
@@ -373,7 +371,7 @@ contract EntryPoint is
      * the intent ID is a hash over the content of the intent (except the signature), the entrypoint and the chainid.
      */
     function getUserIntentHash(UserIntent calldata intent) external view returns (bytes32) {
-        return _generateUserIntentHash(intent);
+        return _generateUserIntentHash(intent.hash());
     }
 
     /**
@@ -406,7 +404,7 @@ contract EntryPoint is
         uint256 intentIndex,
         IAggregator signatureAggregator,
         bytes32 validatedIntents
-    ) private view {
+    ) private {
         // validate intent with account
         try IAccount(intent.sender).validateUserIntent(intent, intentHash) returns (IAggregator aggregator) {
             //check if intent is to be verified by aggregator
@@ -432,7 +430,7 @@ contract EntryPoint is
     /**
      * generates an intent ID for an intent.
      */
-    function _generateUserIntentHash(UserIntent calldata intent) private view returns (bytes32) {
-        return keccak256(abi.encode(intent.hash(), address(this), block.chainid));
+    function _generateUserIntentHash(bytes32 intentHash) private view returns (bytes32) {
+        return keccak256(abi.encode(intentHash, address(this), block.chainid));
     }
 }

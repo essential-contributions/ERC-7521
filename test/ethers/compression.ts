@@ -5,11 +5,12 @@ import { TransferEthScenario } from '../../scripts/scenarios/transferEthScenario
 
 describe('Compression Test', () => {
   const MAX_INTENTS = 4;
+  const USE_TRANSIENT_DATA = false;
   let env: Environment;
   let scenario: TransferEthScenario;
 
   before(async () => {
-    env = await deployTestEnvironment({ numAccounts: MAX_INTENTS });
+    env = await deployTestEnvironment({ numAccounts: MAX_INTENTS, useTransientData: USE_TRANSIENT_DATA });
     scenario = new TransferEthScenario(env);
     scenario.init();
   });
