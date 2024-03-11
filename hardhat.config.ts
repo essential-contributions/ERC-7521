@@ -3,9 +3,15 @@ import '@nomicfoundation/hardhat-foundry';
 import '@nomicfoundation/hardhat-toolbox';
 
 const config: HardhatUserConfig = {
+  networks: {
+    hardhat: {
+      hardfork: 'cancun',
+    },
+  },
   solidity: {
     version: '0.8.24',
     settings: {
+      evmVersion: 'cancun',
       optimizer: {
         enabled: true,
         runs: 1_000_000_000,

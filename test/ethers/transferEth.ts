@@ -11,7 +11,7 @@ describe('Transfer ETH Test', () => {
   before(async () => {
     env = await deployTestEnvironment({ numAccounts: MAX_INTENTS });
     scenario = new TransferEthScenario(env);
-    scenario.init();
+    await scenario.init();
   });
 
   it('Should run normal', async () => {
