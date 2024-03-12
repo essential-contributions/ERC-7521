@@ -2,8 +2,8 @@
 pragma solidity ^0.8.24;
 
 import {IBLSAccount} from "./IBLSAccount.sol";
+import {IBLSSignatureAggregator} from "./IBLSSignatureAggregator.sol";
 import {BaseAccount} from "../../core/BaseAccount.sol";
-import {IAggregator} from "../../interfaces/IAggregator.sol";
 import {IEntryPoint} from "../../interfaces/IEntryPoint.sol";
 import {IAccountProxy} from "../../interfaces/IAccountProxy.sol";
 import {IIntentDelegate} from "../../interfaces/IIntentDelegate.sol";
@@ -21,19 +21,19 @@ contract BLSAccount is BaseAccount, UUPSUpgradeable, Initializable, IAccountProx
     using UserIntentLib for UserIntent;
 
     IEntryPoint private immutable _entryPoint;
-    IAggregator private immutable _aggregator;
+    IBLSSignatureAggregator private immutable _aggregator;
     uint256[4] private _publicKey;
     address private _owner;
 
     bytes32 public constant BLS_DOMAIN = keccak256("erc7521.bls.domain");
 
     event BLSAccountInitialized(
-        IEntryPoint indexed entryPoint, IAggregator indexed aggregator, uint256[4] indexed publicKey
+        IEntryPoint indexed entryPoint, IBLSSignatureAggregator indexed aggregator, uint256[4] indexed publicKey
     );
 
     // The constructor is used only for the "implementation" and only sets immutable values.
     // Mutable value slots for proxy accounts are set by the 'initialize' function.
-    constructor(IEntryPoint anEntryPoint, IAggregator anAggregator) {
+    constructor(IEntryPoint anEntryPoint, IBLSSignatureAggregator anAggregator) {
         _entryPoint = anEntryPoint;
         _aggregator = anAggregator;
         _disableInitializers();
@@ -70,24 +70,19 @@ contract BLSAccount is BaseAccount, UUPSUpgradeable, Initializable, IAccountProx
      *
      * @param intent validate the intent.signature field
      * @param intentHash the hash of the intent, to check the signature against
-     * @return aggregator (optional) trusted signature aggregator to return if signature fails
      */
-    function validateUserIntent(UserIntent calldata intent, bytes32 intentHash)
-        external
-        view
-        override
-        returns (IAggregator)
-    {
+    function validateUserIntent(UserIntent calldata intent, bytes32 intentHash) external view override {
         _requireFromEntryPoint();
         intentHash = keccak256(abi.encode(intentHash, _entryPoint, block.chainid));
         if (intent.signature.length > 0) {
+            //verify signature
             uint256[2] memory signature = abi.decode(intent.signature, (uint256[2]));
             uint256[2] memory message = BLS.hashToPoint(BLS_DOMAIN, abi.encodePacked(intentHash));
             BLS.verifySingle(signature, _publicKey, message);
-
-            return IAggregator(address(0));
+        } else {
+            //check if validated in aggregate signature
+            require(_aggregator.isValidated(intentHash), "invalid signature");
         }
-        return _aggregator;
     }
 
     /**

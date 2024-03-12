@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
-import {IAggregator} from "../../interfaces/IAggregator.sol";
 import {IEntryPoint} from "../../interfaces/IEntryPoint.sol";
 import {UserIntent, UserIntentLib} from "../../interfaces/UserIntent.sol";
+import {IntentSolution, IntentSolutionLib} from "../../interfaces/IntentSolution.sol";
+import {IBLSSignatureAggregator} from "./IBLSSignatureAggregator.sol";
 import {IBLSAccount} from "./IBLSAccount.sol";
 import {EllipticCurve} from "./lib/EllipticCurve.sol";
 import {BLS} from "./lib/BLS.sol";
@@ -11,7 +12,7 @@ import {BLS} from "./lib/BLS.sol";
 /**
  * A BLS-based signature aggregator, to validate aggregated signature of multiple UserOps if BLSAccount
  */
-contract BLSSignatureAggregator is IAggregator {
+contract BLSSignatureAggregator is IBLSSignatureAggregator {
     using UserIntentLib for UserIntent;
 
     bytes32 public constant BLS_DOMAIN = keccak256("erc7521.bls.domain");
@@ -22,34 +23,85 @@ contract BLSSignatureAggregator is IAggregator {
         _entryPoint = entryPoint;
     }
 
-    /// @inheritdoc IAggregator
-    function validateSignatures(UserIntent[] calldata intents, bytes calldata signature) external view override {
-        require(signature.length == 64, "invalid bls aggregated signature");
-        (uint256[2] memory blsSignature) = abi.decode(signature, (uint256[2]));
+    /// @inheritdoc IBLSSignatureAggregator
+    function handleIntentsAggregated(
+        IntentSolution[] calldata solutions,
+        bytes32 intentsToAggregate,
+        bytes calldata signature
+    ) external {
+        // get number of intents
+        uint256 solsLen = solutions.length;
+        uint256 totalIntents = 0;
+        unchecked {
+            for (uint256 i = 0; i < solsLen; i++) {
+                totalIntents += solutions[0].intents.length;
+            }
+        }
+        uint256 aggregatedIntentTotal = 0;
+        for (uint256 i = 0; i < totalIntents; i++) {
+            if ((uint256(intentsToAggregate) & (1 << i)) > 0) aggregatedIntentTotal++;
+        }
 
+        // validate aggregated intent signature
+        uint256[4][] memory blsPublicKeys = new uint256[4][](aggregatedIntentTotal);
+        uint256[2][] memory messages = new uint256[2][](aggregatedIntentTotal);
+        uint256 k = 0;
+        uint256 l = 0;
+        for (uint256 i = 0; i < solsLen; i++) {
+            for (uint256 j = 0; j < solutions[i].intents.length; j++) {
+                if ((uint256(intentsToAggregate) & (1 << k)) > 0) {
+                    UserIntent calldata intent = solutions[i].intents[j];
+                    bytes32 intentHash = _intentHash(intent);
+                    blsPublicKeys[l] = _getIntentPublicKey(intent);
+                    messages[l] = _intentMessage(intentHash);
+                    l++;
+
+                    // remember validated intents
+                    assembly {
+                        tstore(intentHash, 1)
+                    }
+                }
+                k++;
+            }
+        }
+        _validateSignatures(blsPublicKeys, messages, signature);
+
+        // call handle intents on the entrypoint
+        _entryPoint.handleIntentsMulti(solutions);
+    }
+
+    /// @inheritdoc IBLSSignatureAggregator
+    function isValidated(bytes32 intentHash) external view returns (bool) {
+        bool validated;
+        assembly {
+            validated := tload(intentHash)
+        }
+        return validated;
+    }
+
+    /// @inheritdoc IBLSSignatureAggregator
+    function validateSignature(UserIntent calldata intent) external view {
+        uint256[2] memory signature = abi.decode(intent.signature, (uint256[2]));
+        uint256[4] memory pubkey = _getIntentPublicKey(intent);
+        uint256[2] memory message = _intentMessage(_intentHash(intent));
+
+        BLS.verifySingle(signature, pubkey, message);
+    }
+
+    /// @inheritdoc IBLSSignatureAggregator
+    function validateSignatures(UserIntent[] calldata intents, bytes calldata signature) public view override {
         uint256 intentsLen = intents.length;
         uint256[4][] memory blsPublicKeys = new uint256[4][](intentsLen);
         uint256[2][] memory messages = new uint256[2][](intentsLen);
         for (uint256 i = 0; i < intentsLen; i++) {
             UserIntent calldata intent = intents[i];
             blsPublicKeys[i] = _getIntentPublicKey(intent);
-
-            messages[i] = _intentMessage(intent);
+            messages[i] = _intentMessage(_intentHash(intent));
         }
-        BLS.verifyMultiple(blsSignature, blsPublicKeys, messages);
+        _validateSignatures(blsPublicKeys, messages, signature);
     }
 
-    /// @inheritdoc IAggregator
-    function validateIntentSignature(UserIntent calldata intent) external view returns (bytes memory sigForUserOp) {
-        uint256[2] memory signature = abi.decode(intent.signature, (uint256[2]));
-        uint256[4] memory pubkey = _getIntentPublicKey(intent);
-        uint256[2] memory message = _intentMessage(intent);
-
-        BLS.verifySingle(signature, pubkey, message);
-        return "";
-    }
-
-    /// @inheritdoc IAggregator
+    /// @inheritdoc IBLSSignatureAggregator
     function aggregateSignatures(UserIntent[] calldata intents)
         external
         pure
@@ -63,13 +115,26 @@ contract BLSSignatureAggregator is IAggregator {
         return abi.encode(sum[0], sum[1]);
     }
 
+    function _validateSignatures(
+        uint256[4][] memory blsPublicKeys,
+        uint256[2][] memory messages,
+        bytes calldata signature
+    ) internal view {
+        require(signature.length == 64, "invalid bls aggregated signature");
+        (uint256[2] memory blsSignature) = abi.decode(signature, (uint256[2]));
+
+        BLS.verifyMultiple(blsSignature, blsPublicKeys, messages);
+    }
+
     function _getIntentPublicKey(UserIntent calldata intent) internal view returns (uint256[4] memory publicKey) {
         return IBLSAccount(intent.sender).getBlsPublicKey{gas: 50000}();
     }
 
-    function _intentMessage(UserIntent calldata intent) internal view returns (uint256[2] memory) {
-        //hash is equivalent to _entryPoint.getUserIntentHash(intent), but copied directly for gas savings
-        bytes32 intentHash = keccak256(abi.encode(intent.hash(), address(_entryPoint), block.chainid));
+    function _intentHash(UserIntent calldata intent) internal view returns (bytes32) {
+        return keccak256(abi.encode(intent.hash(), address(_entryPoint), block.chainid));
+    }
+
+    function _intentMessage(bytes32 intentHash) internal view returns (uint256[2] memory) {
         return BLS.hashToPoint(BLS_DOMAIN, abi.encodePacked(intentHash));
     }
 }

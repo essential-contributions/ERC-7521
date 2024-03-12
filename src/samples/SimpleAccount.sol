@@ -2,7 +2,6 @@
 pragma solidity ^0.8.24;
 
 import {BaseAccount} from "../core/BaseAccount.sol";
-import {IAggregator} from "../interfaces/IAggregator.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {IAccountProxy} from "../interfaces/IAccountProxy.sol";
 import {IIntentDelegate} from "../interfaces/IIntentDelegate.sol";
@@ -55,19 +54,12 @@ contract SimpleAccount is BaseAccount, UUPSUpgradeable, Initializable, IAccountP
      *
      * @param intent validate the intent.signature field
      * @param intentHash the hash of the intent, to check the signature against
-     * @return aggregator (optional) trusted signature aggregator to return if signature fails
      */
-    function validateUserIntent(UserIntent calldata intent, bytes32 intentHash)
-        external
-        view
-        override
-        returns (IAggregator)
-    {
+    function validateUserIntent(UserIntent calldata intent, bytes32 intentHash) external view override {
         _requireFromEntryPoint();
         intentHash = keccak256(abi.encode(intentHash, _entryPoint, block.chainid));
         bytes32 hash = intentHash.toEthSignedMessageHash();
         require(_owner == hash.recover(intent.signature), "invalid signature");
-        return IAggregator(address(0));
     }
 
     /**

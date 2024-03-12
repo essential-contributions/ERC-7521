@@ -36,8 +36,6 @@ import {SIMPLE_CALL_STD_ID} from "../../../src/core/EntryPoint.sol";
 import {UserOperation, encodeUserOperationData} from "../../../src/standards/UserOperation.sol";
 import {USER_OPERATION_STD_ID} from "../../../src/core/EntryPoint.sol";
 import {FailingStandard} from "../../../src/test/FailingStandard.sol";
-import {TestAggregator, ADMIN_SIGNATURE} from "../../../src/test/TestAggregator.sol";
-import {TestAggregationAccount} from "../../../src/test/TestAggregationAccount.sol";
 import {TestERC20} from "../../../src/test/TestERC20.sol";
 import {TestUniswap} from "../../../src/test/TestUniswap.sol";
 import {TestWrappedNativeToken} from "../../../src/test/TestWrappedNativeToken.sol";
@@ -70,9 +68,6 @@ abstract contract TestEnvironment is Test {
 
     //testing contracts
     FailingStandard internal _failingStandard;
-    TestAggregator internal _testAggregator;
-    TestAggregationAccount internal _testAggregationAccount;
-    TestAggregationAccount internal _testAggregationAccount2;
     TestERC20 internal _testERC20;
     TestUniswap internal _testUniswap;
     TestWrappedNativeToken internal _testWrappedNativeToken;
@@ -148,9 +143,6 @@ abstract contract TestEnvironment is Test {
         _account4 = accountFactory.createAccount(_publicAddress4, 444);
 
         //deploy test contracts
-        _testAggregator = new TestAggregator();
-        _testAggregationAccount = new TestAggregationAccount(_entryPoint, _testAggregator);
-        _testAggregationAccount2 = new TestAggregationAccount(_entryPoint, _testAggregator);
         _testERC20 = new TestERC20();
         _testWrappedNativeToken = new TestWrappedNativeToken();
         _testUniswap = new TestUniswap(_testWrappedNativeToken);

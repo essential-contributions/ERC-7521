@@ -166,6 +166,8 @@ async function main() {
     useBLSSignatureAggregation: false,
   };
   logScenarios(await run(registeredRegistryCompression), 'Using Registered Standards w/ Registry Compression');
+
+  console.log('finished.');
 }
 
 // Log parameters

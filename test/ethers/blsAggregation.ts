@@ -8,11 +8,12 @@ import { PublicKey } from '../../scripts/library/bls/bls';
 
 describe('BLS Signature Aggregation Test', () => {
   const MAX_INTENTS = 4;
+  const USE_TRANSIENT_DATA = true;
   let env: Environment;
   let scenario: TransferEthScenario;
 
   before(async () => {
-    env = await deployTestEnvironment({ numAccounts: MAX_INTENTS });
+    env = await deployTestEnvironment({ numAccounts: MAX_INTENTS, useTransientData: USE_TRANSIENT_DATA });
     scenario = new TransferEthScenario(env);
     scenario.init();
   });
@@ -27,8 +28,7 @@ describe('BLS Signature Aggregation Test', () => {
     const result = env.blsVerifier.verify(signature, account.signer.pubkey, message);
     expect(result).to.equal(true, 'Failed to verify signature via library');
 
-    const result2 = await env.blsSignatureAggregator.validateIntentSignature(intent.asUserIntentStruct());
-    expect(result2).to.equal('0x', 'Failed to verify signature via contract');
+    await expect(env.blsSignatureAggregator.validateSignature(intent.asUserIntentStruct())).to.not.be.reverted;
   });
 
   it('Should successfully aggregate signatures', async () => {

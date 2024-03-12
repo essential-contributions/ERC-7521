@@ -5,7 +5,6 @@ import {IIntentStandardRegistry} from "./IIntentStandardRegistry.sol";
 import {INonceManager} from "./INonceManager.sol";
 import {IntentSolution} from "./IntentSolution.sol";
 import {IIntentStandard} from "./IIntentStandard.sol";
-import {IAggregator} from "./IAggregator.sol";
 import {UserIntent} from "./UserIntent.sol";
 
 interface IEntryPoint is INonceManager, IIntentStandardRegistry {
@@ -38,20 +37,6 @@ interface IEntryPoint is INonceManager, IIntentStandardRegistry {
      * @param solutions list of solutions to execute for intents.
      */
     function handleIntentsMulti(IntentSolution[] calldata solutions) external;
-
-    /**
-     * Execute a batch of UserIntents with an aggregated signature.
-     * @param solutions list of solutions to execute for intents.
-     * @param aggregator address of aggregator.
-     * @param intentsToAggregate bit field signaling which intents are part of the aggregated signature.
-     * @param signature aggregated signature.
-     */
-    function handleIntentsAggregated(
-        IntentSolution[] calldata solutions,
-        IAggregator aggregator,
-        bytes32 intentsToAggregate,
-        bytes calldata signature
-    ) external;
 
     /**
      * Run validation for the given intent.

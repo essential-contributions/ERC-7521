@@ -70,6 +70,7 @@ export type Environment = {
   };
   compression: {
     compressedEntryPoint: CalldataCompression;
+    compressedBLSSignatureAggregator: CalldataCompression;
     registerAddresses: (addresses: string[]) => Promise<void>;
   };
   simpleAccounts: SmartContractAccount[];
@@ -288,7 +289,7 @@ export async function deployTestEnvironment(
   l1Dictionary.push(testERC20.interface.getFunction('transferFrom').selector);
   l1Dictionary.push(entrypoint.interface.getFunction('handleIntents').selector);
   l1Dictionary.push(entrypoint.interface.getFunction('handleIntentsMulti').selector);
-  l1Dictionary.push(entrypoint.interface.getFunction('handleIntentsAggregated').selector);
+  l1Dictionary.push(blsSignatureAggregator.interface.getFunction('handleIntentsAggregated').selector);
 
   const l2Dictionary: string[] = [];
   l2Dictionary.push(ethers.hexlify(ethers.randomBytes(32)));
@@ -343,18 +344,32 @@ export async function deployTestEnvironment(
     await publicRegistry.register(l3Dictionary[i]);
   }
 
-  //deploy calldata compression contract
-  const calldataCompression = await deployGeneralCalldataCompression(
+  //deploy calldata compression contracts
+  const epCalldataCompression = await deployGeneralCalldataCompression(
     entrypointAddress,
     l1Dictionary,
     [multiplesRegistryAddress, ...staticRegistryAddresses],
     publicRegistryAddress,
     deployer,
   );
-  const calldataCompressionAddress = await calldataCompression.getAddress();
-
-  const compressedEntryPoint = new CalldataCompression(entrypoint, calldataCompressionAddress, provider);
+  const epCalldataCompressionAddress = await epCalldataCompression.getAddress();
+  const compressedEntryPoint = new CalldataCompression(entrypoint, epCalldataCompressionAddress, provider);
   await compressedEntryPoint.sync();
+
+  const blsCalldataCompression = await deployGeneralCalldataCompression(
+    blsSignatureAggregatorAddress,
+    l1Dictionary,
+    [multiplesRegistryAddress, ...staticRegistryAddresses],
+    publicRegistryAddress,
+    deployer,
+  );
+  const blsCalldataCompressionAddress = await blsCalldataCompression.getAddress();
+  const compressedBLSSignatureAggregator = new CalldataCompression(
+    blsSignatureAggregator,
+    blsCalldataCompressionAddress,
+    provider,
+  );
+  await compressedBLSSignatureAggregator.sync();
 
   return {
     chainId: network.chainId,
@@ -403,6 +418,7 @@ export async function deployTestEnvironment(
     },
     compression: {
       compressedEntryPoint,
+      compressedBLSSignatureAggregator,
       registerAddresses: async (addresses: string[]) => {
         for (const addr of addresses) {
           (await publicRegistry.register(addr)).wait();

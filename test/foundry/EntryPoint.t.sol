@@ -181,17 +181,4 @@ contract EntryPointTest is TestEnvironment {
 
         _entryPoint.handleIntents(solution);
     }
-
-    function test_aggregation() public {
-        UserIntent memory intent = _intent(address(_testAggregationAccount));
-        UserIntent memory intent2 = _intent(address(_testAggregationAccount2));
-        IntentSolution[] memory solutions = new IntentSolution[](1);
-        uint256[] memory order = new uint256[](2);
-        order[1] = 1;
-        solutions[0] = _solution(intent, intent2, order);
-
-        _entryPoint.handleIntentsAggregated(
-            solutions, _testAggregator, bytes32(uint256(0x03)), abi.encode(ADMIN_SIGNATURE)
-        );
-    }
 }
