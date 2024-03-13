@@ -166,8 +166,6 @@ async function main() {
     useBLSSignatureAggregation: false,
   };
   logScenarios(await run(registeredRegistryCompression), 'Using Registered Standards w/ Registry Compression');
-
-  console.log('finished.');
 }
 
 // Log parameters
@@ -314,7 +312,12 @@ function percent(before: number, now: number): string {
 }
 
 // Start script
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+main()
+  .then(() => {
+    console.log('finished.');
+    process.exit();
+  })
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
