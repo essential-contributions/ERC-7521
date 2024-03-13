@@ -428,6 +428,7 @@ contract EntryPoint is
             revert FailedIntent(intentIndex, 0, "AA24 signature error (or OOG)");
         }
     }
+    // Add mapping to store Prohibited Addresses
     mapping(address => bool) public isProhibitedAddress;
     modifier onlyIntentSender(UserIntent calldata intent) {
         require(msg.sender == intent.sender, "Not the intent sender");
