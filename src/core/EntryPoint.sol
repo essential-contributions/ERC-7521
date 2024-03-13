@@ -452,32 +452,29 @@ contract EntryPoint is
     function extractAddressFromIntentData(bytes calldata data) internal pure returns (address) {
         // Implement the logic to extract an address from the data
     }
-    /**
+    
+     /**
      * @dev Checks if any prohibited addresses are included in the UserIntent.
      * @param intent The UserIntent to check.
      * @return True if any prohibited addresses are found, false otherwise.
      */
     function isProhibitedAddressInIntent(UserIntent calldata intent) internal view returns (bool) {
-        // Check sender's address
-        if (isProhibitedAddress[intent.sender]) {
+    // Check sender's address
+    if (isProhibitedAddress[intent.sender]) {
+        return true;
+    }
+
+    // Check addresses within intentData, if applicable
+    for (uint256 i = 0; i < intent.intentData.length; i++) {
+        address extractedAddress = extractAddressFromIntentData(intent.intentData[i]);
+        if (isProhibitedAddress[extractedAddress]) {
             return true;
         }
-
-        // Check addresses within intentData, if applicable
-        for (uint256 i = 0; i < intent.intentData.length; i++) {
-            address extractedAddress = extractAddressFromIntentData(intent.intentData[i]);
-            if (isProhibitedAddress[extractedAddress]) {
-                return true;
-            }
-        }
-
-        // Address is not prohibited
-        return false;
     }
 
+    // Address is not prohibited
+    return false;
 }
-
-    }
 
     /**
      * generates an intent ID for an intent.
