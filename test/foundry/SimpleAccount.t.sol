@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 /* solhint-disable func-name-mixedcase */
 
 import "./utils/TestEnvironment.sol";
-import "../../src/interfaces/IEntryPoint.sol";
+import "../../contracts/interfaces/IEntryPoint.sol";
 
 contract SimpleAccountTest is TestEnvironment {
     function test_entryPoint() public {

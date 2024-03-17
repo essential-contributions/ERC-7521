@@ -6,42 +6,46 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import {IntentBuilder} from "./IntentBuilder.sol";
-import {EntryPoint} from "../../../src/core/EntryPoint.sol";
-import {UserIntent} from "../../../src/interfaces/UserIntent.sol";
-import {IntentSolution} from "../../../src/interfaces/IntentSolution.sol";
-import {Erc20Record, encodeErc20RecordData} from "../../../src/standards/Erc20Record.sol";
-import {ERC20_RECORD_STD_ID} from "../../../src/core/EntryPoint.sol";
+import {EntryPoint} from "../../../contracts/core/EntryPoint.sol";
+import {UserIntent} from "../../../contracts/interfaces/UserIntent.sol";
+import {IntentSolution} from "../../../contracts/interfaces/IntentSolution.sol";
+import {Erc20Record, encodeErc20RecordData} from "../../../contracts/standards/Erc20Record.sol";
+import {ERC20_RECORD_STD_ID} from "../../../contracts/core/EntryPoint.sol";
 import {
     Erc20Release,
     encodeErc20ReleaseData,
     encodeErc20ReleaseComplexData
-} from "../../../src/standards/Erc20Release.sol";
-import {ERC20_RELEASE_STD_ID} from "../../../src/core/EntryPoint.sol";
+} from "../../../contracts/standards/Erc20Release.sol";
+import {ERC20_RELEASE_STD_ID} from "../../../contracts/core/EntryPoint.sol";
 import {
     Erc20Require,
     encodeErc20RequireData,
     encodeErc20RequireComplexData
-} from "../../../src/standards/Erc20Require.sol";
-import {ERC20_REQUIRE_STD_ID} from "../../../src/core/EntryPoint.sol";
-import {EthRecord, encodeEthRecordData} from "../../../src/standards/EthRecord.sol";
-import {ETH_RECORD_STD_ID} from "../../../src/core/EntryPoint.sol";
-import {EthRelease, encodeEthReleaseData, encodeEthReleaseComplexData} from "../../../src/standards/EthRelease.sol";
-import {ETH_RELEASE_STD_ID} from "../../../src/core/EntryPoint.sol";
-import {EthRequire, encodeEthRequireData, encodeEthRequireComplexData} from "../../../src/standards/EthRequire.sol";
-import {ETH_REQUIRE_STD_ID} from "../../../src/core/EntryPoint.sol";
-import {SequentialNonce, encodeSequentialNonceData} from "../../../src/standards/SequentialNonce.sol";
-import {SEQUENTIAL_NONCE_STD_ID} from "../../../src/core/EntryPoint.sol";
-import {SimpleCall, encodeSimpleCallData} from "../../../src/standards/SimpleCall.sol";
-import {SIMPLE_CALL_STD_ID} from "../../../src/core/EntryPoint.sol";
-import {UserOperation, encodeUserOperationData} from "../../../src/standards/UserOperation.sol";
-import {USER_OPERATION_STD_ID} from "../../../src/core/EntryPoint.sol";
-import {FailingStandard} from "../../../src/test/FailingStandard.sol";
-import {TestERC20} from "../../../src/test/TestERC20.sol";
-import {TestUniswap} from "../../../src/test/TestUniswap.sol";
-import {TestWrappedNativeToken} from "../../../src/test/TestWrappedNativeToken.sol";
-import {SolverUtils} from "../../../src/test/SolverUtils.sol";
-import {SimpleAccountFactory} from "../../../src/samples/SimpleAccountFactory.sol";
-import {SimpleAccount} from "../../../src/samples/SimpleAccount.sol";
+} from "../../../contracts/standards/Erc20Require.sol";
+import {ERC20_REQUIRE_STD_ID} from "../../../contracts/core/EntryPoint.sol";
+import {EthRecord, encodeEthRecordData} from "../../../contracts/standards/EthRecord.sol";
+import {ETH_RECORD_STD_ID} from "../../../contracts/core/EntryPoint.sol";
+import {
+    EthRelease, encodeEthReleaseData, encodeEthReleaseComplexData
+} from "../../../contracts/standards/EthRelease.sol";
+import {ETH_RELEASE_STD_ID} from "../../../contracts/core/EntryPoint.sol";
+import {
+    EthRequire, encodeEthRequireData, encodeEthRequireComplexData
+} from "../../../contracts/standards/EthRequire.sol";
+import {ETH_REQUIRE_STD_ID} from "../../../contracts/core/EntryPoint.sol";
+import {SequentialNonce, encodeSequentialNonceData} from "../../../contracts/standards/SequentialNonce.sol";
+import {SEQUENTIAL_NONCE_STD_ID} from "../../../contracts/core/EntryPoint.sol";
+import {SimpleCall, encodeSimpleCallData} from "../../../contracts/standards/SimpleCall.sol";
+import {SIMPLE_CALL_STD_ID} from "../../../contracts/core/EntryPoint.sol";
+import {UserOperation, encodeUserOperationData} from "../../../contracts/standards/UserOperation.sol";
+import {USER_OPERATION_STD_ID} from "../../../contracts/core/EntryPoint.sol";
+import {FailingStandard} from "../../../contracts/test/FailingStandard.sol";
+import {TestERC20} from "../../../contracts/test/TestERC20.sol";
+import {TestUniswap} from "../../../contracts/test/TestUniswap.sol";
+import {TestWrappedNativeToken} from "../../../contracts/test/TestWrappedNativeToken.sol";
+import {SolverUtils} from "../../../contracts/test/SolverUtils.sol";
+import {SimpleAccountFactory} from "../../../contracts/samples/SimpleAccountFactory.sol";
+import {SimpleAccount} from "../../../contracts/samples/SimpleAccount.sol";
 import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 
 abstract contract TestEnvironment is Test {

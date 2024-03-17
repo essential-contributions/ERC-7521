@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-import {UserIntent} from "../../../src/interfaces/UserIntent.sol";
+import {UserIntent} from "../../../contracts/interfaces/UserIntent.sol";
 
 library IntentBuilder {
     /**

@@ -79,7 +79,7 @@ jobs:
         with:
           path: lcov.info
           min_coverage: 100
-          exclude: test/** src/test/** src/samples/** src/utils/** src/interfaces/**
+          exclude: test/** contracts/test/** contracts/samples/** contracts/utils/** contracts/interfaces/**
 
   hardhat:
     name: Hardhat project
