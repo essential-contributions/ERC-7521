@@ -451,6 +451,7 @@ contract EntryPoint is
      */
     function extractAddressFromIntentData(bytes calldata data) internal pure returns (address) {
         // Implement the logic to extract an address from the data
+        // May require adjustments if data is encoded as ABI or via custom encoding
     }
     
      /**
