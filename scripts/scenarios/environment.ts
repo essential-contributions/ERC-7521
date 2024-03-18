@@ -22,6 +22,8 @@ import { Erc20ReleaseSegment } from '../library/standards/erc20Release';
 import { Erc20RequireSegment } from '../library/standards/erc20Require';
 import { BlsSigner, BlsSignerFactory, BlsVerifier } from '../library/bls/bls';
 import { CalldataCompression } from '../library/compression/calldataCompression';
+import { deployGeneralStaticRegistry, splitDictionary } from '../library/compression/generalStaticRegistry';
+import { deployGeneralCalldataCompression } from '../library/compression/generalCalldataCompression';
 
 // Environment definition
 export type Environment = {
@@ -66,7 +68,7 @@ export type Environment = {
     solverUtilsAddress: string;
   };
   compression: {
-    entryPointCompression: CalldataCompression;
+    compressedEntryPoint: CalldataCompression;
     registerAddresses: (addresses: string[]) => Promise<void>;
   };
   simpleAccounts: SmartContractAccount[];
@@ -79,7 +81,6 @@ export type Environment = {
     registerStandard: bigint;
     simpleAccountFactory: bigint;
     simpleAccount: bigint;
-    calldataCompression: bigint;
   };
   utils: {
     getNonce: (account: string) => Promise<number>;
@@ -242,40 +243,104 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
   await testWrappedNativeToken.connect(funder).deposit({ value: ethers.parseEther('1000') });
   await testWrappedNativeToken.connect(funder).transfer(testUniswapAddress, ethers.parseEther('1000'));
 
-  //deploy the general static registry
-  const commonAddresses = [testWrappedNativeTokenAddress, testUniswapAddress, blsSignatureAggregatorAddress];
-  const generalStaticRegistry = await ethers.deployContract('GeneralStaticRegistry', [commonAddresses], deployer);
-  const generalStaticRegistryAddress = await generalStaticRegistry.getAddress();
+  //set dictionaries for compression
+  const l1Dictionary: string[] = [];
+  l1Dictionary.push('0x0000000000000000000000000000000000000000000000000000000000000001');
+  l1Dictionary.push('0x0000000000000000000000000000000000000000000000000000000000000002');
+  l1Dictionary.push('0x0000000000000000000000000000000000000000000000000000000000000003');
+  l1Dictionary.push('0x0000000000000000000000000000000000000000000000000000000000000004');
+  l1Dictionary.push('0x0000000000000000000000000000000000000000000000000000000000000005');
+  l1Dictionary.push('0x0000000000000000000000000000000000000000000000000000000000000006');
+  l1Dictionary.push('0x0000000000000000000000000000000000000000000000000000000000000007');
+  l1Dictionary.push('0x0000000000000000000000000000000000000000000000000000000000000008');
+  l1Dictionary.push('0x0000000000000000000000000000000000000000000000000000000000000009');
+  l1Dictionary.push('0x000000000000000000000000000000000000000000000000000000000000000a');
+  l1Dictionary.push('0x000000000000000000000000000000000000000000000000000000000000000b');
+  l1Dictionary.push('0x000000000000000000000000000000000000000000000000000000000000000c');
+  l1Dictionary.push('0x000000000000000000000000000000000000000000000000000000000000000d');
+  l1Dictionary.push('0x000000000000000000000000000000000000000000000000000000000000000e');
+  l1Dictionary.push('0x000000000000000000000000000000000000000000000000000000000000000f');
+  l1Dictionary.push('0x0000000000000000000000000000000000000000000000000000000000000041');
+  l1Dictionary.push('0x1b00000000000000000000000000000000000000000000000000000000000000');
+  l1Dictionary.push('0x1c00000000000000000000000000000000000000000000000000000000000000');
+  l1Dictionary.push('0x0000000000000000000000000000000000000000000000000000000000000020');
+  l1Dictionary.push('0x0000000000000000000000000000000000000000000000000000000000000040');
+  l1Dictionary.push(entrypointAddress);
+  l1Dictionary.push(testERC20Address);
+  l1Dictionary.push(testWrappedNativeTokenAddress);
+  l1Dictionary.push(solverUtilsAddress);
+  l1Dictionary.push(testERC20.interface.getFunction('approve').selector);
+  l1Dictionary.push(testERC20.interface.getFunction('transfer').selector);
+  l1Dictionary.push(testERC20.interface.getFunction('transferFrom').selector);
+  l1Dictionary.push(entrypoint.interface.getFunction('handleIntents').selector);
+  l1Dictionary.push(entrypoint.interface.getFunction('handleIntentsMulti').selector);
+  l1Dictionary.push(entrypoint.interface.getFunction('handleIntentsAggregated').selector);
 
-  //deploy the public storage registry
-  const publicStorageRegistry = await ethers.deployContract('PublicStorageRegistry', [], deployer);
-  const publicStorageRegistryAddress = await publicStorageRegistry.getAddress();
-  (await publicStorageRegistry.register(ethers.hexlify(ethers.randomBytes(32).slice(0, 20)))).wait();
+  const l2Dictionary: string[] = [];
+  l2Dictionary.push(ethers.hexlify(ethers.randomBytes(32)));
+  l2Dictionary.push(simpleAccounts[0].contract.interface.getFunction('execute').selector);
+  l2Dictionary.push(simpleAccounts[0].contract.interface.getFunction('executeBatch').selector);
+  l2Dictionary.push(simpleAccounts[0].contract.interface.getFunction('generalizedIntentDelegateCall').selector);
+  l2Dictionary.push(solverUtils.interface.getFunction('swapERC20ForETHAndForward').selector);
+  l2Dictionary.push(solverUtils.interface.getFunction('swapERC20ForETHAndForwardMulti').selector);
+  l2Dictionary.push(solverUtils.interface.getFunction('swapETHForERC20AndForward').selector);
+  l2Dictionary.push(solverUtils.interface.getFunction('transferAllETH').selector);
+  l2Dictionary.push(solverUtils.interface.getFunction('transferERC20').selector);
+  l2Dictionary.push(solverUtils.interface.getFunction('transferETH').selector);
+  l2Dictionary.push(testUniswapAddress);
+  l2Dictionary.push(blsSignatureAggregatorAddress);
+  l2Dictionary.push(erc20Record.standardId);
+  l2Dictionary.push(erc20Release.standardId);
+  l2Dictionary.push(erc20Require.standardId);
+  l2Dictionary.push(ethRecord.standardId);
+  l2Dictionary.push(ethRelease.standardId);
+  l2Dictionary.push(ethRequire.standardId);
+  l2Dictionary.push(sequentialNonce.standardId);
+  l2Dictionary.push(simpleCall.standardId);
+  l2Dictionary.push(userOperation.standardId);
+
+  const l3Dictionary: string[] = [];
+  l3Dictionary.push(ethers.hexlify(ethers.randomBytes(20)));
   for (const acct of simpleAccounts) {
-    (await publicStorageRegistry.register(acct.contractAddress)).wait();
+    l3Dictionary.push(acct.contractAddress);
   }
   for (const acct of blsAccounts) {
-    (await publicStorageRegistry.register(acct.contractAddress)).wait();
+    l3Dictionary.push(acct.contractAddress);
   }
   for (const acct of eoaProxyAccounts) {
-    (await publicStorageRegistry.register(acct.contractAddress)).wait();
-    (await publicStorageRegistry.register(acct.signerAddress)).wait();
+    l3Dictionary.push(acct.contractAddress);
+    l3Dictionary.push(acct.signerAddress);
   }
 
-  //deploy calldata compression for the EntryPoint contract
-  const entryPointCompContract = await ethers.deployContract(
-    'EntryPointCompression',
-    [entrypointAddress, generalStaticRegistryAddress, publicStorageRegistryAddress, '0x00000000'],
+  //deploy data registries
+  const multiplesRegistry = await ethers.deployContract('MultiplesStaticRegistry', deployer);
+  const multiplesRegistryAddress = await multiplesRegistry.getAddress();
+
+  const staticRegistryAddresses: string[] = [];
+  const l2Dictionaries = splitDictionary(l2Dictionary);
+  for (const dict of l2Dictionaries) {
+    const staticRegistry = await deployGeneralStaticRegistry(dict, deployer);
+    staticRegistryAddresses.push(await staticRegistry.getAddress());
+  }
+
+  const publicRegistry = await ethers.deployContract('PublicStorageRegistry', deployer);
+  const publicRegistryAddress = await publicRegistry.getAddress();
+  for (let i = 0; i < l3Dictionary.length; i++) {
+    await publicRegistry.register(l3Dictionary[i]);
+  }
+
+  //deploy calldata compression contract
+  const calldataCompression = await deployGeneralCalldataCompression(
+    entrypointAddress,
+    l1Dictionary,
+    [multiplesRegistryAddress, ...staticRegistryAddresses],
+    publicRegistryAddress,
     deployer,
   );
-  const entryPointCompression = new CalldataCompression(
-    entryPointCompContract,
-    entrypoint,
-    generalStaticRegistry,
-    publicStorageRegistry,
-  );
-  const calldataCompressionGasUsed = (await entryPointCompContract.deploymentTransaction()?.wait())?.gasUsed || 0n;
-  await entryPointCompression.sync();
+  const calldataCompressionAddress = await calldataCompression.getAddress();
+
+  const compressedEntryPoint = new CalldataCompression(entrypoint, calldataCompressionAddress, provider);
+  await compressedEntryPoint.sync();
 
   return {
     chainId: network.chainId,
@@ -323,10 +388,10 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
       solverUtilsAddress,
     },
     compression: {
-      entryPointCompression,
+      compressedEntryPoint,
       registerAddresses: async (addresses: string[]) => {
         for (const addr of addresses) {
-          (await publicStorageRegistry.register(addr)).wait();
+          (await publicRegistry.register(addr)).wait();
         }
       },
     },
@@ -340,7 +405,6 @@ export async function deployTestEnvironment(config: DeployConfiguration = { numA
       registerStandard: registerStandardGasUsed,
       simpleAccountFactory: simpleAccountFactoryGasUsed,
       simpleAccount: simpleAccountGasUsed,
-      calldataCompression: calldataCompressionGasUsed,
     },
     utils: {
       getNonce: async (account: string) => {

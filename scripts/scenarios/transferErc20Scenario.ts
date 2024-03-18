@@ -152,17 +152,19 @@ export class TransferErc20Scenario extends Scenario {
     let txPromise: Promise<ContractTransactionResponse>;
     if (options.useCompression) {
       if (aggregatedSignature) {
-        txPromise = this.env.compression.entryPointCompression.compressedCall(
+        txPromise = this.env.compression.compressedEntryPoint.compressedCall(
           'handleIntentsAggregated',
           [[solution], this.env.blsSignatureAggregatorAddress, toAggregate, aggregatedSignature],
-          undefined,
+          this.env.deployer,
+          true,
           options.useCompressionRegistry,
         );
       } else {
-        txPromise = this.env.compression.entryPointCompression.compressedCall(
+        txPromise = this.env.compression.compressedEntryPoint.compressedCall(
           'handleIntents',
           [solution],
-          undefined,
+          this.env.deployer,
+          true,
           options.useCompressionRegistry,
         );
       }

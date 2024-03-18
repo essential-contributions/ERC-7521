@@ -198,7 +198,6 @@ function logDeployments(env: Environment) {
   line('Deploy BLS Aggregator', env.gasUsed.blsSignatureAggregator);
   line('Deploy Simple Acct Fac', env.gasUsed.simpleAccountFactory);
   line('Deploy Simple Acct', env.gasUsed.simpleAccount);
-  line('Deploy Compression', env.gasUsed.calldataCompression);
   line('Register Standard', env.gasUsed.registerStandard);
   console.log('');
 }

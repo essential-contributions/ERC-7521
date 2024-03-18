@@ -1,50 +1,25 @@
-import { ethers } from 'ethers';
-import { CalldataCompression as CalldataCompressionContract, IDataRegistry } from '../../../typechain';
-import { Signer, BaseContract, ContractTransactionResponse } from 'ethers';
-
-// Encoding Prefixes
-// 000 - 1 byte dynamic dictionary [1-32] (items to put in storage)
-// 001 - 1 byte closed stateful dictionary [1-32] (items specific to particular target)
-// 010 - 2 byte closed stateful dictionary [1-8192] (function selectors, lengths of zeros greater than 64, multiples of 32, etc)
-// 011 - 4 byte stateful dictionary [1-536870912] (addresses, hashes, etc)
-// 100 - zeros [1-32]
-// 101 - zero padded bytes (to 32) [1-32 zeros]
-// 110 - regular bytes [1-32 bytes]
-// 111 - decimal number
-
-const PF_TYPE_MASK = 0xe0;
-const PF_1BYTE_DICT = 0x00;
-const PF_1BYTE_STATE = 0x20;
-const PF_2BYTE_STATE = 0x40;
-const PF_4BYTE_STATE = 0x60;
-const PF_ZEROS = 0x80;
-const PF_ZERO_PADDED = 0xa0;
-const PF_NUM_BYTES = 0xc0;
-const PF_NUMBER = 0xe0;
+import { isAddress } from 'ethers';
+import { Contract, Provider, Signer, BaseContract, ContractTransactionResponse } from 'ethers';
+import { CompressionCore } from './compressionCore';
 
 // Perform stateful encoding
-export class CalldataCompression {
+export class CalldataCompression extends CompressionCore {
   private initialized = false;
   private targetContract: BaseContract;
-  private compressionContract: CalldataCompressionContract;
-  private l2Registry: IDataRegistry;
-  private l3Registry: IDataRegistry;
-  private oneByteDictionary: Map<string, number> = new Map<string, number>();
-  private twoByteDictionary: Map<string, number> = new Map<string, number>();
-  private fourByteDictionary: Map<string, number> = new Map<string, number>();
-  private fourByteDictionaryLength: number = 0;
+  private compressionContractAddress: string;
+  private provider: Provider;
+  private l3RegistryAddress: string = '0x0000000000000000000000000000000000000000';
+  private l3DictionaryLength: number = 0;
 
   // Constructor
-  constructor(
-    compressionContract: CalldataCompressionContract,
-    targetContract: BaseContract,
-    l2Registry: IDataRegistry,
-    l3Registry: IDataRegistry,
-  ) {
-    this.compressionContract = compressionContract;
+  constructor(targetContract: BaseContract, compressionContractAddress: string, provider: Provider) {
+    super();
+    if (!isAddress(compressionContractAddress)) {
+      throw new Error(`Invalid address: ${compressionContractAddress}`);
+    }
     this.targetContract = targetContract;
-    this.l2Registry = l2Registry;
-    this.l3Registry = l3Registry;
+    this.compressionContractAddress = compressionContractAddress;
+    this.provider = provider;
   }
 
   // Syncs the dictionaries for compression
@@ -52,16 +27,19 @@ export class CalldataCompression {
     if (!this.initialized) {
       this.initialized = true;
 
-      //validation
-      const l2Registry = await this.compressionContract.l2Registry_00233a();
-      const l2RegistryAddress = await this.l2Registry.getAddress();
-      if (l2Registry.toLowerCase() != l2RegistryAddress.toLowerCase()) throw new Error('Incorrect L2 Registry');
-      const l3Registry = await this.compressionContract.l3Registry_00e25a();
-      const l3RegistryAddress = await this.l3Registry.getAddress();
-      if (l3Registry.toLowerCase() != l3RegistryAddress.toLowerCase()) throw new Error('Incorrect L3 Registry');
+      //parse the bytecode for additional values
+      const compressionContract = new Contract(this.compressionContractAddress, compressionABI, this.provider);
+      const version = (await compressionContract.version_0511d9()).toString();
+      const bytecode = await this.provider.getCode(await compressionContract.getAddress());
+      const { target, l1Dictionary, l2Registries, l3Registry } = parseBytecode(version, bytecode);
+
+      //verify the target contract is correct
+      const targetContract = await this.targetContract.getAddress();
+      if (target.toLowerCase() != targetContract.toLowerCase()) {
+        throw new Error(`Compression contracts target does not match what was given`);
+      }
 
       //parse the static one byte dictionary
-      const l1Dictionary = await this.compressionContract.l1Dictionary_004055();
       let l1DictionaryIndex = 0;
       for (let item of l1Dictionary) {
         this.oneByteDictionary.set(item.substring(2), l1DictionaryIndex++);
@@ -70,23 +48,32 @@ export class CalldataCompression {
       //parse the static two byte dictionary
       let l2DictionaryIndex = 0;
       for (let i = 0; i < 8; i++) {
-        const l2DictionaryPage = await this.compressionContract.l2Dictionary_010b59(i);
-        for (let item of l2DictionaryPage) {
-          this.twoByteDictionary.set(item.substring(2), l2DictionaryIndex++);
+        if (l2Registries[i] != '0x0000000000000000000000000000000000000000') {
+          const registryContract = new Contract(l2Registries[i], registryABI, this.provider);
+          const l2DictionaryPage = await registryContract.retrieveBatch(0, 1024);
+          for (let item of l2DictionaryPage) {
+            this.twoByteDictionary.set(item.substring(2), l2DictionaryIndex++);
+          }
         }
       }
+
+      //remember the four byte dictionary source
+      this.l3RegistryAddress = l3Registry;
     }
 
     //sync the static four byte dictionary
-    const l3DictionaryLength = Number(await this.l3Registry.length());
-    if (this.fourByteDictionaryLength != l3DictionaryLength) {
-      this.fourByteDictionaryLength = l3DictionaryLength;
-      let l3DictionaryIndex = 0;
-      for (let i = 0; i < l3DictionaryLength; i += 1024) {
-        const items = await this.l3Registry.retrieveBatch(i, Math.min(i + 1024, l3DictionaryLength));
-        for (let item of items) {
-          this.fourByteDictionary.set(item.substring(2), l3DictionaryIndex++);
+    if (this.l3RegistryAddress != '0x0000000000000000000000000000000000000000') {
+      const registryContract = new Contract(this.l3RegistryAddress, registryABI, this.provider);
+      const l3DictionaryLength = Number(await registryContract.length());
+      if (this.l3DictionaryLength != l3DictionaryLength) {
+        let l3DictionaryIndex = this.l3DictionaryLength;
+        for (let i = l3DictionaryIndex; i < l3DictionaryLength; i += 1024) {
+          const items = await registryContract.retrieveBatch(i, Math.min(i + 1024, l3DictionaryLength));
+          for (let item of items) {
+            this.fourByteDictionary.set(item.substring(2), l3DictionaryIndex++);
+          }
         }
+        this.l3DictionaryLength = l3DictionaryLength;
       }
     }
   }
@@ -96,17 +83,19 @@ export class CalldataCompression {
     fragment: string,
     values: any[],
     signer?: Signer,
+    fastEncryption: boolean = true,
     l3DictionaryEnabled: boolean = true,
   ): Promise<ContractTransactionResponse> {
     await this.sync();
-
     const calldata = this.targetContract.interface.encodeFunctionData(fragment, values);
-    const compresseddata = this.encode(calldata, l3DictionaryEnabled);
+    const compressed = fastEncryption
+      ? this.encodeFast(calldata, l3DictionaryEnabled)
+      : this.encode(calldata, l3DictionaryEnabled);
 
     //compress and call
-    const contract = signer ? this.compressionContract.connect(signer) : this.compressionContract;
-    if (contract.fallback) {
-      return contract.fallback({ data: compresseddata });
+    const compressionContract = new Contract(this.compressionContractAddress, compressionABI, signer);
+    if (compressionContract.fallback) {
+      return compressionContract.fallback({ data: compressed, gasLimit: 10_000_000 });
     }
 
     //fail if no fallback
@@ -114,413 +103,160 @@ export class CalldataCompression {
       reject();
     });
   }
+}
 
-  // Encodes the given array of bytes
-  public encode(bytes: string, l3DictionaryEnabled: boolean = true): string {
-    let hexPrefix = false;
-    if (bytes.indexOf('0x') == 0) {
-      hexPrefix = true;
-      bytes = bytes.substring(2);
-    }
-    const root = this;
-    const encodingResults = new Map<string, string[]>();
-    function encodeSingle(bytes: string): string[] {
-      if (!encodingResults.has(bytes)) {
-        encodingResults.set(bytes, root.doEncode(bytes, l3DictionaryEnabled));
-      }
-      return encodingResults.get(bytes) ?? [];
-    }
+function parseBytecode(
+  version: string,
+  bytecode: string,
+): {
+  target: string;
+  l1Dictionary: string[];
+  l2Registries: string[];
+  l3Registry: string;
+} {
+  if (version == '0') {
+    const dataSize = 1256;
+    const targetOffset = 0;
+    const l1DictionaryOffset = 20;
+    const l1DictLengthsOffset = 1044;
+    const l2RegistriesOffset = 1076;
+    const l3RegistryOffset = 1236;
 
-    const encodingAtIndex = new Map<number, string[]>();
-    function encodeRecursive(index: number): string[] {
-      if (index >= bytes.length) return [];
-      if (!encodingAtIndex.has(index)) {
-        let smallestEncoding: string[] | undefined;
-        for (let i = 64; i > 0; i -= 2) {
-          if (index + i <= bytes.length) {
-            const encoding = [...encodeSingle(bytes.substring(index, index + i)), ...encodeRecursive(index + i)];
-            if (!smallestEncoding || encoding.join('').length < smallestEncoding.join('').length) {
-              smallestEncoding = encoding;
-            }
-          }
-        }
-        encodingAtIndex.set(index, smallestEncoding ?? []);
-      }
-      return encodingAtIndex.get(index) ?? [];
-    }
-
-    //prefill encoding results
-    for (let i = 0; i < bytes.length; i += 2) {
-      for (let j = 64; j > 0; j -= 2) {
-        if (i + j <= bytes.length) encodeSingle(bytes.substring(i, i + j));
-      }
-    }
-    for (let i = bytes.length - 2; i > 0; i -= 2) encodeRecursive(i);
-
-    //get plain encoding
-    const encoded = encodeRecursive(0);
-
-    //build dynamic dictionary
-    const items = new Map<string, number>();
-    for (let enc of encoded) {
-      if (items.has(enc)) items.set(enc, (items.get(enc) ?? 0) + (enc.length / 2 - 1));
-      else items.set(enc, -1);
-    }
-    const sorted = [...items.entries()].sort((a, b) => b[1] - a[1]);
-    const dictionary: string[] = [];
+    const data = bytecode.substring(bytecode.length - dataSize * 2);
+    const target = '0x' + data.substring(targetOffset * 2, (targetOffset + 20) * 2);
+    const l1Dictionary: string[] = [];
     for (let i = 0; i < 32; i++) {
-      if (i < sorted.length) {
-        if (sorted[i][1] > 0) dictionary.push(sorted[i][0]);
-        else break;
-      }
+      const length = parseInt(data.substring((l1DictLengthsOffset + i) * 2, (l1DictLengthsOffset + i + 1) * 2), 16);
+      l1Dictionary.push(
+        '0x' + data.substring((l1DictionaryOffset + i * 32) * 2, (l1DictionaryOffset + i * 32 + length) * 2),
+      );
     }
-
-    //TODO: mark dynamic dictionary items for storage
-
-    //finish encoding with dynamic dictionary
-    let encodedString = toHex(dictionary.length, 1);
-    for (let ent of dictionary) {
-      encodedString += ent;
+    const l2Registries: string[] = [];
+    for (let i = 0; i < 8; i++) {
+      l2Registries.push(
+        '0x' + data.substring((l2RegistriesOffset + i * 20) * 2, (l2RegistriesOffset + (i + 1) * 20) * 2),
+      );
     }
-    for (let enc of encoded) {
-      const dictRef = dictionary.indexOf(enc);
-      if (dictRef > -1) encodedString += toHex(PF_1BYTE_DICT + dictRef, 1);
-      else encodedString += enc;
-    }
-
-    return (hexPrefix ? '0x' : '') + encodedString;
+    const l3Registry = '0x' + data.substring(l3RegistryOffset * 2, (l3RegistryOffset + 20) * 2);
+    return { target, l1Dictionary, l2Registries, l3Registry };
   }
 
-  // Decodes the given array of bytes
-  public decode(bytes: string): string {
-    let index = 0;
-    let hexPrefix = false;
-    if (bytes.indexOf('0x') == 0) {
-      hexPrefix = true;
-      bytes = bytes.substring(2);
-    }
-
-    //fill dynamic dictionary
-    const dictLength = parseInt(bytes.substring(index, index + 2), 16);
-    if (dictLength > 32) throw new Error('Invalid dictionary size');
-    index += 2;
-    const dictionary: string[] = [];
-    for (let i = 0; i < dictLength; i++) {
-      const decode = this.doDecode(bytes.substring(index, index + 66));
-      dictionary.push(decode.decoded);
-      index += decode.bytesRead * 2;
-    }
-
-    let decoded = hexPrefix ? '0x' : '';
-    while (index < bytes.length) {
-      const decode = this.doDecode(bytes.substring(index, index + 66), dictionary);
-      decoded += decode.decoded;
-      index += decode.bytesRead * 2;
-    }
-    return decoded;
-  }
-
-  // Get the length of the L1 dictionary
-  public getL1DictionaryLength(): number {
-    return this.oneByteDictionary.size;
-  }
-
-  // Get item from the L1 dictionary at the given index
-  public getL1DictionaryItem(index: number): string {
-    for (let item of this.oneByteDictionary.entries()) {
-      if (item[1] == index) return item[0];
-    }
-    return '';
-  }
-
-  // Gets the length of the L2 dictionary
-  public getL2DictionaryLength(): number {
-    return this.twoByteDictionary.size;
-  }
-
-  // Get item from the L2 dictionary at the given index
-  public getL2DictionaryItem(index: number): string {
-    for (let item of this.twoByteDictionary.entries()) {
-      if (item[1] == index) return item[0];
-    }
-    return '';
-  }
-
-  // Gets the length of the L3 dictionary
-  public getL3DictionaryLength(): number {
-    return this.fourByteDictionary.size;
-  }
-
-  // Get item from the L3 dictionary at the given index
-  public getL3DictionaryItem(index: number): string {
-    for (let item of this.fourByteDictionary.entries()) {
-      if (item[1] == index) return item[0];
-    }
-    return '';
-  }
-
-  //////////////////////////////
-  // Private Helper Functions //
-  //////////////////////////////
-
-  //encode single element (max 32bytes)
-  private doEncode(bytes: string, l3DictionaryEnabled: boolean = true): string[] {
-    if (!bytes) return [];
-    bytes = (' ' + bytes).slice(1).toLowerCase();
-
-    //encode by one byte lookup
-    let encodedViaLookup1: string[] | undefined;
-    const oneByteMatch = this.oneByteDictionary.get(bytes);
-    if (oneByteMatch !== undefined) {
-      encodedViaLookup1 = [toHex(PF_1BYTE_STATE + (oneByteMatch & ~PF_TYPE_MASK), 1)];
-    }
-
-    //encode by two byte lookup
-    let encodedViaLookup2: string[] | undefined;
-    const twoByteMatch = this.twoByteDictionary.get(bytes);
-    if (twoByteMatch !== undefined) {
-      encodedViaLookup1 = [toHex((PF_2BYTE_STATE << 8) + (twoByteMatch & ~(PF_TYPE_MASK << 8)), 2)];
-    }
-
-    //encode by four byte lookup
-    let encodedViaLookup4: string[] | undefined;
-    if (l3DictionaryEnabled) {
-      const fourByteMatch = this.fourByteDictionary.get(bytes);
-      if (fourByteMatch !== undefined) {
-        encodedViaLookup4 = [toHex((PF_4BYTE_STATE << 24) + (fourByteMatch & ~(PF_TYPE_MASK << 24)), 4)];
-      }
-    }
-
-    //encode by compressing zeros
-    let encodedViaZeros: string[] | undefined;
-    const leadZeros = leadingZeros(bytes);
-    const zeroSplit = splitZeros(bytes, 3);
-    if (zeroSplit.length > 1) {
-      encodedViaZeros = [];
-      for (const part of zeroSplit) {
-        if (part.numZeros > 0) encodedViaZeros.push(toHex(PF_ZEROS + ((part.numZeros - 1) & ~PF_TYPE_MASK), 1));
-        else encodedViaZeros.push(...this.doEncode(part.bytes, l3DictionaryEnabled));
-      }
-    } else if (leadZeros == bytes.length / 2) {
-      encodedViaZeros = [toHex(PF_ZEROS + ((bytes.length / 2 - 1) & ~PF_TYPE_MASK), 1)];
-    }
-
-    //encode entirely by specifying leading zeros
-    let encodedViaZeroPadding: string[] | undefined;
-    if (leadZeros > 0 && bytes.length == 64) {
-      encodedViaZeroPadding = [
-        toHex(PF_ZERO_PADDED + ((leadZeros - 1) & ~PF_TYPE_MASK), 1) + bytes.substring(leadZeros * 2),
-      ];
-    }
-
-    //encode by number format
-    let encodedViaNumber: string[] | undefined;
-    const num = toCompressedNumber(bytes);
-    if (num !== undefined) {
-      const enc = toHex(num.decimal, getPrecisionByteSize(num.precision));
-      encodedViaNumber = [
-        toHex(PF_NUMBER + (((num.size << 3) | num.precision) & ~PF_TYPE_MASK), 1) + enc + toHex(num.mult, 1),
-      ];
-    }
-
-    //encode by declaring raw bytes
-    let encodedViaRawBytes: string[] = [toHex(PF_NUM_BYTES + ((bytes.length / 2 - 1) & ~PF_TYPE_MASK), 1) + bytes];
-
-    //return the smallest encoding
-    let encoding = encodedViaRawBytes;
-    if (encodedViaZeros && encoding.join('').length > encodedViaZeros.join('').length) encoding = encodedViaZeros;
-    if (encodedViaZeroPadding && encoding.join('').length > encodedViaZeroPadding.join('').length)
-      encoding = encodedViaZeroPadding;
-    if (encodedViaNumber && encoding.join('').length > encodedViaNumber.join('').length) encoding = encodedViaNumber;
-    if (encodedViaLookup1 && encoding.join('').length > encodedViaLookup1.join('').length) encoding = encodedViaLookup1;
-    if (encodedViaLookup2 && encoding.join('').length > encodedViaLookup2.join('').length) encoding = encodedViaLookup2;
-    if (encodedViaLookup4 && encoding.join('').length > encodedViaLookup4.join('').length) encoding = encodedViaLookup4;
-    return encoding;
-  }
-
-  //decode a single element (to a max 32 bytes)
-  private doDecode(bytes: string, dictionary?: string[]): { decoded: string; bytesRead: number } {
-    if (!bytes) return { decoded: '', bytesRead: 0 };
-    bytes = (' ' + bytes).slice(1);
-    const byte = parseInt(bytes.substring(0, 2), 16);
-
-    //1 byte state
-    if (dictionary !== undefined) {
-      if ((byte & PF_TYPE_MASK) == PF_1BYTE_DICT) {
-        const index = byte & ~PF_TYPE_MASK;
-        const bytesRead = 1;
-        return { decoded: dictionary[index], bytesRead };
-      }
-    }
-    if ((byte & PF_TYPE_MASK) == PF_1BYTE_STATE) {
-      const index = byte & ~PF_TYPE_MASK;
-      const bytesRead = 1;
-      for (let item of this.oneByteDictionary.entries()) {
-        if (item[1] == index) {
-          return { decoded: item[0], bytesRead };
-        }
-      }
-    }
-
-    //2 byte state
-    if ((byte & PF_TYPE_MASK) == PF_2BYTE_STATE) {
-      const bytesRead = 2;
-      if (bytes.length > 2) {
-        const bytes2 = parseInt(bytes.substring(0, 4), 16);
-        const index = bytes2 & ~(PF_TYPE_MASK << 8);
-        for (let item of this.twoByteDictionary.entries()) {
-          if (item[1] == index) {
-            return { decoded: item[0], bytesRead };
-          }
-        }
-      }
-      return { decoded: '', bytesRead };
-    }
-
-    //4 byte state
-    if ((byte & PF_TYPE_MASK) == PF_4BYTE_STATE) {
-      const bytesRead = 4;
-      if (bytes.length > 2) {
-        const bytes4 = parseInt(bytes.substring(0, 8), 16);
-        const index = bytes4 & ~(PF_TYPE_MASK << 24);
-        for (let item of this.fourByteDictionary.entries()) {
-          if (item[1] == index) {
-            return { decoded: item[0], bytesRead };
-          }
-        }
-      }
-      return { decoded: '', bytesRead };
-    }
-
-    //zeros
-    if ((byte & PF_TYPE_MASK) == PF_ZEROS) {
-      const num = (byte & ~PF_TYPE_MASK) + 1;
-      return { decoded: ''.padStart(num * 2, '0'), bytesRead: 1 };
-    }
-
-    //padded zeros
-    if ((byte & PF_TYPE_MASK) == PF_ZERO_PADDED) {
-      const zeros = (byte & ~PF_TYPE_MASK) + 1;
-      const num = 32 - zeros;
-      if (bytes.length > 2) {
-        return { decoded: ''.padStart(zeros * 2, '0') + bytes.substring(2, 2 + num * 2), bytesRead: num + 1 };
-      }
-      return { decoded: '', bytesRead: num + 1 };
-    }
-
-    //bytes
-    if ((byte & PF_TYPE_MASK) == PF_NUM_BYTES) {
-      const num = (byte & ~PF_TYPE_MASK) + 1;
-      if (bytes.length > 2) {
-        return { decoded: bytes.substring(2, 2 + num * 2), bytesRead: num + 1 };
-      }
-      return { decoded: '', bytesRead: num + 1 };
-    }
-
-    //number
-    if ((byte & PF_TYPE_MASK) == PF_NUMBER) {
-      const size = (byte >> 3) & 0x03;
-      const precision = byte & 0x07;
-      const dataLength = getPrecisionByteSize(precision);
-      if (bytes.length > 2) {
-        const data = bytes.substring(2, (dataLength + 1) * 2);
-        const mult = parseInt(bytes.substring((dataLength + 1) * 2, (dataLength + 2) * 2), 16);
-        return { decoded: fromCompressedNumber(size, parseInt(data, 16), mult), bytesRead: dataLength + 2 };
-      }
-      return { decoded: '', bytesRead: dataLength + 2 };
-    }
-
-    throw new Error('Failed to decode');
-  }
+  throw new Error(`Unknown contract version (version ${version})`);
 }
 
-// Helper functions
-function splitZeros(bytes: string, minSize: number = 1): { bytes: string; numZeros: number }[] {
-  let runs: { bytes: string; numZeros: number }[] = [];
-  let i = 0;
-  let run = '';
-  while (i < bytes.length) {
-    if (bytes.substring(i, i + 2) == '00') {
-      while (bytes.substring(i, i + 2) == '00' && i < bytes.length) {
-        run += '00';
-        i += 2;
-      }
-      if (run.length >= minSize * 2) {
-        runs.push({ bytes: run, numZeros: run.length / 2 });
-        run = '';
-      }
-    } else {
-      while (bytes.substring(i, i + 2) != '00' && i < bytes.length) {
-        run += bytes.substring(i, i + 2);
-        i += 2;
-      }
-      runs.push({ bytes: run, numZeros: 0 });
-      run = '';
-    }
-  }
-  if (run.length > 0) {
-    if (runs.length == 0) runs.push({ bytes: run, numZeros: 0 });
-    else runs[runs.length - 1].bytes += run;
-  }
-  return runs;
-}
-function leadingZeros(bytes: string): number {
-  let countZeros = 0;
-  let i = 0;
-  while (bytes.substring(i, i + 2) == '00' && i < bytes.length) {
-    i += 2;
-    countZeros++;
-  }
-  return countZeros;
-}
-function toHex(item: number | bigint | string, padBytes: number): string {
-  if (typeof item === 'number') {
-    return item.toString(16).padStart(padBytes * 2, '0');
-  }
-  if (typeof item === 'bigint') {
-    return item.toString(16).padStart(padBytes * 2, '0');
-  }
-  return item.padStart(padBytes * 2, '0');
-}
-function toCompressedNumber(
-  bytes: string,
-): { size: number; precision: number; decimal: number; mult: number } | undefined {
-  let decimal = ethers.toBigInt('0x' + bytes).toString();
-  let mult = 0;
-  while (decimal[decimal.length - 1] == '0' && decimal.length > 1) {
-    decimal = decimal.substring(0, decimal.length - 1);
-    mult++;
-  }
+const compressionABI = [
+  {
+    'stateMutability': 'nonpayable',
+    'type': 'fallback',
+  },
+  {
+    'inputs': [
+      {
+        'internalType': 'bytes',
+        'name': 'data',
+        'type': 'bytes',
+      },
+    ],
+    'name': 'decompress_0076ce',
+    'outputs': [
+      {
+        'internalType': 'bytes',
+        'name': '',
+        'type': 'bytes',
+      },
+    ],
+    'stateMutability': 'view',
+    'type': 'function',
+  },
+  {
+    'inputs': [],
+    'name': 'version_0511d9',
+    'outputs': [
+      {
+        'internalType': 'uint8',
+        'name': '',
+        'type': 'uint8',
+      },
+    ],
+    'stateMutability': 'pure',
+    'type': 'function',
+  },
+];
 
-  let size: number | undefined;
-  if (bytes.length / 2 == 4) size = 0;
-  else if (bytes.length / 2 == 8) size = 1;
-  else if (bytes.length / 2 == 16) size = 2;
-  else if (bytes.length / 2 == 32) size = 3;
-
-  let precision: number | undefined;
-  if (ethers.toBigInt(decimal) < 0xffn) precision = 0;
-  else if (ethers.toBigInt(decimal) <= 0xffffn) precision = 1;
-  else if (ethers.toBigInt(decimal) <= 0xffffffn) precision = 2;
-  else if (ethers.toBigInt(decimal) <= 0xffffffffn) precision = 3;
-  else if (ethers.toBigInt(decimal) <= 0xffffffffffffn) precision = 4;
-  else if (ethers.toBigInt(decimal) <= 0xffffffffffffffffn) precision = 5;
-  else if (ethers.toBigInt(decimal) <= 0xffffffffffffffffffffffffn) precision = 6;
-  else if (ethers.toBigInt(decimal) <= 0xffffffffffffffffffffffffffffffffn) precision = 7;
-
-  if (precision !== undefined && size !== undefined) return { size, precision, decimal: parseInt(decimal), mult };
-}
-function fromCompressedNumber(size: number, decimal: number, mult: number): string {
-  let paddedSize = 0;
-  if (size == 0) paddedSize = 4;
-  else if (size == 1) paddedSize = 8;
-  else if (size == 2) paddedSize = 16;
-  else if (size == 3) paddedSize = 32;
-
-  const number = ethers.toBigInt(decimal) * 10n ** BigInt(mult);
-  return toHex(number, paddedSize);
-}
-function getPrecisionByteSize(precision: number): number {
-  const byteSize = [1, 2, 3, 4, 6, 8, 12, 16];
-  return byteSize[precision];
-}
+const registryABI = [
+  {
+    'anonymous': false,
+    'inputs': [
+      {
+        'indexed': true,
+        'internalType': 'uint256',
+        'name': 'index',
+        'type': 'uint256',
+      },
+      {
+        'indexed': false,
+        'internalType': 'bytes',
+        'name': 'data',
+        'type': 'bytes',
+      },
+    ],
+    'name': 'DataRegistered',
+    'type': 'event',
+  },
+  {
+    'inputs': [],
+    'name': 'length',
+    'outputs': [
+      {
+        'internalType': 'uint256',
+        'name': '',
+        'type': 'uint256',
+      },
+    ],
+    'stateMutability': 'pure',
+    'type': 'function',
+  },
+  {
+    'inputs': [
+      {
+        'internalType': 'uint256',
+        'name': 'index',
+        'type': 'uint256',
+      },
+    ],
+    'name': 'retrieve',
+    'outputs': [
+      {
+        'internalType': 'bytes',
+        'name': '',
+        'type': 'bytes',
+      },
+    ],
+    'stateMutability': 'pure',
+    'type': 'function',
+  },
+  {
+    'inputs': [
+      {
+        'internalType': 'uint256',
+        'name': 'from',
+        'type': 'uint256',
+      },
+      {
+        'internalType': 'uint256',
+        'name': 'to',
+        'type': 'uint256',
+      },
+    ],
+    'name': 'retrieveBatch',
+    'outputs': [
+      {
+        'internalType': 'bytes[]',
+        'name': '',
+        'type': 'bytes[]',
+      },
+    ],
+    'stateMutability': 'pure',
+    'type': 'function',
+  },
+];
