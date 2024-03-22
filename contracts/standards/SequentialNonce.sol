@@ -89,7 +89,7 @@ contract SequentialNonce is SequentialNonceCore, IIntentStandard {
         bytes calldata context
     ) external override returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
-        _executeSequentialNonce(intent.sender, intent.intentData[segmentIndex]);
+        _executeSequentialNonce(intent.sender, intent.segments[segmentIndex]);
         return context;
     }
 }

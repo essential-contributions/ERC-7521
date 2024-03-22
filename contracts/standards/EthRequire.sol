@@ -110,7 +110,7 @@ contract EthRequire is EthRequireCore, IIntentStandard {
         bytes calldata context
     ) external view override returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
-        return _executeEthRequire(solution.timestamp, intent.sender, intent.intentData[segmentIndex], context);
+        return _executeEthRequire(solution.timestamp, intent.sender, intent.segments[segmentIndex], context);
     }
 }
 

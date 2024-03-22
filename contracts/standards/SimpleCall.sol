@@ -64,7 +64,7 @@ contract SimpleCall is SimpleCallCore, IIntentStandard {
         bytes calldata context
     ) external override returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
-        _executeSimpleCall(intent.sender, intent.intentData[segmentIndex]);
+        _executeSimpleCall(intent.sender, intent.segments[segmentIndex]);
         return context;
     }
 }

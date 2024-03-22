@@ -484,8 +484,8 @@ abstract contract TestEnvironment is Test {
     }
 
     function _useRegisteredStandards(UserIntent memory intent) internal view returns (UserIntent memory) {
-        for (uint256 i = 0; i < intent.intentData.length; i++) {
-            bytes memory data = intent.intentData[i];
+        for (uint256 i = 0; i < intent.segments.length; i++) {
+            bytes memory data = intent.segments[i];
             bytes32 stdId;
             assembly {
                 stdId := mload(add(32, data))
@@ -515,7 +515,7 @@ abstract contract TestEnvironment is Test {
         UserIntent[] memory intents = new UserIntent[](1);
         intents[0] = intent;
 
-        uint256 len = intent.intentData.length;
+        uint256 len = intent.segments.length;
         uint256[] memory order = new uint256[](len);
         uint256 index = 0;
         while (len > 0) {
@@ -544,8 +544,8 @@ abstract contract TestEnvironment is Test {
         intents[0] = intent1;
         intents[1] = intent2;
 
-        uint256 len1 = intent1.intentData.length;
-        uint256 len2 = intent2.intentData.length;
+        uint256 len1 = intent1.segments.length;
+        uint256 len2 = intent2.segments.length;
         uint256[] memory order = new uint256[](len1 + len2);
         uint256 index = 0;
         while (len1 > 0 || len2 > 0) {

@@ -100,7 +100,7 @@ contract Erc20Release is Erc20ReleaseCore, IIntentStandard {
             solution.timestamp,
             intent.sender,
             solution.intents[solution.getIntentIndex(executionIndex + 1)].sender,
-            intent.intentData[segmentIndex]
+            intent.segments[segmentIndex]
         );
         return context;
     }

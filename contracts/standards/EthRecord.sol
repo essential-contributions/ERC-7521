@@ -67,7 +67,7 @@ contract EthRecord is EthRecordCore, IIntentStandard {
     ) external view override returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
         bytes1 flags = bytes1(0);
-        if (intent.intentData[segmentIndex].length == 33) flags = intent.intentData[segmentIndex][32];
+        if (intent.segments[segmentIndex].length == 33) flags = intent.segments[segmentIndex][32];
         return _executeEthRecord(intent.sender, flags, context);
     }
 }

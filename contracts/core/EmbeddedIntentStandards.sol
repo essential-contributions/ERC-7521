@@ -59,35 +59,35 @@ abstract contract EmbeddedIntentStandards is
         bytes memory contextData
     ) internal returns (bytes memory) {
         if (standardId == SIMPLE_CALL_STD_ID) {
-            _executeSimpleCall(intent.sender, intent.intentData[segmentIndex]);
+            _executeSimpleCall(intent.sender, intent.segments[segmentIndex]);
         } else if (standardId == ERC20_RECORD_STD_ID) {
-            return _executeErc20Record(intent.sender, intent.intentData[segmentIndex], contextData);
+            return _executeErc20Record(intent.sender, intent.segments[segmentIndex], contextData);
         } else if (standardId == ERC20_RELEASE_STD_ID) {
             _executeErc20Release(
                 solution.timestamp,
                 intent.sender,
                 solution.intents[solution.getIntentIndex(executionIndex + 1)].sender,
-                intent.intentData[segmentIndex]
+                intent.segments[segmentIndex]
             );
         } else if (standardId == ERC20_REQUIRE_STD_ID) {
-            return _executeErc20Require(solution.timestamp, intent.sender, intent.intentData[segmentIndex], contextData);
+            return _executeErc20Require(solution.timestamp, intent.sender, intent.segments[segmentIndex], contextData);
         } else if (standardId == ETH_RECORD_STD_ID) {
             bytes1 flags = bytes1(0);
-            if (intent.intentData[segmentIndex].length == 33) flags = intent.intentData[segmentIndex][32];
+            if (intent.segments[segmentIndex].length == 33) flags = intent.segments[segmentIndex][32];
             return _executeEthRecord(intent.sender, flags, contextData);
         } else if (standardId == ETH_RELEASE_STD_ID) {
             _executeEthRelease(
                 solution.timestamp,
                 intent.sender,
                 solution.intents[solution.getIntentIndex(executionIndex + 1)].sender,
-                intent.intentData[segmentIndex]
+                intent.segments[segmentIndex]
             );
         } else if (standardId == ETH_REQUIRE_STD_ID) {
-            return _executeEthRequire(solution.timestamp, intent.sender, intent.intentData[segmentIndex], contextData);
+            return _executeEthRequire(solution.timestamp, intent.sender, intent.segments[segmentIndex], contextData);
         } else if (standardId == SEQUENTIAL_NONCE_STD_ID) {
-            _executeSequentialNonce(intent.sender, intent.intentData[segmentIndex]);
+            _executeSequentialNonce(intent.sender, intent.segments[segmentIndex]);
         } else if (standardId == USER_OPERATION_STD_ID) {
-            _executeUserOperation(intent.sender, intent.intentData[segmentIndex]);
+            _executeUserOperation(intent.sender, intent.segments[segmentIndex]);
         }
 
         return contextData;

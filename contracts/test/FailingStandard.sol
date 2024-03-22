@@ -36,10 +36,10 @@ contract FailingStandard is IIntentStandard {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
 
         //if no data, then just fail with a revert
-        if (intent.intentData[segmentIndex].length == 32) {
+        if (intent.segments[segmentIndex].length == 32) {
             revert();
         }
-        if (intent.intentData[segmentIndex].length == 33) {
+        if (intent.segments[segmentIndex].length == 33) {
             revert("test revert");
         }
 

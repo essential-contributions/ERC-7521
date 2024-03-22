@@ -13,7 +13,7 @@ library IntentBuilder {
     function create(address sender) public pure returns (UserIntent memory intent) {
         bytes[] memory data;
 
-        intent = UserIntent({sender: sender, intentData: data, signature: ""});
+        intent = UserIntent({sender: sender, segments: data, signature: ""});
     }
 
     /**
@@ -23,13 +23,13 @@ library IntentBuilder {
      * @return The updated user intent.
      */
     function addSegment(UserIntent memory intent, bytes memory segmentData) public pure returns (UserIntent memory) {
-        bytes[] memory intentData = intent.intentData;
-        bytes[] memory newData = new bytes[](intentData.length + 1);
-        for (uint256 i = 0; i < intentData.length; i++) {
-            newData[i] = intentData[i];
+        bytes[] memory segments = intent.segments;
+        bytes[] memory newData = new bytes[](segments.length + 1);
+        for (uint256 i = 0; i < segments.length; i++) {
+            newData[i] = segments[i];
         }
-        newData[intentData.length] = segmentData;
-        intent.intentData = newData;
+        newData[segments.length] = segmentData;
+        intent.segments = newData;
 
         return intent;
     }

@@ -52,7 +52,7 @@ contract EntryPointTest is TestEnvironment {
         UserIntent memory intent = _intent();
         bytes[] memory datas = new bytes[](1);
         datas[0] = abi.encode(bytes32(0x1122334455667788112233445566778811223344556677881122334455667788));
-        intent.intentData = datas;
+        intent.segments = datas;
 
         vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA82 unknown standard"));
         _entryPoint.validateIntent(intent);
@@ -125,7 +125,7 @@ contract EntryPointTest is TestEnvironment {
         UserIntent memory intent = _intent();
         bytes[] memory datas = new bytes[](1);
         datas[0] = abi.encode(bytes32(0x1122334455667788112233445566778811223344556677881122334455667788));
-        intent.intentData = datas;
+        intent.segments = datas;
         intent = _signIntent(intent);
         IntentSolution memory solution = _solution(intent);
 

@@ -43,7 +43,7 @@ contract EntryPoint is IEntryPoint, NonceManager, IntentStandardRegistry, Embedd
             for (uint256 i = 0; i < intsLen; i++) {
                 UserIntent calldata intent = solution.intents[i];
                 bytes32 intentHash = intent.hash();
-                uint256 numSegments = intent.intentData.length;
+                uint256 numSegments = intent.segments.length;
                 if (numSegments > 256) {
                     revert FailedIntent(i, 0, string.concat("AA63 too many segments"));
                 }
@@ -66,7 +66,7 @@ contract EntryPoint is IEntryPoint, NonceManager, IntentStandardRegistry, Embedd
                 uint256 intentIndex = solution.order[executionIndex];
                 uint256 shift = intentIndex * 8;
                 uint256 segmentIndex = (segmentIndexes >> shift) & 0xff;
-                uint256 numSegments = solution.intents[intentIndex].intentData.length;
+                uint256 numSegments = solution.intents[intentIndex].segments.length;
 
                 if (segmentIndex < numSegments) {
                     contextData[intentIndex] = _handleIntentSegment(
@@ -118,7 +118,7 @@ contract EntryPoint is IEntryPoint, NonceManager, IntentStandardRegistry, Embedd
         bytes memory contextData
     ) private returns (bytes memory) {
         UserIntent calldata intent = solution.intents[intentIndex];
-        if (intent.sender != address(0) && intent.intentData.length > 0) {
+        if (intent.sender != address(0) && intent.segments.length > 0) {
             bytes32 standardId = intent.getSegmentStandard(segmentIndex);
 
             // check if this is an embedded standard
@@ -199,11 +199,11 @@ contract EntryPoint is IEntryPoint, NonceManager, IntentStandardRegistry, Embedd
         }
 
         // validate intent standards are recognized and formatted correctly
-        for (uint256 i = 0; i < intent.intentData.length; i++) {
+        for (uint256 i = 0; i < intent.segments.length; i++) {
             bytes32 standardId = intent.getSegmentStandard(i);
             // validate the intent segment itself
             if (uint256(standardId) < NUM_EMBEDDED_STANDARDS) {
-                _validateEmbeddedIntentSegment(standardId, intent.intentData[i]);
+                _validateEmbeddedIntentSegment(standardId, intent.segments[i]);
             } else {
                 IIntentStandard standard = _registeredStandards[standardId];
                 if (standard == IIntentStandard(address(0))) {
@@ -211,7 +211,7 @@ contract EntryPoint is IEntryPoint, NonceManager, IntentStandardRegistry, Embedd
                 }
 
                 // validate the intent segment itself
-                try standard.validateIntentSegment(intent.intentData[i]) {}
+                try standard.validateIntentSegment(intent.segments[i]) {}
                 catch Error(string memory revertReason) {
                     revert FailedIntent(0, i, string.concat("AA62 reverted: ", revertReason));
                 } catch {

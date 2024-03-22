@@ -73,7 +73,7 @@ contract Erc20Record is Erc20RecordCore, IIntentStandard {
         bytes calldata context
     ) external view override returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
-        return _executeErc20Record(intent.sender, intent.intentData[segmentIndex], context);
+        return _executeErc20Record(intent.sender, intent.segments[segmentIndex], context);
     }
 }
 
