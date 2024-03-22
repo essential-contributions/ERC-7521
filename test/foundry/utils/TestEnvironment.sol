@@ -10,35 +10,35 @@ import {EntryPoint} from "../../../contracts/core/EntryPoint.sol";
 import {UserIntent} from "../../../contracts/interfaces/UserIntent.sol";
 import {IntentSolution} from "../../../contracts/interfaces/IntentSolution.sol";
 import {Erc20Record, encodeErc20RecordData} from "../../../contracts/standards/Erc20Record.sol";
-import {ERC20_RECORD_STD_ID} from "../../../contracts/core/EntryPoint.sol";
+import {ERC20_RECORD_STD_ID} from "../../../contracts/core/EmbeddedIntentStandards.sol";
 import {
     Erc20Release,
     encodeErc20ReleaseData,
     encodeErc20ReleaseComplexData
 } from "../../../contracts/standards/Erc20Release.sol";
-import {ERC20_RELEASE_STD_ID} from "../../../contracts/core/EntryPoint.sol";
+import {ERC20_RELEASE_STD_ID} from "../../../contracts/core/EmbeddedIntentStandards.sol";
 import {
     Erc20Require,
     encodeErc20RequireData,
     encodeErc20RequireComplexData
 } from "../../../contracts/standards/Erc20Require.sol";
-import {ERC20_REQUIRE_STD_ID} from "../../../contracts/core/EntryPoint.sol";
+import {ERC20_REQUIRE_STD_ID} from "../../../contracts/core/EmbeddedIntentStandards.sol";
 import {EthRecord, encodeEthRecordData} from "../../../contracts/standards/EthRecord.sol";
-import {ETH_RECORD_STD_ID} from "../../../contracts/core/EntryPoint.sol";
+import {ETH_RECORD_STD_ID} from "../../../contracts/core/EmbeddedIntentStandards.sol";
 import {
     EthRelease, encodeEthReleaseData, encodeEthReleaseComplexData
 } from "../../../contracts/standards/EthRelease.sol";
-import {ETH_RELEASE_STD_ID} from "../../../contracts/core/EntryPoint.sol";
+import {ETH_RELEASE_STD_ID} from "../../../contracts/core/EmbeddedIntentStandards.sol";
 import {
     EthRequire, encodeEthRequireData, encodeEthRequireComplexData
 } from "../../../contracts/standards/EthRequire.sol";
-import {ETH_REQUIRE_STD_ID} from "../../../contracts/core/EntryPoint.sol";
+import {ETH_REQUIRE_STD_ID} from "../../../contracts/core/EmbeddedIntentStandards.sol";
 import {SequentialNonce, encodeSequentialNonceData} from "../../../contracts/standards/SequentialNonce.sol";
-import {SEQUENTIAL_NONCE_STD_ID} from "../../../contracts/core/EntryPoint.sol";
+import {SEQUENTIAL_NONCE_STD_ID} from "../../../contracts/core/EmbeddedIntentStandards.sol";
 import {SimpleCall, encodeSimpleCallData} from "../../../contracts/standards/SimpleCall.sol";
-import {SIMPLE_CALL_STD_ID} from "../../../contracts/core/EntryPoint.sol";
+import {SIMPLE_CALL_STD_ID} from "../../../contracts/core/EmbeddedIntentStandards.sol";
 import {UserOperation, encodeUserOperationData} from "../../../contracts/standards/UserOperation.sol";
-import {USER_OPERATION_STD_ID} from "../../../contracts/core/EntryPoint.sol";
+import {USER_OPERATION_STD_ID} from "../../../contracts/core/EmbeddedIntentStandards.sol";
 import {FailingStandard} from "../../../contracts/test/FailingStandard.sol";
 import {TestERC20} from "../../../contracts/test/TestERC20.sol";
 import {TestUniswap} from "../../../contracts/test/TestUniswap.sol";
