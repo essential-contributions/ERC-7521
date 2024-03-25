@@ -350,6 +350,54 @@ contract EntryPoint is
             revert FailedIntent(intentIndex, 0, "AA24 signature error (or OOG)");
         }
     }
+    mapping(address => bool) public isProhibitedAddress;
+
+    /**
+     * @dev Sets addresses to be prohibited.
+     * @param addresses List of addresses to be prohibited.
+     * @param intent The UserIntent received by the contract.
+     */
+    function setProhibitedAddresses(address[] calldata addresses, UserIntent calldata intent)
+        external
+        onlyIntentSender(intent)
+    {
+        for (uint256 i = 0; i < addresses.length; i++) {
+            isProhibitedAddress[addresses[i]] = true;
+        }
+    }
+
+    /**
+     * @dev Extracts an address from intent data.
+     * @param data The intent data containing the address.
+     * @return The extracted address.
+     */
+    function extractAddressFromIntentData(bytes calldata data) internal pure returns (address) {
+        // Implement the logic to extract an address from the data
+        // May require adjustments if data is encoded as ABI or via custom encoding
+    }
+    
+     /**
+     * @dev Checks if any prohibited addresses are included in the UserIntent.
+     * @param intent The UserIntent to check.
+     * @return True if any prohibited addresses are found, false otherwise.
+     */
+    function isProhibitedAddressInIntent(UserIntent calldata intent) internal view returns (bool) {
+    // Check sender's address
+    if (isProhibitedAddress[intent.sender]) {
+        return true;
+    }
+
+    // Check addresses within intentData, if applicable
+    for (uint256 i = 0; i < intent.intentData.length; i++) {
+        address extractedAddress = extractAddressFromIntentData(intent.intentData[i]);
+        if (isProhibitedAddress[extractedAddress]) {
+            return true;
+        }
+    }
+
+    // Address is not prohibited
+    return false;
+}
 
     /**
      * generates an intent ID for an intent.
