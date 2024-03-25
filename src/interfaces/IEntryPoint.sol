@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.24;
 
 import {IIntentStandardRegistry} from "./IIntentStandardRegistry.sol";
 import {INonceManager} from "./INonceManager.sol";
 import {IntentSolution} from "./IntentSolution.sol";
 import {IIntentStandard} from "./IIntentStandard.sol";
-import {IAggregator} from "./IAggregator.sol";
 import {UserIntent} from "./UserIntent.sol";
 
 interface IEntryPoint is INonceManager, IIntentStandardRegistry {
@@ -40,25 +39,10 @@ interface IEntryPoint is INonceManager, IIntentStandardRegistry {
     function handleIntentsMulti(IntentSolution[] calldata solutions) external;
 
     /**
-     * Execute a batch of UserIntents with an aggregated signature.
-     * @param solutions list of solutions to execute for intents.
-     * @param aggregator address of aggregator.
-     * @param intentsToAggregate bit field signaling which intents are part of the aggregated signature.
-     * @param signature aggregated signature.
-     */
-    function handleIntentsAggregated(
-        IntentSolution[] calldata solutions,
-        IAggregator aggregator,
-        bytes32 intentsToAggregate,
-        bytes calldata signature
-    ) external;
-
-    /**
      * Run validation for the given intent.
-     * @dev This method is view only.
      * @param intent the user intent to validate.
      */
-    function validateIntent(UserIntent calldata intent) external view;
+    function validateIntent(UserIntent calldata intent) external;
 
     /**
      * generate an intent Id - unique identifier for this intent.

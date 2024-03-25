@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.24;
 
 function push(bytes memory context, bytes32 data) pure returns (bytes memory newContext) {
     unchecked {

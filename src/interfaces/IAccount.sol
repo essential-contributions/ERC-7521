@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.24;
 
-import {IAggregator} from "./IAggregator.sol";
 import {UserIntent} from "./UserIntent.sol";
 
 interface IAccount {
@@ -11,10 +10,6 @@ interface IAccount {
      *
      * @param intent validate the intent.signature field
      * @param intentHash the hash of the intent, to check the signature against
-     * @return aggregator (optional) trusted signature aggregator to return if signature fails
      */
-    function validateUserIntent(UserIntent calldata intent, bytes32 intentHash)
-        external
-        view
-        returns (IAggregator aggregator);
+    function validateUserIntent(UserIntent calldata intent, bytes32 intentHash) external;
 }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.24;
 
 /* solhint-disable avoid-low-level-calls */
 /* solhint-disable no-inline-assembly */
@@ -8,7 +8,6 @@ pragma solidity ^0.8.22;
 import {IntentStandardRegistry} from "./IntentStandardRegistry.sol";
 import {NonceManager} from "./NonceManager.sol";
 import {IAccount} from "../interfaces/IAccount.sol";
-import {IAggregator} from "../interfaces/IAggregator.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
@@ -68,13 +67,8 @@ contract EntryPoint is
     /**
      * Execute a batch of UserIntents with given solution.
      * @param solution the UserIntents solution.
-     * @param signatureAggregator the allowed signature aggregator.
-     * @param validatedIntents the intents that were validated with the signature aggregator.
      */
-    function _handleIntents(IntentSolution calldata solution, IAggregator signatureAggregator, bytes32 validatedIntents)
-        private
-        nonReentrant
-    {
+    function _handleIntents(IntentSolution calldata solution) private nonReentrant {
         uint256 intsLen = solution.intents.length;
         require(intsLen > 0, "AA70 no intents");
         require(intsLen <= 32, "AA72 too many intents");
@@ -84,14 +78,14 @@ contract EntryPoint is
             // validate intents
             for (uint256 i = 0; i < intsLen; i++) {
                 UserIntent calldata intent = solution.intents[i];
-                bytes32 intentHash = _generateUserIntentHash(intent);
+                bytes32 intentHash = intent.hash();
                 uint256 numSegments = intent.intentData.length;
                 if (numSegments > 256) {
                     revert FailedIntent(i, 0, string.concat("AA63 too many segments"));
                 }
                 if (intent.sender != address(0) && numSegments > 0) {
-                    _validateUserIntentWithAccount(intent, intentHash, i, signatureAggregator, validatedIntents);
-                    emit UserIntentEvent(intentHash, intent.sender, msg.sender);
+                    _validateUserIntentWithAccount(intent, intentHash, i);
+                    emit UserIntentEvent(_generateUserIntentHash(intentHash), intent.sender, msg.sender);
                 }
             }
 
@@ -247,7 +241,7 @@ contract EntryPoint is
      * @param solution the UserIntents solution.
      */
     function handleIntents(IntentSolution calldata solution) external {
-        _handleIntents(solution, IAggregator(address(0)), bytes32(0));
+        _handleIntents(solution);
     }
 
     /**
@@ -258,66 +252,15 @@ contract EntryPoint is
         // loop through solutions and solve
         uint256 solsLen = solutions.length;
         for (uint256 i = 0; i < solsLen; i++) {
-            _handleIntents(solutions[i], IAggregator(address(0)), bytes32(0));
-        }
-    }
-
-    /**
-     * Execute a batch of UserIntents with an aggregated signature.
-     * @param solutions list of solutions to execute for intents.
-     * @param aggregator address of aggregator.
-     * @param intentsToAggregate bit field signaling which intents are part of the aggregated signature.
-     * @param signature aggregated signature.
-     */
-    function handleIntentsAggregated(
-        IntentSolution[] calldata solutions,
-        IAggregator aggregator,
-        bytes32 intentsToAggregate,
-        bytes calldata signature
-    ) external {
-        require(address(aggregator) != address(0), "AA96 invalid aggregator");
-
-        // get number of intents
-        uint256 solsLen = solutions.length;
-        uint256 totalIntents = 0;
-        unchecked {
-            for (uint256 i = 0; i < solsLen; i++) {
-                totalIntents += solutions[0].intents.length;
-            }
-        }
-        uint256 aggregatedIntentTotal = 0;
-        for (uint256 i = 0; i < totalIntents; i++) {
-            if ((uint256(intentsToAggregate) & (1 << i)) > 0) aggregatedIntentTotal++;
-        }
-
-        // validate aggregated intent signature
-        UserIntent[] memory aggregatedIntents = new UserIntent[](aggregatedIntentTotal);
-        uint256 h = 0;
-        uint256 g = 0;
-        for (uint256 i = 0; i < solsLen; i++) {
-            for (uint256 j = 0; j < solutions[i].intents.length; j++) {
-                if ((uint256(intentsToAggregate) & (1 << g)) > 0) {
-                    aggregatedIntents[h] = solutions[i].intents[j];
-                    h++;
-                }
-                g++;
-            }
-        }
-        aggregator.validateSignatures(aggregatedIntents, signature);
-
-        // loop through solutions and solve
-        for (uint256 i = 0; i < solsLen; i++) {
-            _handleIntents(solutions[i], aggregator, intentsToAggregate);
-            intentsToAggregate = intentsToAggregate << solutions[i].intents.length;
+            _handleIntents(solutions[i]);
         }
     }
 
     /**
      * Run validation for the given intent.
-     * @dev This method is view only.
      * @param intent the user intent to validate.
      */
-    function validateIntent(UserIntent calldata intent) external view {
+    function validateIntent(UserIntent calldata intent) external {
         // make sure sender is a deployed contract
         if (intent.sender.code.length == 0) {
             revert FailedIntent(0, 0, "AA20 account not deployed");
@@ -364,8 +307,7 @@ contract EntryPoint is
         }
 
         // validate signature
-        bytes32 intentHash = _generateUserIntentHash(intent);
-        _validateUserIntentWithAccount(intent, intentHash, 0, IAggregator(address(0)), bytes32(0));
+        _validateUserIntentWithAccount(intent, intent.hash(), 0);
     }
 
     /**
@@ -373,7 +315,7 @@ contract EntryPoint is
      * the intent ID is a hash over the content of the intent (except the signature), the entrypoint and the chainid.
      */
     function getUserIntentHash(UserIntent calldata intent) external view returns (bytes32) {
-        return _generateUserIntentHash(intent);
+        return _generateUserIntentHash(intent.hash());
     }
 
     /**
@@ -397,32 +339,12 @@ contract EntryPoint is
      * @param intent the user intent to validate.
      * @param intentHash hash of the user's intent data.
      * @param intentIndex the index of this intent.
-     * @param signatureAggregator the allowed signature aggregator.
-     * @param validatedIntents the intents that were validated with the signature aggregator.
      */
-    function _validateUserIntentWithAccount(
-        UserIntent calldata intent,
-        bytes32 intentHash,
-        uint256 intentIndex,
-        IAggregator signatureAggregator,
-        bytes32 validatedIntents
-    ) private view {
-        // validate intent with account
-        try IAccount(intent.sender).validateUserIntent(intent, intentHash) returns (IAggregator aggregator) {
-            //check if intent is to be verified by aggregator
-            if (aggregator != IAggregator(address(0))) {
-                if (aggregator != signatureAggregator) {
-                    revert FailedIntent(
-                        intentIndex, 0, string.concat("AA24 signature error: invalid signature aggregator")
-                    );
-                }
-                if ((uint256(validatedIntents) & (1 << intentIndex)) == 0) {
-                    revert FailedIntent(
-                        intentIndex, 0, string.concat("AA24 signature error: intent not part of aggregate")
-                    );
-                }
-            }
-        } catch Error(string memory revertReason) {
+    function _validateUserIntentWithAccount(UserIntent calldata intent, bytes32 intentHash, uint256 intentIndex)
+        private
+    {
+        try IAccount(intent.sender).validateUserIntent(intent, intentHash) {}
+        catch Error(string memory revertReason) {
             revert FailedIntent(intentIndex, 0, string.concat("AA24 signature error: ", revertReason));
         } catch {
             revert FailedIntent(intentIndex, 0, "AA24 signature error (or OOG)");
@@ -432,7 +354,7 @@ contract EntryPoint is
     /**
      * generates an intent ID for an intent.
      */
-    function _generateUserIntentHash(UserIntent calldata intent) private view returns (bytes32) {
-        return keccak256(abi.encode(intent.hash(), address(this), block.chainid));
+    function _generateUserIntentHash(bytes32 intentHash) private view returns (bytes32) {
+        return keccak256(abi.encode(intentHash, address(this), block.chainid));
     }
 }

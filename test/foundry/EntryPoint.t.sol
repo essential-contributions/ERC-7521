@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.24;
 
 /* solhint-disable func-name-mixedcase */
 
@@ -26,7 +26,7 @@ contract EntryPointTest is TestEnvironment {
         assertEq(userNonce, 0);
     }
 
-    function test_validateIntent() public view {
+    function test_validateIntent() public {
         UserIntent memory intent = _intent();
         intent = _addSimpleCall(intent, "");
         intent = _addErc20Record(intent, false);
@@ -180,18 +180,5 @@ contract EntryPointTest is TestEnvironment {
         IntentSolution memory solution = _solution(intent);
 
         _entryPoint.handleIntents(solution);
-    }
-
-    function test_aggregation() public {
-        UserIntent memory intent = _intent(address(_testAggregationAccount));
-        UserIntent memory intent2 = _intent(address(_testAggregationAccount2));
-        IntentSolution[] memory solutions = new IntentSolution[](1);
-        uint256[] memory order = new uint256[](2);
-        order[1] = 1;
-        solutions[0] = _solution(intent, intent2, order);
-
-        _entryPoint.handleIntentsAggregated(
-            solutions, _testAggregator, bytes32(uint256(0x03)), abi.encode(ADMIN_SIGNATURE)
-        );
     }
 }

@@ -9,6 +9,7 @@ import { TransferErc20Scenario } from './scenarios/transferErc20Scenario';
 import { TransferEthScenario } from './scenarios/transferEthScenario';
 
 const MAX_INTENT_BATCH = 16;
+const USE_TRANSIENT_DATA = true;
 const MAINNET_BLOCK_GAS_LIMIT = 15_000_000n;
 const GAS_PRICE = 38;
 const ETH_PRICE = 2250;
@@ -24,7 +25,7 @@ async function main() {
   logParameters();
 
   console.log('DEPLOYMENT');
-  const env = await deployTestEnvironment({ numAccounts: MAX_INTENT_BATCH });
+  const env = await deployTestEnvironment({ numAccounts: MAX_INTENT_BATCH, useTransientData: USE_TRANSIENT_DATA });
   logDeployments(env);
 
   console.log('SCENARIOS');
@@ -311,7 +312,12 @@ function percent(before: number, now: number): string {
 }
 
 // Start script
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+main()
+  .then(() => {
+    console.log('finished.');
+    process.exit();
+  })
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
