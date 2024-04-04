@@ -1,47 +1,49 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
-import {BaseAccount} from "../core/BaseAccount.sol";
-import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
-import {IAccountProxy} from "../interfaces/IAccountProxy.sol";
-import {IIntentDelegate} from "../interfaces/IIntentDelegate.sol";
-import {UserIntent} from "../interfaces/UserIntent.sol";
-import {Exec} from "../utils/Exec.sol";
+import {BaseAccount} from "../../core/BaseAccount.sol";
+import {IEntryPoint} from "../../interfaces/IEntryPoint.sol";
+import {IAccountProxy} from "../../interfaces/IAccountProxy.sol";
+import {IIntentDelegate} from "../../interfaces/IIntentDelegate.sol";
+import {UserIntent} from "../../interfaces/UserIntent.sol";
+import {Exec} from "../../utils/Exec.sol";
 import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 import {Initializable} from "openzeppelin/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "openzeppelin/proxy/utils/UUPSUpgradeable.sol";
 
 /**
- * A minimal account.
- *  this is sample minimal account.
+ * A minimal account that uses transient data.
+ *  this is sample minimal account that uses transient data to allow the entrypoint to be picked by a user at sign time.
  *  has a single signer that can send requests through the entryPoint.
  */
-contract SimpleAccount is BaseAccount, UUPSUpgradeable, Initializable, IAccountProxy {
+contract TransientDataAccount is BaseAccount, UUPSUpgradeable, Initializable, IAccountProxy {
     using ECDSA for bytes32;
 
-    IEntryPoint private immutable _entryPoint;
     address private _owner;
 
-    event SimpleAccountInitialized(IEntryPoint indexed entryPoint, address indexed owner);
+    event TransientDataAccountInitialized(address indexed owner);
 
-    constructor(IEntryPoint anEntryPoint) {
-        _entryPoint = anEntryPoint;
+    constructor() {
         _disableInitializers();
     }
 
     /**
      * @dev The _entryPoint member is immutable, to reduce gas consumption.  To upgrade EntryPoint,
-     * a new implementation of SimpleAccount must be deployed with the new EntryPoint address, then upgrading
+     * a new implementation of TransientDataAccount must be deployed with the new EntryPoint address, then upgrading
      * the implementation by calling `upgradeTo()`
      */
     function initialize(address anOwner) public virtual initializer {
         _owner = anOwner;
-        emit SimpleAccountInitialized(_entryPoint, _owner);
+        emit TransientDataAccountInitialized(_owner);
     }
 
     /// @inheritdoc BaseAccount
     function entryPoint() public view virtual override returns (IEntryPoint) {
-        return _entryPoint;
+        IEntryPoint entrypoint;
+        assembly {
+            entrypoint := tload(0)
+        }
+        return entrypoint;
     }
 
     function owner() public view returns (address) {
@@ -55,9 +57,18 @@ contract SimpleAccount is BaseAccount, UUPSUpgradeable, Initializable, IAccountP
      * @param intent validate the intent.signature field
      * @param intentHash the hash of the intent, to check the signature against
      */
-    function validateUserIntent(UserIntent calldata intent, bytes32 intentHash) external view override {
-        _requireFromEntryPoint();
-        intentHash = keccak256(abi.encode(intentHash, _entryPoint, block.chainid));
+    function validateUserIntent(UserIntent calldata intent, bytes32 intentHash) external override {
+        IEntryPoint entrypoint = entryPoint();
+        if (entrypoint == IEntryPoint(address(0))) {
+            entrypoint = IEntryPoint(msg.sender);
+            assembly {
+                tstore(0, entrypoint)
+            }
+        } else if (entrypoint != IEntryPoint(msg.sender)) {
+            revert("invalid entry point");
+        }
+
+        intentHash = keccak256(abi.encode(intentHash, entrypoint, block.chainid));
         bytes32 hash = intentHash.toEthSignedMessageHash();
         require(_owner == hash.recover(intent.signature), "invalid signature");
     }
@@ -68,6 +79,16 @@ contract SimpleAccount is BaseAccount, UUPSUpgradeable, Initializable, IAccountP
      */
     function proxyFor() external view returns (address) {
         return _owner;
+    }
+    /**
+     * clear all transient data
+     * @dev important if a user or protocol wishes to use multiple entrypoints in a single transaction
+     */
+
+    function clearTransientData() external {
+        assembly {
+            tstore(0, 0)
+        }
     }
 
     /**

@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.24;
 
 import {IAccount} from "../interfaces/IAccount.sol";
-import {IAggregator} from "../interfaces/IAggregator.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {IIntentDelegate} from "../interfaces/IIntentDelegate.sol";

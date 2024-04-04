@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.24;
 
 import {BLSAccount} from "./BLSAccount.sol";
 import {IEntryPoint} from "../../interfaces/IEntryPoint.sol";
-import {IAggregator} from "../../interfaces/IAggregator.sol";
+import {IBLSSignatureAggregator} from "./IBLSSignatureAggregator.sol";
 import {Create2} from "openzeppelin/utils/Create2.sol";
 import {ERC1967Proxy} from "openzeppelin/proxy/ERC1967/ERC1967Proxy.sol";
 
@@ -13,7 +13,7 @@ import {ERC1967Proxy} from "openzeppelin/proxy/ERC1967/ERC1967Proxy.sol";
 contract BLSAccountFactory {
     BLSAccount public immutable accountImplementation;
 
-    constructor(IEntryPoint _entryPoint, IAggregator _aggregator) {
+    constructor(IEntryPoint _entryPoint, IBLSSignatureAggregator _aggregator) {
         accountImplementation = new BLSAccount(_entryPoint, _aggregator);
     }
 
