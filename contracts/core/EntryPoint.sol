@@ -6,7 +6,7 @@ pragma solidity ^0.8.24;
 /* solhint-disable private-vars-leading-underscore */
 
 import {IntentStandardRegistry} from "./IntentStandardRegistry.sol";
-import {NonceManager} from "./NonceManager.sol";
+import {INonceManager, NonceManager} from "./NonceManager.sol";
 import {EmbeddedIntentStandards, NUM_EMBEDDED_STANDARDS} from "./EmbeddedIntentStandards.sol";
 import {IAccount} from "../interfaces/IAccount.sol";
 import {IEntryPoint} from "../interfaces/IEntryPoint.sol";
@@ -15,8 +15,16 @@ import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.so
 import {UserIntent, UserIntentLib} from "../interfaces/UserIntent.sol";
 import {Exec, RevertReason} from "../utils/Exec.sol";
 import {ReentrancyGuard} from "openzeppelin/security/ReentrancyGuard.sol";
+import {IERC165, ERC165} from "openzeppelin/utils/introspection/ERC165.sol";
 
-contract EntryPoint is IEntryPoint, NonceManager, IntentStandardRegistry, EmbeddedIntentStandards, ReentrancyGuard {
+contract EntryPoint is
+    IEntryPoint,
+    NonceManager,
+    IntentStandardRegistry,
+    EmbeddedIntentStandards,
+    ReentrancyGuard,
+    ERC165
+{
     using IntentSolutionLib for IntentSolution;
     using UserIntentLib for UserIntent;
     using RevertReason for bytes;
@@ -246,6 +254,13 @@ contract EntryPoint is IEntryPoint, NonceManager, IntentStandardRegistry, Embedd
     function setNonce(address sender, uint256 key, uint256 nonce) external override {
         require(_executionState == keccak256(abi.encodePacked(sender, msg.sender)), "Invalid nonce access");
         _setNonce(sender, key, nonce);
+    }
+
+    /// @inheritdoc IERC165
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return interfaceId == (type(IEntryPoint).interfaceId ^ type(INonceManager).interfaceId)
+            || interfaceId == type(IEntryPoint).interfaceId || interfaceId == type(INonceManager).interfaceId
+            || super.supportsInterface(interfaceId);
     }
 
     /**

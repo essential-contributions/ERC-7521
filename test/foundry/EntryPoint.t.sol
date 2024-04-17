@@ -6,6 +6,7 @@ pragma solidity ^0.8.24;
 import "./utils/TestEnvironment.sol";
 import "../../contracts/interfaces/IIntentStandard.sol";
 import "../../contracts/interfaces/IEntryPoint.sol";
+import "openzeppelin/utils/introspection/IERC165.sol";
 
 contract EntryPointTest is TestEnvironment {
     function test_registerIntentStandard() public {
@@ -24,6 +25,18 @@ contract EntryPointTest is TestEnvironment {
         UserIntent memory intent = _intent();
         uint256 userNonce = _entryPoint.getNonce(intent.sender, uint256(0));
         assertEq(userNonce, 0);
+    }
+
+    function test_supportsInterface() public {
+        bytes4 interfaceId;
+        interfaceId = type(IEntryPoint).interfaceId ^ type(INonceManager).interfaceId;
+        assertEq(_entryPoint.supportsInterface(interfaceId), true);
+        interfaceId = type(IEntryPoint).interfaceId;
+        assertEq(_entryPoint.supportsInterface(interfaceId), true);
+        interfaceId = type(INonceManager).interfaceId;
+        assertEq(_entryPoint.supportsInterface(interfaceId), true);
+        interfaceId = type(IERC165).interfaceId;
+        assertEq(_entryPoint.supportsInterface(interfaceId), true);
     }
 
     function test_validateIntent() public {
