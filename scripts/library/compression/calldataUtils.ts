@@ -77,7 +77,7 @@ function chunk(
     if (fixed(param) || alreadyPointed) {
       let ch: { chunks: Chunk[]; index: number } = { chunks: [], index };
       if (param.type == 'tuple') ch = chunk(data, index, param.params);
-      else if (param.type == 'array') ch = chunkArray(data, index, param.param);
+      else if (param.type == 'array') ch = chunkArray(data, index, param.param, param.length);
       else if (param.type == 'string') ch = chunkString(data, index);
       else if (param.type == 'bytes') ch = chunkBytes(data, index);
       else ch = chunkFixed(data, index, param);
@@ -97,7 +97,7 @@ function chunk(
       const param = params[i];
       let ch: { chunks: Chunk[]; index: number } = { chunks: [], index };
       if (param.type == 'tuple') ch = chunk(data, startIndex + pointed[i], param.params);
-      else if (param.type == 'array') ch = chunkArray(data, startIndex + pointed[i], param.param);
+      else if (param.type == 'array') ch = chunkArray(data, startIndex + pointed[i], param.param, param.length);
       else if (param.type == 'string') ch = chunkString(data, startIndex + pointed[i]);
       else if (param.type == 'bytes') ch = chunkBytes(data, startIndex + pointed[i]);
       chunks.push(...ch.chunks);
@@ -113,14 +113,15 @@ function chunkArray(
   param: ParamType,
   length?: number,
 ): { chunks: Chunk[]; index: number } {
-  //TODO: use length
   const err = 'Invalid array formatting';
   const chunks: Chunk[] = [];
-  const len = safeSubstring(data, index, index + 64, err);
-  length = parseInt(len, 16);
-  chunks.push({ type: 'length', data: len });
-  if (fixed(param)) {
+  if (length === undefined) {
+    const len = safeSubstring(data, index, index + 64, err);
+    length = parseInt(len, 16);
     index += 64;
+    chunks.push({ type: 'length', data: len });
+  }
+  if (fixed(param)) {
     for (let j = 0; j < length; j++) {
       if (index >= data.length) throw new Error(err);
       const ch = chunk(data, index, [param], true);
@@ -128,7 +129,7 @@ function chunkArray(
       index = ch.index;
     }
   } else {
-    const start = index + 64;
+    const start = index;
     const ptrs: number[] = [];
     for (let j = 0; j < length; j++) {
       const ptr = safeSubstring(data, start + j * 64, start + (j + 1) * 64, err);
