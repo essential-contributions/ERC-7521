@@ -2,43 +2,45 @@
 pragma solidity ^0.8.24;
 
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
+import {IAccountProxy} from "../interfaces/IAccountProxy.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
-import {Exec} from "../utils/Exec.sol";
-import {getSegmentBytes} from "./utils/SegmentData.sol";
+import {push} from "./utils/ContextData.sol";
 
 /**
- * Simple Call Intent Standard core logic
+ * Eth Record Intent Standard core logic
  * @dev data
  *   [bytes32] standard - the intent standard identifier
- *   [bytes]   callData - the calldata to call on the intent sender
+ *   [bytes1]  flags - (optional) as proxy [---- ---p]
  */
-abstract contract SimpleCallCore {
+abstract contract EthRecordCore {
     /**
      * Validate intent segment structure (typically just formatting).
      */
-    function _validateSimpleCall(bytes calldata segmentData) internal pure {
-        require(segmentData.length >= 32, "Simple Call data is too small");
+    function _validateEthRecord(bytes calldata segmentData) internal pure {
+        require(segmentData.length == 32 || segmentData.length == 33, "ETH Record data length invalid");
     }
 
     /**
      * Performs part or all of the execution for an intent.
      */
-    function _executeSimpleCall(address intentSender, bytes calldata segmentData) internal {
-        if (segmentData.length > 32) {
-            unchecked {
-                bytes memory callData = getSegmentBytes(segmentData, 32, segmentData.length - 32);
-                bool success = Exec.call(intentSender, 0, callData, gasleft());
-                if (!success) Exec.forwardRevert(Exec.REVERT_REASON_MAX_LEN);
-            }
-        }
+    function _executeEthRecord(address intentSender, bytes1 flags, bytes memory context)
+        internal
+        view
+        returns (bytes memory)
+    {
+        address account = intentSender;
+        if (flags > 0) account = IAccountProxy(intentSender).proxyFor();
+
+        //push current eth balance to the context data
+        return push(context, bytes32(account.balance));
     }
 }
 
 /**
- * Simple Call Intent Standard that can be deployed and registered to the entry point
+ * Eth Record Intent Standard that can be deployed and registered to the entry point
  */
-contract SimpleCall is SimpleCallCore, IIntentStandard {
+contract EthRecord is EthRecordCore, IIntentStandard {
     using IntentSolutionLib for IntentSolution;
 
     /**
@@ -46,7 +48,7 @@ contract SimpleCall is SimpleCallCore, IIntentStandard {
      * @param segmentData the intent segment that is about to be solved.
      */
     function validateIntentSegment(bytes calldata segmentData) external pure override {
-        _validateSimpleCall(segmentData);
+        _validateEthRecord(segmentData);
     }
 
     /**
@@ -62,19 +64,21 @@ contract SimpleCall is SimpleCallCore, IIntentStandard {
         uint256 executionIndex,
         uint256 segmentIndex,
         bytes calldata context
-    ) external override returns (bytes memory) {
+    ) external view override returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
-        _executeSimpleCall(intent.sender, intent.intentData[segmentIndex]);
-        return context;
+        bytes1 flags = bytes1(0);
+        if (intent.segments[segmentIndex].length == 33) flags = intent.segments[segmentIndex][32];
+        return _executeEthRecord(intent.sender, flags, context);
     }
 }
 
 /**
  * Helper function to encode intent standard segment data.
  * @param standardId the entry point identifier for this standard
- * @param callData the calldata to call on the intent sender
+ * @param isProxy for an account other than the original sender
  * @return the fully encoded intent standard segment data
  */
-function encodeSimpleCallData(bytes32 standardId, bytes memory callData) pure returns (bytes memory) {
-    return abi.encodePacked(standardId, callData);
+function encodeEthRecordData(bytes32 standardId, bool isProxy) pure returns (bytes memory) {
+    if (isProxy) return abi.encodePacked(standardId, uint8(1));
+    return abi.encodePacked(standardId);
 }

@@ -2,45 +2,45 @@
 pragma solidity ^0.8.24;
 
 import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
-import {IAccountProxy} from "../interfaces/IAccountProxy.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
-import {push} from "./utils/ContextData.sol";
+import {Exec} from "../utils/Exec.sol";
+import {getSegmentWord, getSegmentBytes} from "./utils/SegmentData.sol";
+import {Strings} from "openzeppelin/utils/Strings.sol";
 
 /**
- * Eth Record Intent Standard core logic
+ * User Operation Intent Standard core logic
  * @dev data
  *   [bytes32] standard - the intent standard identifier
- *   [bytes1]  flags - (optional) as proxy [---- ---p]
+ *   [uint32]  callGasLimit - the max gas for executing the call
+ *   [bytes]   callData - the calldata to call on the intent sender
  */
-abstract contract EthRecordCore {
+abstract contract UserOperationCore {
     /**
      * Validate intent segment structure (typically just formatting).
      */
-    function _validateEthRecord(bytes calldata segmentData) internal pure {
-        require(segmentData.length == 32 || segmentData.length == 33, "ETH Record data length invalid");
+    function _validateUserOperation(bytes calldata segmentData) internal pure {
+        require(segmentData.length >= 36, "User Operation data is too small");
     }
 
     /**
      * Performs part or all of the execution for an intent.
      */
-    function _executeEthRecord(address intentSender, bytes1 flags, bytes memory context)
-        internal
-        view
-        returns (bytes memory)
-    {
-        address account = intentSender;
-        if (flags > 0) account = IAccountProxy(intentSender).proxyFor();
-
-        //push current eth balance to the context data
-        return push(context, bytes32(account.balance));
+    function _executeUserOperation(address intentSender, bytes calldata segmentData) internal {
+        if (segmentData.length > 36) {
+            unchecked {
+                uint32 callGasLimit = uint32(uint256(getSegmentWord(segmentData, 4)));
+                bytes memory callData = getSegmentBytes(segmentData, 36, segmentData.length - 36);
+                Exec.call(intentSender, 0, callData, callGasLimit);
+            }
+        }
     }
 }
 
 /**
- * Eth Record Intent Standard that can be deployed and registered to the entry point
+ * User Operation Intent Standard that can be deployed and registered to the entry point
  */
-contract EthRecord is EthRecordCore, IIntentStandard {
+contract UserOperation is UserOperationCore, IIntentStandard {
     using IntentSolutionLib for IntentSolution;
 
     /**
@@ -48,7 +48,7 @@ contract EthRecord is EthRecordCore, IIntentStandard {
      * @param segmentData the intent segment that is about to be solved.
      */
     function validateIntentSegment(bytes calldata segmentData) external pure override {
-        _validateEthRecord(segmentData);
+        _validateUserOperation(segmentData);
     }
 
     /**
@@ -64,21 +64,23 @@ contract EthRecord is EthRecordCore, IIntentStandard {
         uint256 executionIndex,
         uint256 segmentIndex,
         bytes calldata context
-    ) external view override returns (bytes memory) {
+    ) external override returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
-        bytes1 flags = bytes1(0);
-        if (intent.intentData[segmentIndex].length == 33) flags = intent.intentData[segmentIndex][32];
-        return _executeEthRecord(intent.sender, flags, context);
+        _executeUserOperation(intent.sender, intent.segments[segmentIndex]);
+        return context;
     }
 }
 
 /**
  * Helper function to encode intent standard segment data.
  * @param standardId the entry point identifier for this standard
- * @param isProxy for an account other than the original sender
+ * @param callGasLimit the max gas for executing the call
+ * @param callData the calldata to call on the intent sender
  * @return the fully encoded intent standard segment data
  */
-function encodeEthRecordData(bytes32 standardId, bool isProxy) pure returns (bytes memory) {
-    if (isProxy) return abi.encodePacked(standardId, uint8(1));
-    return abi.encodePacked(standardId);
+function encodeUserOperationData(bytes32 standardId, uint32 callGasLimit, bytes memory callData)
+    pure
+    returns (bytes memory)
+{
+    return abi.encodePacked(standardId, callGasLimit, callData);
 }

@@ -5,42 +5,40 @@ import {IIntentStandard} from "../interfaces/IIntentStandard.sol";
 import {UserIntent} from "../interfaces/UserIntent.sol";
 import {IntentSolution, IntentSolutionLib} from "../interfaces/IntentSolution.sol";
 import {Exec} from "../utils/Exec.sol";
-import {getSegmentWord, getSegmentBytes} from "./utils/SegmentData.sol";
-import {Strings} from "openzeppelin/utils/Strings.sol";
+import {getSegmentBytes} from "./utils/SegmentData.sol";
 
 /**
- * User Operation Intent Standard core logic
+ * Simple Call Intent Standard core logic
  * @dev data
  *   [bytes32] standard - the intent standard identifier
- *   [uint32]  callGasLimit - the max gas for executing the call
  *   [bytes]   callData - the calldata to call on the intent sender
  */
-abstract contract UserOperationCore {
+abstract contract SimpleCallCore {
     /**
      * Validate intent segment structure (typically just formatting).
      */
-    function _validateUserOperation(bytes calldata segmentData) internal pure {
-        require(segmentData.length >= 36, "User Operation data is too small");
+    function _validateSimpleCall(bytes calldata segmentData) internal pure {
+        require(segmentData.length >= 32, "Simple Call data is too small");
     }
 
     /**
      * Performs part or all of the execution for an intent.
      */
-    function _executeUserOperation(address intentSender, bytes calldata segmentData) internal {
-        if (segmentData.length > 36) {
+    function _executeSimpleCall(address intentSender, bytes calldata segmentData) internal {
+        if (segmentData.length > 32) {
             unchecked {
-                uint32 callGasLimit = uint32(uint256(getSegmentWord(segmentData, 4)));
-                bytes memory callData = getSegmentBytes(segmentData, 36, segmentData.length - 36);
-                Exec.call(intentSender, 0, callData, callGasLimit);
+                bytes memory callData = getSegmentBytes(segmentData, 32, segmentData.length - 32);
+                bool success = Exec.call(intentSender, 0, callData, gasleft());
+                if (!success) Exec.forwardRevert(Exec.REVERT_REASON_MAX_LEN);
             }
         }
     }
 }
 
 /**
- * User Operation Intent Standard that can be deployed and registered to the entry point
+ * Simple Call Intent Standard that can be deployed and registered to the entry point
  */
-contract UserOperation is UserOperationCore, IIntentStandard {
+contract SimpleCall is SimpleCallCore, IIntentStandard {
     using IntentSolutionLib for IntentSolution;
 
     /**
@@ -48,7 +46,7 @@ contract UserOperation is UserOperationCore, IIntentStandard {
      * @param segmentData the intent segment that is about to be solved.
      */
     function validateIntentSegment(bytes calldata segmentData) external pure override {
-        _validateUserOperation(segmentData);
+        _validateSimpleCall(segmentData);
     }
 
     /**
@@ -66,7 +64,7 @@ contract UserOperation is UserOperationCore, IIntentStandard {
         bytes calldata context
     ) external override returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
-        _executeUserOperation(intent.sender, intent.intentData[segmentIndex]);
+        _executeSimpleCall(intent.sender, intent.segments[segmentIndex]);
         return context;
     }
 }
@@ -74,13 +72,9 @@ contract UserOperation is UserOperationCore, IIntentStandard {
 /**
  * Helper function to encode intent standard segment data.
  * @param standardId the entry point identifier for this standard
- * @param callGasLimit the max gas for executing the call
  * @param callData the calldata to call on the intent sender
  * @return the fully encoded intent standard segment data
  */
-function encodeUserOperationData(bytes32 standardId, uint32 callGasLimit, bytes memory callData)
-    pure
-    returns (bytes memory)
-{
-    return abi.encodePacked(standardId, callGasLimit, callData);
+function encodeSimpleCallData(bytes32 standardId, bytes memory callData) pure returns (bytes memory) {
+    return abi.encodePacked(standardId, callData);
 }

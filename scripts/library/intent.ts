@@ -50,19 +50,19 @@ export class UserIntent {
   //gets the hash of the intent
   public hash(chainId: bigint, entrypoint: string): string {
     const abi = new ethers.AbiCoder();
-    const intentData: BytesLike[] = this.segments.map((segment) => segment.asBytes());
-    const intentDataHash = ethers.keccak256(abi.encode(['bytes[]'], [intentData]));
-    const intentHash = ethers.keccak256(abi.encode(['address', 'bytes32'], [this.sender, intentDataHash]));
+    const segments: BytesLike[] = this.segments.map((segment) => segment.asBytes());
+    const segmentsHash = ethers.keccak256(abi.encode(['bytes[]'], [segments]));
+    const intentHash = ethers.keccak256(abi.encode(['address', 'bytes32'], [this.sender, segmentsHash]));
     const hash = ethers.keccak256(abi.encode(['bytes32', 'address', 'uint256'], [intentHash, entrypoint, chainId]));
     return ethers.zeroPadValue(hash, 32);
   }
 
   //gets the intent object with segment data encoded
   public asUserIntentStruct(): UserIntentStruct {
-    const intentData: BytesLike[] = this.segments.map((segment) => segment.asBytes());
+    const segments: BytesLike[] = this.segments.map((segment) => segment.asBytes());
     return {
       sender: this.sender,
-      intentData,
+      segments,
       signature: this.signature,
     };
   }

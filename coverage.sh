@@ -2,7 +2,7 @@
 
 # run forge tests, then remove tests and samples
 forge coverage --report lcov
-lcov --remove ./lcov.info 'test/**' 'src/test/**' 'src/samples/**' 'src/utils/**' 'src/interfaces/**' -o ./lcov.info
+lcov --remove ./lcov.info 'test/**' 'contracts/test/**' 'contracts/samples/**' 'contracts/utils/**' 'contracts/interfaces/**' -o ./lcov.info
 
 # clear old report
 rm -rf ./coverage/

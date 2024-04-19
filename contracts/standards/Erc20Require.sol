@@ -116,7 +116,7 @@ contract Erc20Require is Erc20RequireCore, IIntentStandard {
         bytes calldata context
     ) external view override returns (bytes memory) {
         UserIntent calldata intent = solution.intents[solution.getIntentIndex(executionIndex)];
-        return _executeErc20Require(solution.timestamp, intent.sender, intent.intentData[segmentIndex], context);
+        return _executeErc20Require(solution.timestamp, intent.sender, intent.segments[segmentIndex], context);
     }
 }
 

@@ -6,42 +6,46 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import {IntentBuilder} from "./IntentBuilder.sol";
-import {EntryPoint} from "../../../src/core/EntryPoint.sol";
-import {UserIntent} from "../../../src/interfaces/UserIntent.sol";
-import {IntentSolution} from "../../../src/interfaces/IntentSolution.sol";
-import {Erc20Record, encodeErc20RecordData} from "../../../src/standards/Erc20Record.sol";
-import {ERC20_RECORD_STD_ID} from "../../../src/core/EntryPoint.sol";
+import {EntryPoint} from "../../../contracts/core/EntryPoint.sol";
+import {UserIntent} from "../../../contracts/interfaces/UserIntent.sol";
+import {IntentSolution} from "../../../contracts/interfaces/IntentSolution.sol";
+import {Erc20Record, encodeErc20RecordData} from "../../../contracts/standards/Erc20Record.sol";
+import {ERC20_RECORD_STD_ID} from "../../../contracts/core/EmbeddedIntentStandards.sol";
 import {
     Erc20Release,
     encodeErc20ReleaseData,
     encodeErc20ReleaseComplexData
-} from "../../../src/standards/Erc20Release.sol";
-import {ERC20_RELEASE_STD_ID} from "../../../src/core/EntryPoint.sol";
+} from "../../../contracts/standards/Erc20Release.sol";
+import {ERC20_RELEASE_STD_ID} from "../../../contracts/core/EmbeddedIntentStandards.sol";
 import {
     Erc20Require,
     encodeErc20RequireData,
     encodeErc20RequireComplexData
-} from "../../../src/standards/Erc20Require.sol";
-import {ERC20_REQUIRE_STD_ID} from "../../../src/core/EntryPoint.sol";
-import {EthRecord, encodeEthRecordData} from "../../../src/standards/EthRecord.sol";
-import {ETH_RECORD_STD_ID} from "../../../src/core/EntryPoint.sol";
-import {EthRelease, encodeEthReleaseData, encodeEthReleaseComplexData} from "../../../src/standards/EthRelease.sol";
-import {ETH_RELEASE_STD_ID} from "../../../src/core/EntryPoint.sol";
-import {EthRequire, encodeEthRequireData, encodeEthRequireComplexData} from "../../../src/standards/EthRequire.sol";
-import {ETH_REQUIRE_STD_ID} from "../../../src/core/EntryPoint.sol";
-import {SequentialNonce, encodeSequentialNonceData} from "../../../src/standards/SequentialNonce.sol";
-import {SEQUENTIAL_NONCE_STD_ID} from "../../../src/core/EntryPoint.sol";
-import {SimpleCall, encodeSimpleCallData} from "../../../src/standards/SimpleCall.sol";
-import {SIMPLE_CALL_STD_ID} from "../../../src/core/EntryPoint.sol";
-import {UserOperation, encodeUserOperationData} from "../../../src/standards/UserOperation.sol";
-import {USER_OPERATION_STD_ID} from "../../../src/core/EntryPoint.sol";
-import {FailingStandard} from "../../../src/test/FailingStandard.sol";
-import {TestERC20} from "../../../src/test/TestERC20.sol";
-import {TestUniswap} from "../../../src/test/TestUniswap.sol";
-import {TestWrappedNativeToken} from "../../../src/test/TestWrappedNativeToken.sol";
-import {SolverUtils} from "../../../src/test/SolverUtils.sol";
-import {SimpleAccountFactory} from "../../../src/samples/SimpleAccountFactory.sol";
-import {SimpleAccount} from "../../../src/samples/SimpleAccount.sol";
+} from "../../../contracts/standards/Erc20Require.sol";
+import {ERC20_REQUIRE_STD_ID} from "../../../contracts/core/EmbeddedIntentStandards.sol";
+import {EthRecord, encodeEthRecordData} from "../../../contracts/standards/EthRecord.sol";
+import {ETH_RECORD_STD_ID} from "../../../contracts/core/EmbeddedIntentStandards.sol";
+import {
+    EthRelease, encodeEthReleaseData, encodeEthReleaseComplexData
+} from "../../../contracts/standards/EthRelease.sol";
+import {ETH_RELEASE_STD_ID} from "../../../contracts/core/EmbeddedIntentStandards.sol";
+import {
+    EthRequire, encodeEthRequireData, encodeEthRequireComplexData
+} from "../../../contracts/standards/EthRequire.sol";
+import {ETH_REQUIRE_STD_ID} from "../../../contracts/core/EmbeddedIntentStandards.sol";
+import {SequentialNonce, encodeSequentialNonceData} from "../../../contracts/standards/SequentialNonce.sol";
+import {SEQUENTIAL_NONCE_STD_ID} from "../../../contracts/core/EmbeddedIntentStandards.sol";
+import {SimpleCall, encodeSimpleCallData} from "../../../contracts/standards/SimpleCall.sol";
+import {SIMPLE_CALL_STD_ID} from "../../../contracts/core/EmbeddedIntentStandards.sol";
+import {UserOperation, encodeUserOperationData} from "../../../contracts/standards/UserOperation.sol";
+import {USER_OPERATION_STD_ID} from "../../../contracts/core/EmbeddedIntentStandards.sol";
+import {FailingStandard} from "../../../contracts/test/FailingStandard.sol";
+import {TestERC20} from "../../../contracts/test/TestERC20.sol";
+import {TestUniswap} from "../../../contracts/test/TestUniswap.sol";
+import {TestWrappedNativeToken} from "../../../contracts/test/TestWrappedNativeToken.sol";
+import {SolverUtils} from "../../../contracts/test/SolverUtils.sol";
+import {SimpleAccountFactory} from "../../../contracts/samples/SimpleAccountFactory.sol";
+import {SimpleAccount} from "../../../contracts/samples/SimpleAccount.sol";
 import {ECDSA} from "openzeppelin/utils/cryptography/ECDSA.sol";
 
 abstract contract TestEnvironment is Test {
@@ -480,8 +484,8 @@ abstract contract TestEnvironment is Test {
     }
 
     function _useRegisteredStandards(UserIntent memory intent) internal view returns (UserIntent memory) {
-        for (uint256 i = 0; i < intent.intentData.length; i++) {
-            bytes memory data = intent.intentData[i];
+        for (uint256 i = 0; i < intent.segments.length; i++) {
+            bytes memory data = intent.segments[i];
             bytes32 stdId;
             assembly {
                 stdId := mload(add(32, data))
@@ -511,7 +515,7 @@ abstract contract TestEnvironment is Test {
         UserIntent[] memory intents = new UserIntent[](1);
         intents[0] = intent;
 
-        uint256 len = intent.intentData.length;
+        uint256 len = intent.segments.length;
         uint256[] memory order = new uint256[](len);
         uint256 index = 0;
         while (len > 0) {
@@ -540,8 +544,8 @@ abstract contract TestEnvironment is Test {
         intents[0] = intent1;
         intents[1] = intent2;
 
-        uint256 len1 = intent1.intentData.length;
-        uint256 len2 = intent2.intentData.length;
+        uint256 len1 = intent1.segments.length;
+        uint256 len2 = intent2.segments.length;
         uint256[] memory order = new uint256[](len1 + len2);
         uint256 index = 0;
         while (len1 > 0 || len2 > 0) {

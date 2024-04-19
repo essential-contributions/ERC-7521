@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 /* solhint-disable func-name-mixedcase */
 
 import "../utils/TestEnvironment.sol";
-import "../../../src/standards/utils/CurveCoder.sol";
+import "../../../contracts/standards/utils/CurveCoder.sol";
 
 /*
  * In this scenario, a user wants to transfer ETH and compensate for gas in an ERC-20 token

@@ -4,8 +4,9 @@ pragma solidity ^0.8.24;
 /* solhint-disable func-name-mixedcase */
 
 import "./utils/TestEnvironment.sol";
-import "../../src/interfaces/IIntentStandard.sol";
-import "../../src/interfaces/IEntryPoint.sol";
+import "../../contracts/interfaces/IIntentStandard.sol";
+import "../../contracts/interfaces/IEntryPoint.sol";
+import "openzeppelin/utils/introspection/IERC165.sol";
 
 contract EntryPointTest is TestEnvironment {
     function test_registerIntentStandard() public {
@@ -24,6 +25,18 @@ contract EntryPointTest is TestEnvironment {
         UserIntent memory intent = _intent();
         uint256 userNonce = _entryPoint.getNonce(intent.sender, uint256(0));
         assertEq(userNonce, 0);
+    }
+
+    function test_supportsInterface() public {
+        bytes4 interfaceId;
+        interfaceId = type(IEntryPoint).interfaceId ^ type(INonceManager).interfaceId;
+        assertEq(_entryPoint.supportsInterface(interfaceId), true);
+        interfaceId = type(IEntryPoint).interfaceId;
+        assertEq(_entryPoint.supportsInterface(interfaceId), true);
+        interfaceId = type(INonceManager).interfaceId;
+        assertEq(_entryPoint.supportsInterface(interfaceId), true);
+        interfaceId = type(IERC165).interfaceId;
+        assertEq(_entryPoint.supportsInterface(interfaceId), true);
     }
 
     function test_validateIntent() public {
@@ -52,7 +65,7 @@ contract EntryPointTest is TestEnvironment {
         UserIntent memory intent = _intent();
         bytes[] memory datas = new bytes[](1);
         datas[0] = abi.encode(bytes32(0x1122334455667788112233445566778811223344556677881122334455667788));
-        intent.intentData = datas;
+        intent.segments = datas;
 
         vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedIntent.selector, 0, 0, "AA82 unknown standard"));
         _entryPoint.validateIntent(intent);
@@ -125,7 +138,7 @@ contract EntryPointTest is TestEnvironment {
         UserIntent memory intent = _intent();
         bytes[] memory datas = new bytes[](1);
         datas[0] = abi.encode(bytes32(0x1122334455667788112233445566778811223344556677881122334455667788));
-        intent.intentData = datas;
+        intent.segments = datas;
         intent = _signIntent(intent);
         IntentSolution memory solution = _solution(intent);
 

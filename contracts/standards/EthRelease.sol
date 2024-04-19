@@ -88,7 +88,7 @@ contract EthRelease is EthReleaseCore, IIntentStandard {
             solution.timestamp,
             intent.sender,
             solution.intents[solution.getIntentIndex(executionIndex + 1)].sender,
-            intent.intentData[segmentIndex]
+            intent.segments[segmentIndex]
         );
         return context;
     }
